@@ -1,9 +1,12 @@
 'use strict';
 
+// Shared opposite-axis attributes for the range slider.
+// Used for yaxis entries inside an xaxis rangeslider (horizontal slider)
+// and xaxis entries inside a yaxis rangeslider (vertical slider).
 module.exports = {
     // not really a 'subplot' attribute container,
     // but this is the flag we use to denote attributes that
-    // support yaxis, yaxis2, yaxis3, ... counters
+    // support yaxis/xaxis counters
     _isSubplotObj: true,
 
     rangemode: {
@@ -17,14 +20,14 @@ module.exports = {
             'when zooming in/out.',
             'If *auto*, the autorange will be used.',
             'If *fixed*, the `range` is used.',
-            'If *match*, the current range of the corresponding y-axis on the main subplot is used.'
+            'If *match*, the current range of the corresponding axis on the main subplot is used.'
         ].join(' ')
     },
     range: {
         valType: 'info_array',
         items: [
-            {valType: 'any', editType: 'plot'},
-            {valType: 'any', editType: 'plot'}
+            { valType: 'any', editType: 'plot' },
+            { valType: 'any', editType: 'plot' }
         ],
         editType: 'plot',
         description: [

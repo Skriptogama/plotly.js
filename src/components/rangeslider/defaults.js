@@ -11,10 +11,10 @@ module.exports = function handleDefaults(layoutIn, layoutOut, axName) {
     var axIn = layoutIn[axName];
     var axOut = layoutOut[axName];
 
-    if(!(axIn.rangeslider || layoutOut._requestRangeslider[axOut._id])) return;
+    if (!(axIn.rangeslider || layoutOut._requestRangeslider[axOut._id])) return;
 
     // not super proud of this (maybe store _ in axis object instead
-    if(!Lib.isPlainObject(axIn.rangeslider)) {
+    if (!Lib.isPlainObject(axIn.rangeslider)) {
         axIn.rangeslider = {};
     }
 
@@ -31,42 +31,78 @@ module.exports = function handleDefaults(layoutIn, layoutOut, axName) {
     }
 
     var visible = coerce('visible');
-    if(!visible) return;
+    if (!visible) return;
 
     coerce('bgcolor', layoutOut.plot_bgcolor);
     coerce('bordercolor');
     coerce('borderwidth');
     coerce('thickness');
+    coerce('minthickness');
+    coerce('maxthickness');
+    coerce('side');
 
     coerce('autorange', !axOut.isValidRange(containerIn.range));
     coerce('range');
 
+    var axLetter = axOut._id.charAt(0);
     var subplots = layoutOut._subplots;
-    if(subplots) {
-        var yIds = subplots.cartesian
-            .filter(function(subplotId) {
-                return subplotId.slice(0, Math.max(0, subplotId.indexOf('y'))) === axisIds.name2id(axName);
-            })
-            .map(function(subplotId) {
-                return subplotId.slice(subplotId.indexOf('y'), subplotId.length);
-            });
-        var yNames = Lib.simpleMap(yIds, axisIds.id2name);
-        for(var i = 0; i < yNames.length; i++) {
-            var yName = yNames[i];
 
-            rangeContainerIn = containerIn[yName] || {};
-            rangeContainerOut = Template.newContainer(containerOut, yName, 'yaxis');
+    if (subplots) {
+        if (axLetter === 'x') {
+            // Horizontal slider: iterate associated y-axes (opposite axis)
+            var yIds = subplots.cartesian
+                .filter(function (subplotId) {
+                    return subplotId.slice(0, Math.max(0, subplotId.indexOf('y'))) === axisIds.name2id(axName);
+                })
+                .map(function (subplotId) {
+                    return subplotId.slice(subplotId.indexOf('y'), subplotId.length);
+                });
+            var yNames = Lib.simpleMap(yIds, axisIds.id2name);
+            for (var i = 0; i < yNames.length; i++) {
+                var yName = yNames[i];
 
-            var yAxOut = layoutOut[yName];
+                rangeContainerIn = containerIn[yName] || {};
+                rangeContainerOut = Template.newContainer(containerOut, yName, 'yaxis');
 
-            var rangemodeDflt;
-            if(rangeContainerIn.range && yAxOut.isValidRange(rangeContainerIn.range)) {
-                rangemodeDflt = 'fixed';
+                var yAxOut = layoutOut[yName];
+
+                var rangemodeDflt;
+                if (rangeContainerIn.range && yAxOut.isValidRange(rangeContainerIn.range)) {
+                    rangemodeDflt = 'fixed';
+                }
+
+                var rangeMode = coerceRange('rangemode', rangemodeDflt);
+                if (rangeMode !== 'match') {
+                    coerceRange('range', yAxOut.range.slice());
+                }
             }
+        } else {
+            // Vertical slider (yaxis): iterate associated x-axes (opposite axis)
+            var xIds = subplots.cartesian
+                .filter(function (subplotId) {
+                    return subplotId.slice(subplotId.indexOf('y'), subplotId.length) === axisIds.name2id(axName);
+                })
+                .map(function (subplotId) {
+                    return subplotId.slice(0, subplotId.indexOf('y')) || 'x';
+                });
+            var xNames = Lib.simpleMap(xIds, axisIds.id2name);
+            for (var j = 0; j < xNames.length; j++) {
+                var xName = xNames[j];
 
-            var rangeMode = coerceRange('rangemode', rangemodeDflt);
-            if(rangeMode !== 'match') {
-                coerceRange('range', yAxOut.range.slice());
+                rangeContainerIn = containerIn[xName] || {};
+                rangeContainerOut = Template.newContainer(containerOut, xName, 'xaxis');
+
+                var xAxOut = layoutOut[xName];
+
+                var xRangemodeDflt;
+                if (rangeContainerIn.range && xAxOut.isValidRange(rangeContainerIn.range)) {
+                    xRangemodeDflt = 'fixed';
+                }
+
+                var xRangeMode = coerceRange('rangemode', xRangemodeDflt);
+                if (xRangeMode !== 'match') {
+                    coerceRange('range', xAxOut.range.slice());
+                }
             }
         }
     }

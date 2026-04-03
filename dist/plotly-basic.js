@@ -1,15 +1,17 @@
 /**
-* plotly.js (basic) v3.4.0
+* plotly.js (basic) v3.4.0-fork.skriptogama
 * Copyright 2012-2026, Plotly, Inc.
 * All rights reserved.
 * Licensed under the MIT license
 */
 (
  function(root, factory) {
-  if (typeof module === "object" && module.exports) {
+  if (typeof define === "function" && define.amd) {
+   define([], factory);
+  } else if (typeof module === "object" && module.exports) {
    module.exports = factory();
   } else {
-   root.moduleName = factory();
+   root.Plotly = factory();
   }
 } (typeof self !== "undefined" ? self : this, () => {
 "use strict";
@@ -42,7 +44,7 @@ var Plotly = (() => {
   var require_version = __commonJS({
     "src/version.js"(exports) {
       "use strict";
-      exports.version = "3.4.0";
+      exports.version = "3.4.0-fork.skriptogama";
     }
   });
 
@@ -78,7 +80,7 @@ var Plotly = (() => {
             return obj;
           };
         }
-        scheduling_queue = /* @__PURE__ */ function Queue() {
+        scheduling_queue = /* @__PURE__ */ (function Queue() {
           var first, last, item;
           function Item(fn, self2) {
             this.fn = fn;
@@ -105,7 +107,7 @@ var Plotly = (() => {
               }
             }
           };
-        }();
+        })();
         function schedule(fn, self2) {
           scheduling_queue.add(fn, self2);
           if (!cycle) {
@@ -7611,6 +7613,8 @@ var Plotly = (() => {
             "d": formatDayOfMonth,
             "e": formatDayOfMonth,
             "f": formatMicroseconds,
+            "g": formatYearISO,
+            "G": formatFullYearISO,
             "H": formatHour24,
             "I": formatHour12,
             "j": formatDayOfYear,
@@ -7643,6 +7647,8 @@ var Plotly = (() => {
             "d": formatUTCDayOfMonth,
             "e": formatUTCDayOfMonth,
             "f": formatUTCMicroseconds,
+            "g": formatUTCYearISO,
+            "G": formatUTCFullYearISO,
             "H": formatUTCHour24,
             "I": formatUTCHour12,
             "j": formatUTCDayOfYear,
@@ -7675,6 +7681,8 @@ var Plotly = (() => {
             "d": parseDayOfMonth,
             "e": parseDayOfMonth,
             "f": parseMicroseconds,
+            "g": parseYear,
+            "G": parseFullYear,
             "H": parseHour24,
             "I": parseHour24,
             "j": parseDayOfYear,
@@ -8004,9 +8012,12 @@ var Plotly = (() => {
         function formatWeekNumberSunday(d, p) {
           return pad(d3Time.timeSunday.count(d3Time.timeYear(d) - 1, d), p, 2);
         }
-        function formatWeekNumberISO(d, p) {
+        function dISO(d) {
           var day = d.getDay();
-          d = day >= 4 || day === 0 ? d3Time.timeThursday(d) : d3Time.timeThursday.ceil(d);
+          return day >= 4 || day === 0 ? d3Time.timeThursday(d) : d3Time.timeThursday.ceil(d);
+        }
+        function formatWeekNumberISO(d, p) {
+          d = dISO(d);
           return pad(d3Time.timeThursday.count(d3Time.timeYear(d), d) + (d3Time.timeYear(d).getDay() === 4), p, 2);
         }
         function formatWeekdayNumberSunday(d) {
@@ -8018,7 +8029,16 @@ var Plotly = (() => {
         function formatYear(d, p) {
           return pad(d.getFullYear() % 100, p, 2);
         }
+        function formatYearISO(d, p) {
+          d = dISO(d);
+          return pad(d.getFullYear() % 100, p, 2);
+        }
         function formatFullYear(d, p) {
+          return pad(d.getFullYear() % 1e4, p, 4);
+        }
+        function formatFullYearISO(d, p) {
+          var day = d.getDay();
+          d = day >= 4 || day === 0 ? d3Time.timeThursday(d) : d3Time.timeThursday.ceil(d);
           return pad(d.getFullYear() % 1e4, p, 4);
         }
         function formatZone(d) {
@@ -8059,9 +8079,12 @@ var Plotly = (() => {
         function formatUTCWeekNumberSunday(d, p) {
           return pad(d3Time.utcSunday.count(d3Time.utcYear(d) - 1, d), p, 2);
         }
-        function formatUTCWeekNumberISO(d, p) {
+        function UTCdISO(d) {
           var day = d.getUTCDay();
-          d = day >= 4 || day === 0 ? d3Time.utcThursday(d) : d3Time.utcThursday.ceil(d);
+          return day >= 4 || day === 0 ? d3Time.utcThursday(d) : d3Time.utcThursday.ceil(d);
+        }
+        function formatUTCWeekNumberISO(d, p) {
+          d = UTCdISO(d);
           return pad(d3Time.utcThursday.count(d3Time.utcYear(d), d) + (d3Time.utcYear(d).getUTCDay() === 4), p, 2);
         }
         function formatUTCWeekdayNumberSunday(d) {
@@ -8073,7 +8096,16 @@ var Plotly = (() => {
         function formatUTCYear(d, p) {
           return pad(d.getUTCFullYear() % 100, p, 2);
         }
+        function formatUTCYearISO(d, p) {
+          d = UTCdISO(d);
+          return pad(d.getUTCFullYear() % 100, p, 2);
+        }
         function formatUTCFullYear(d, p) {
+          return pad(d.getUTCFullYear() % 1e4, p, 4);
+        }
+        function formatUTCFullYearISO(d, p) {
+          var day = d.getUTCDay();
+          d = day >= 4 || day === 0 ? d3Time.utcThursday(d) : d3Time.utcThursday.ceil(d);
           return pad(d.getUTCFullYear() % 1e4, p, 4);
         }
         function formatUTCZone() {
@@ -8131,7 +8163,7 @@ var Plotly = (() => {
     "node_modules/d3-format/dist/d3-format.js"(exports, module) {
       (function(global2, factory) {
         typeof exports === "object" && typeof module !== "undefined" ? factory(exports) : typeof define === "function" && false ? define(["exports"], factory) : (global2 = typeof globalThis !== "undefined" ? globalThis : global2 || self, factory(global2.d3 = global2.d3 || {}));
-      })(exports, function(exports2) {
+      })(exports, (function(exports2) {
         "use strict";
         function formatDecimal(x) {
           return Math.abs(x = Math.round(x)) >= 1e21 ? x.toLocaleString("en").replace(/,/g, "") : x.toString(10);
@@ -8371,7 +8403,7 @@ var Plotly = (() => {
         exports2.precisionPrefix = precisionPrefix;
         exports2.precisionRound = precisionRound;
         Object.defineProperty(exports2, "__esModule", { value: true });
-      });
+      }));
     }
   });
 
@@ -8488,7 +8520,7 @@ var Plotly = (() => {
     "node_modules/base64-arraybuffer/dist/base64-arraybuffer.umd.js"(exports, module) {
       (function(global2, factory) {
         typeof exports === "object" && typeof module !== "undefined" ? factory(exports) : typeof define === "function" && false ? define(["exports"], factory) : (global2 = typeof globalThis !== "undefined" ? globalThis : global2 || self, factory(global2["base64-arraybuffer"] = {}));
-      })(exports, function(exports2) {
+      })(exports, (function(exports2) {
         "use strict";
         var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         var lookup = typeof Uint8Array === "undefined" ? [] : new Uint8Array(256);
@@ -8533,7 +8565,7 @@ var Plotly = (() => {
         exports2.decode = decode;
         exports2.encode = encode;
         Object.defineProperty(exports2, "__esModule", { value: true });
-      });
+      }));
     }
   });
 
@@ -9135,11 +9167,23 @@ var Plotly = (() => {
     }
   });
 
-  // node_modules/tinycolor2/tinycolor.js
+  // node_modules/tinycolor2/cjs/tinycolor.js
   var require_tinycolor = __commonJS({
-    "node_modules/tinycolor2/tinycolor.js"(exports, module) {
-      (function(Math2) {
-        var trimLeft = /^\s+/, trimRight = /\s+$/, tinyCounter = 0, mathRound = Math2.round, mathMin = Math2.min, mathMax = Math2.max, mathRandom = Math2.random;
+    "node_modules/tinycolor2/cjs/tinycolor.js"(exports, module) {
+      (function(global2, factory) {
+        typeof exports === "object" && typeof module !== "undefined" ? module.exports = factory() : typeof define === "function" && false ? define(factory) : (global2 = typeof globalThis !== "undefined" ? globalThis : global2 || self, global2.tinycolor = factory());
+      })(exports, (function() {
+        "use strict";
+        function _typeof(obj) {
+          "@babel/helpers - typeof";
+          return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function(obj2) {
+            return typeof obj2;
+          } : function(obj2) {
+            return obj2 && "function" == typeof Symbol && obj2.constructor === Symbol && obj2 !== Symbol.prototype ? "symbol" : typeof obj2;
+          }, _typeof(obj);
+        }
+        var trimLeft = /^\s+/;
+        var trimRight = /\s+$/;
         function tinycolor(color, opts) {
           color = color ? color : "";
           opts = opts || {};
@@ -9150,114 +9194,118 @@ var Plotly = (() => {
             return new tinycolor(color, opts);
           }
           var rgb = inputToRGB(color);
-          this._originalInput = color, this._r = rgb.r, this._g = rgb.g, this._b = rgb.b, this._a = rgb.a, this._roundA = mathRound(100 * this._a) / 100, this._format = opts.format || rgb.format;
+          this._originalInput = color, this._r = rgb.r, this._g = rgb.g, this._b = rgb.b, this._a = rgb.a, this._roundA = Math.round(100 * this._a) / 100, this._format = opts.format || rgb.format;
           this._gradientType = opts.gradientType;
-          if (this._r < 1) {
-            this._r = mathRound(this._r);
-          }
-          if (this._g < 1) {
-            this._g = mathRound(this._g);
-          }
-          if (this._b < 1) {
-            this._b = mathRound(this._b);
-          }
+          if (this._r < 1) this._r = Math.round(this._r);
+          if (this._g < 1) this._g = Math.round(this._g);
+          if (this._b < 1) this._b = Math.round(this._b);
           this._ok = rgb.ok;
-          this._tc_id = tinyCounter++;
         }
         tinycolor.prototype = {
-          isDark: function() {
+          isDark: function isDark() {
             return this.getBrightness() < 128;
           },
-          isLight: function() {
+          isLight: function isLight() {
             return !this.isDark();
           },
-          isValid: function() {
+          isValid: function isValid() {
             return this._ok;
           },
-          getOriginalInput: function() {
+          getOriginalInput: function getOriginalInput() {
             return this._originalInput;
           },
-          getFormat: function() {
+          getFormat: function getFormat() {
             return this._format;
           },
-          getAlpha: function() {
+          getAlpha: function getAlpha() {
             return this._a;
           },
-          getBrightness: function() {
+          getBrightness: function getBrightness() {
             var rgb = this.toRgb();
             return (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1e3;
           },
-          getLuminance: function() {
+          getLuminance: function getLuminance() {
             var rgb = this.toRgb();
             var RsRGB, GsRGB, BsRGB, R, G, B;
             RsRGB = rgb.r / 255;
             GsRGB = rgb.g / 255;
             BsRGB = rgb.b / 255;
-            if (RsRGB <= 0.03928) {
-              R = RsRGB / 12.92;
-            } else {
-              R = Math2.pow((RsRGB + 0.055) / 1.055, 2.4);
-            }
-            if (GsRGB <= 0.03928) {
-              G = GsRGB / 12.92;
-            } else {
-              G = Math2.pow((GsRGB + 0.055) / 1.055, 2.4);
-            }
-            if (BsRGB <= 0.03928) {
-              B = BsRGB / 12.92;
-            } else {
-              B = Math2.pow((BsRGB + 0.055) / 1.055, 2.4);
-            }
+            if (RsRGB <= 0.03928) R = RsRGB / 12.92;
+            else R = Math.pow((RsRGB + 0.055) / 1.055, 2.4);
+            if (GsRGB <= 0.03928) G = GsRGB / 12.92;
+            else G = Math.pow((GsRGB + 0.055) / 1.055, 2.4);
+            if (BsRGB <= 0.03928) B = BsRGB / 12.92;
+            else B = Math.pow((BsRGB + 0.055) / 1.055, 2.4);
             return 0.2126 * R + 0.7152 * G + 0.0722 * B;
           },
-          setAlpha: function(value) {
+          setAlpha: function setAlpha(value) {
             this._a = boundAlpha(value);
-            this._roundA = mathRound(100 * this._a) / 100;
+            this._roundA = Math.round(100 * this._a) / 100;
             return this;
           },
-          toHsv: function() {
+          toHsv: function toHsv() {
             var hsv = rgbToHsv(this._r, this._g, this._b);
-            return { h: hsv.h * 360, s: hsv.s, v: hsv.v, a: this._a };
+            return {
+              h: hsv.h * 360,
+              s: hsv.s,
+              v: hsv.v,
+              a: this._a
+            };
           },
-          toHsvString: function() {
+          toHsvString: function toHsvString() {
             var hsv = rgbToHsv(this._r, this._g, this._b);
-            var h = mathRound(hsv.h * 360), s = mathRound(hsv.s * 100), v = mathRound(hsv.v * 100);
+            var h = Math.round(hsv.h * 360), s = Math.round(hsv.s * 100), v = Math.round(hsv.v * 100);
             return this._a == 1 ? "hsv(" + h + ", " + s + "%, " + v + "%)" : "hsva(" + h + ", " + s + "%, " + v + "%, " + this._roundA + ")";
           },
-          toHsl: function() {
+          toHsl: function toHsl() {
             var hsl = rgbToHsl(this._r, this._g, this._b);
-            return { h: hsl.h * 360, s: hsl.s, l: hsl.l, a: this._a };
+            return {
+              h: hsl.h * 360,
+              s: hsl.s,
+              l: hsl.l,
+              a: this._a
+            };
           },
-          toHslString: function() {
+          toHslString: function toHslString() {
             var hsl = rgbToHsl(this._r, this._g, this._b);
-            var h = mathRound(hsl.h * 360), s = mathRound(hsl.s * 100), l = mathRound(hsl.l * 100);
+            var h = Math.round(hsl.h * 360), s = Math.round(hsl.s * 100), l = Math.round(hsl.l * 100);
             return this._a == 1 ? "hsl(" + h + ", " + s + "%, " + l + "%)" : "hsla(" + h + ", " + s + "%, " + l + "%, " + this._roundA + ")";
           },
-          toHex: function(allow3Char) {
+          toHex: function toHex(allow3Char) {
             return rgbToHex(this._r, this._g, this._b, allow3Char);
           },
-          toHexString: function(allow3Char) {
+          toHexString: function toHexString(allow3Char) {
             return "#" + this.toHex(allow3Char);
           },
-          toHex8: function(allow4Char) {
+          toHex8: function toHex8(allow4Char) {
             return rgbaToHex(this._r, this._g, this._b, this._a, allow4Char);
           },
-          toHex8String: function(allow4Char) {
+          toHex8String: function toHex8String(allow4Char) {
             return "#" + this.toHex8(allow4Char);
           },
-          toRgb: function() {
-            return { r: mathRound(this._r), g: mathRound(this._g), b: mathRound(this._b), a: this._a };
+          toRgb: function toRgb() {
+            return {
+              r: Math.round(this._r),
+              g: Math.round(this._g),
+              b: Math.round(this._b),
+              a: this._a
+            };
           },
-          toRgbString: function() {
-            return this._a == 1 ? "rgb(" + mathRound(this._r) + ", " + mathRound(this._g) + ", " + mathRound(this._b) + ")" : "rgba(" + mathRound(this._r) + ", " + mathRound(this._g) + ", " + mathRound(this._b) + ", " + this._roundA + ")";
+          toRgbString: function toRgbString() {
+            return this._a == 1 ? "rgb(" + Math.round(this._r) + ", " + Math.round(this._g) + ", " + Math.round(this._b) + ")" : "rgba(" + Math.round(this._r) + ", " + Math.round(this._g) + ", " + Math.round(this._b) + ", " + this._roundA + ")";
           },
-          toPercentageRgb: function() {
-            return { r: mathRound(bound01(this._r, 255) * 100) + "%", g: mathRound(bound01(this._g, 255) * 100) + "%", b: mathRound(bound01(this._b, 255) * 100) + "%", a: this._a };
+          toPercentageRgb: function toPercentageRgb() {
+            return {
+              r: Math.round(bound01(this._r, 255) * 100) + "%",
+              g: Math.round(bound01(this._g, 255) * 100) + "%",
+              b: Math.round(bound01(this._b, 255) * 100) + "%",
+              a: this._a
+            };
           },
-          toPercentageRgbString: function() {
-            return this._a == 1 ? "rgb(" + mathRound(bound01(this._r, 255) * 100) + "%, " + mathRound(bound01(this._g, 255) * 100) + "%, " + mathRound(bound01(this._b, 255) * 100) + "%)" : "rgba(" + mathRound(bound01(this._r, 255) * 100) + "%, " + mathRound(bound01(this._g, 255) * 100) + "%, " + mathRound(bound01(this._b, 255) * 100) + "%, " + this._roundA + ")";
+          toPercentageRgbString: function toPercentageRgbString() {
+            return this._a == 1 ? "rgb(" + Math.round(bound01(this._r, 255) * 100) + "%, " + Math.round(bound01(this._g, 255) * 100) + "%, " + Math.round(bound01(this._b, 255) * 100) + "%)" : "rgba(" + Math.round(bound01(this._r, 255) * 100) + "%, " + Math.round(bound01(this._g, 255) * 100) + "%, " + Math.round(bound01(this._b, 255) * 100) + "%, " + this._roundA + ")";
           },
-          toName: function() {
+          toName: function toName() {
             if (this._a === 0) {
               return "transparent";
             }
@@ -9266,7 +9314,7 @@ var Plotly = (() => {
             }
             return hexNames[rgbToHex(this._r, this._g, this._b, true)] || false;
           },
-          toFilter: function(secondColor) {
+          toFilter: function toFilter(secondColor) {
             var hex8String = "#" + rgbaToArgbHex(this._r, this._g, this._b, this._a);
             var secondHex8String = hex8String;
             var gradientType = this._gradientType ? "GradientType = 1, " : "";
@@ -9276,7 +9324,7 @@ var Plotly = (() => {
             }
             return "progid:DXImageTransform.Microsoft.gradient(" + gradientType + "startColorstr=" + hex8String + ",endColorstr=" + secondHex8String + ")";
           },
-          toString: function(format) {
+          toString: function toString(format) {
             var formatSet = !!format;
             format = format || this._format;
             var formattedString = false;
@@ -9317,10 +9365,10 @@ var Plotly = (() => {
             }
             return formattedString || this.toHexString();
           },
-          clone: function() {
+          clone: function clone() {
             return tinycolor(this.toString());
           },
-          _applyModification: function(fn, args) {
+          _applyModification: function _applyModification(fn, args) {
             var color = fn.apply(null, [this].concat([].slice.call(args)));
             this._r = color._r;
             this._g = color._g;
@@ -9328,51 +9376,55 @@ var Plotly = (() => {
             this.setAlpha(color._a);
             return this;
           },
-          lighten: function() {
-            return this._applyModification(lighten, arguments);
+          lighten: function lighten() {
+            return this._applyModification(_lighten, arguments);
           },
-          brighten: function() {
-            return this._applyModification(brighten, arguments);
+          brighten: function brighten() {
+            return this._applyModification(_brighten, arguments);
           },
-          darken: function() {
-            return this._applyModification(darken, arguments);
+          darken: function darken() {
+            return this._applyModification(_darken, arguments);
           },
-          desaturate: function() {
-            return this._applyModification(desaturate, arguments);
+          desaturate: function desaturate() {
+            return this._applyModification(_desaturate, arguments);
           },
-          saturate: function() {
-            return this._applyModification(saturate, arguments);
+          saturate: function saturate() {
+            return this._applyModification(_saturate, arguments);
           },
-          greyscale: function() {
-            return this._applyModification(greyscale, arguments);
+          greyscale: function greyscale() {
+            return this._applyModification(_greyscale, arguments);
           },
-          spin: function() {
-            return this._applyModification(spin, arguments);
+          spin: function spin() {
+            return this._applyModification(_spin, arguments);
           },
-          _applyCombination: function(fn, args) {
+          _applyCombination: function _applyCombination(fn, args) {
             return fn.apply(null, [this].concat([].slice.call(args)));
           },
-          analogous: function() {
-            return this._applyCombination(analogous, arguments);
+          analogous: function analogous() {
+            return this._applyCombination(_analogous, arguments);
           },
-          complement: function() {
-            return this._applyCombination(complement, arguments);
+          complement: function complement() {
+            return this._applyCombination(_complement, arguments);
           },
-          monochromatic: function() {
-            return this._applyCombination(monochromatic, arguments);
+          monochromatic: function monochromatic() {
+            return this._applyCombination(_monochromatic, arguments);
           },
-          splitcomplement: function() {
-            return this._applyCombination(splitcomplement, arguments);
+          splitcomplement: function splitcomplement() {
+            return this._applyCombination(_splitcomplement, arguments);
           },
-          triad: function() {
-            return this._applyCombination(triad, arguments);
+          // Disabled until https://github.com/bgrins/TinyColor/issues/254
+          // polyad: function (number) {
+          //   return this._applyCombination(polyad, [number]);
+          // },
+          triad: function triad() {
+            return this._applyCombination(polyad, [3]);
           },
-          tetrad: function() {
-            return this._applyCombination(tetrad, arguments);
+          tetrad: function tetrad() {
+            return this._applyCombination(polyad, [4]);
           }
         };
         tinycolor.fromRatio = function(color, opts) {
-          if (typeof color == "object") {
+          if (_typeof(color) == "object") {
             var newColor = {};
             for (var i in color) {
               if (color.hasOwnProperty(i)) {
@@ -9388,7 +9440,11 @@ var Plotly = (() => {
           return tinycolor(color, opts);
         };
         function inputToRGB(color) {
-          var rgb = { r: 0, g: 0, b: 0 };
+          var rgb = {
+            r: 0,
+            g: 0,
+            b: 0
+          };
           var a = 1;
           var s = null;
           var v = null;
@@ -9398,7 +9454,7 @@ var Plotly = (() => {
           if (typeof color == "string") {
             color = stringInputToObject(color);
           }
-          if (typeof color == "object") {
+          if (_typeof(color) == "object") {
             if (isValidCSSUnit(color.r) && isValidCSSUnit(color.g) && isValidCSSUnit(color.b)) {
               rgb = rgbToRgb(color.r, color.g, color.b);
               ok = true;
@@ -9424,9 +9480,9 @@ var Plotly = (() => {
           return {
             ok,
             format: color.format || format,
-            r: mathMin(255, mathMax(rgb.r, 0)),
-            g: mathMin(255, mathMax(rgb.g, 0)),
-            b: mathMin(255, mathMax(rgb.b, 0)),
+            r: Math.min(255, Math.max(rgb.r, 0)),
+            g: Math.min(255, Math.max(rgb.g, 0)),
+            b: Math.min(255, Math.max(rgb.b, 0)),
             a
           };
         }
@@ -9441,7 +9497,7 @@ var Plotly = (() => {
           r = bound01(r, 255);
           g = bound01(g, 255);
           b = bound01(b, 255);
-          var max = mathMax(r, g, b), min = mathMin(r, g, b);
+          var max = Math.max(r, g, b), min = Math.min(r, g, b);
           var h, s, l = (max + min) / 2;
           if (max == min) {
             h = s = 0;
@@ -9461,7 +9517,11 @@ var Plotly = (() => {
             }
             h /= 6;
           }
-          return { h, s, l };
+          return {
+            h,
+            s,
+            l
+          };
         }
         function hslToRgb(h, s, l) {
           var r, g, b;
@@ -9485,13 +9545,17 @@ var Plotly = (() => {
             g = hue2rgb(p, q, h);
             b = hue2rgb(p, q, h - 1 / 3);
           }
-          return { r: r * 255, g: g * 255, b: b * 255 };
+          return {
+            r: r * 255,
+            g: g * 255,
+            b: b * 255
+          };
         }
         function rgbToHsv(r, g, b) {
           r = bound01(r, 255);
           g = bound01(g, 255);
           b = bound01(b, 255);
-          var max = mathMax(r, g, b), min = mathMin(r, g, b);
+          var max = Math.max(r, g, b), min = Math.min(r, g, b);
           var h, s, v = max;
           var d = max - min;
           s = max === 0 ? 0 : d / max;
@@ -9511,139 +9575,132 @@ var Plotly = (() => {
             }
             h /= 6;
           }
-          return { h, s, v };
+          return {
+            h,
+            s,
+            v
+          };
         }
         function hsvToRgb(h, s, v) {
           h = bound01(h, 360) * 6;
           s = bound01(s, 100);
           v = bound01(v, 100);
-          var i = Math2.floor(h), f = h - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s), mod = i % 6, r = [v, q, p, p, t, v][mod], g = [t, v, v, q, p, p][mod], b = [p, p, t, v, v, q][mod];
-          return { r: r * 255, g: g * 255, b: b * 255 };
+          var i = Math.floor(h), f = h - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s), mod = i % 6, r = [v, q, p, p, t, v][mod], g = [t, v, v, q, p, p][mod], b = [p, p, t, v, v, q][mod];
+          return {
+            r: r * 255,
+            g: g * 255,
+            b: b * 255
+          };
         }
         function rgbToHex(r, g, b, allow3Char) {
-          var hex = [
-            pad2(mathRound(r).toString(16)),
-            pad2(mathRound(g).toString(16)),
-            pad2(mathRound(b).toString(16))
-          ];
+          var hex = [pad2(Math.round(r).toString(16)), pad2(Math.round(g).toString(16)), pad2(Math.round(b).toString(16))];
           if (allow3Char && hex[0].charAt(0) == hex[0].charAt(1) && hex[1].charAt(0) == hex[1].charAt(1) && hex[2].charAt(0) == hex[2].charAt(1)) {
             return hex[0].charAt(0) + hex[1].charAt(0) + hex[2].charAt(0);
           }
           return hex.join("");
         }
         function rgbaToHex(r, g, b, a, allow4Char) {
-          var hex = [
-            pad2(mathRound(r).toString(16)),
-            pad2(mathRound(g).toString(16)),
-            pad2(mathRound(b).toString(16)),
-            pad2(convertDecimalToHex(a))
-          ];
+          var hex = [pad2(Math.round(r).toString(16)), pad2(Math.round(g).toString(16)), pad2(Math.round(b).toString(16)), pad2(convertDecimalToHex(a))];
           if (allow4Char && hex[0].charAt(0) == hex[0].charAt(1) && hex[1].charAt(0) == hex[1].charAt(1) && hex[2].charAt(0) == hex[2].charAt(1) && hex[3].charAt(0) == hex[3].charAt(1)) {
             return hex[0].charAt(0) + hex[1].charAt(0) + hex[2].charAt(0) + hex[3].charAt(0);
           }
           return hex.join("");
         }
         function rgbaToArgbHex(r, g, b, a) {
-          var hex = [
-            pad2(convertDecimalToHex(a)),
-            pad2(mathRound(r).toString(16)),
-            pad2(mathRound(g).toString(16)),
-            pad2(mathRound(b).toString(16))
-          ];
+          var hex = [pad2(convertDecimalToHex(a)), pad2(Math.round(r).toString(16)), pad2(Math.round(g).toString(16)), pad2(Math.round(b).toString(16))];
           return hex.join("");
         }
         tinycolor.equals = function(color1, color2) {
-          if (!color1 || !color2) {
-            return false;
-          }
+          if (!color1 || !color2) return false;
           return tinycolor(color1).toRgbString() == tinycolor(color2).toRgbString();
         };
         tinycolor.random = function() {
           return tinycolor.fromRatio({
-            r: mathRandom(),
-            g: mathRandom(),
-            b: mathRandom()
+            r: Math.random(),
+            g: Math.random(),
+            b: Math.random()
           });
         };
-        function desaturate(color, amount) {
+        function _desaturate(color, amount) {
           amount = amount === 0 ? 0 : amount || 10;
           var hsl = tinycolor(color).toHsl();
           hsl.s -= amount / 100;
           hsl.s = clamp01(hsl.s);
           return tinycolor(hsl);
         }
-        function saturate(color, amount) {
+        function _saturate(color, amount) {
           amount = amount === 0 ? 0 : amount || 10;
           var hsl = tinycolor(color).toHsl();
           hsl.s += amount / 100;
           hsl.s = clamp01(hsl.s);
           return tinycolor(hsl);
         }
-        function greyscale(color) {
+        function _greyscale(color) {
           return tinycolor(color).desaturate(100);
         }
-        function lighten(color, amount) {
+        function _lighten(color, amount) {
           amount = amount === 0 ? 0 : amount || 10;
           var hsl = tinycolor(color).toHsl();
           hsl.l += amount / 100;
           hsl.l = clamp01(hsl.l);
           return tinycolor(hsl);
         }
-        function brighten(color, amount) {
+        function _brighten(color, amount) {
           amount = amount === 0 ? 0 : amount || 10;
           var rgb = tinycolor(color).toRgb();
-          rgb.r = mathMax(0, mathMin(255, rgb.r - mathRound(255 * -(amount / 100))));
-          rgb.g = mathMax(0, mathMin(255, rgb.g - mathRound(255 * -(amount / 100))));
-          rgb.b = mathMax(0, mathMin(255, rgb.b - mathRound(255 * -(amount / 100))));
+          rgb.r = Math.max(0, Math.min(255, rgb.r - Math.round(255 * -(amount / 100))));
+          rgb.g = Math.max(0, Math.min(255, rgb.g - Math.round(255 * -(amount / 100))));
+          rgb.b = Math.max(0, Math.min(255, rgb.b - Math.round(255 * -(amount / 100))));
           return tinycolor(rgb);
         }
-        function darken(color, amount) {
+        function _darken(color, amount) {
           amount = amount === 0 ? 0 : amount || 10;
           var hsl = tinycolor(color).toHsl();
           hsl.l -= amount / 100;
           hsl.l = clamp01(hsl.l);
           return tinycolor(hsl);
         }
-        function spin(color, amount) {
+        function _spin(color, amount) {
           var hsl = tinycolor(color).toHsl();
           var hue = (hsl.h + amount) % 360;
           hsl.h = hue < 0 ? 360 + hue : hue;
           return tinycolor(hsl);
         }
-        function complement(color) {
+        function _complement(color) {
           var hsl = tinycolor(color).toHsl();
           hsl.h = (hsl.h + 180) % 360;
           return tinycolor(hsl);
         }
-        function triad(color) {
+        function polyad(color, number) {
+          if (isNaN(number) || number <= 0) {
+            throw new Error("Argument to polyad must be a positive number");
+          }
+          var hsl = tinycolor(color).toHsl();
+          var result = [tinycolor(color)];
+          var step = 360 / number;
+          for (var i = 1; i < number; i++) {
+            result.push(tinycolor({
+              h: (hsl.h + i * step) % 360,
+              s: hsl.s,
+              l: hsl.l
+            }));
+          }
+          return result;
+        }
+        function _splitcomplement(color) {
           var hsl = tinycolor(color).toHsl();
           var h = hsl.h;
-          return [
-            tinycolor(color),
-            tinycolor({ h: (h + 120) % 360, s: hsl.s, l: hsl.l }),
-            tinycolor({ h: (h + 240) % 360, s: hsl.s, l: hsl.l })
-          ];
+          return [tinycolor(color), tinycolor({
+            h: (h + 72) % 360,
+            s: hsl.s,
+            l: hsl.l
+          }), tinycolor({
+            h: (h + 216) % 360,
+            s: hsl.s,
+            l: hsl.l
+          })];
         }
-        function tetrad(color) {
-          var hsl = tinycolor(color).toHsl();
-          var h = hsl.h;
-          return [
-            tinycolor(color),
-            tinycolor({ h: (h + 90) % 360, s: hsl.s, l: hsl.l }),
-            tinycolor({ h: (h + 180) % 360, s: hsl.s, l: hsl.l }),
-            tinycolor({ h: (h + 270) % 360, s: hsl.s, l: hsl.l })
-          ];
-        }
-        function splitcomplement(color) {
-          var hsl = tinycolor(color).toHsl();
-          var h = hsl.h;
-          return [
-            tinycolor(color),
-            tinycolor({ h: (h + 72) % 360, s: hsl.s, l: hsl.l }),
-            tinycolor({ h: (h + 216) % 360, s: hsl.s, l: hsl.l })
-          ];
-        }
-        function analogous(color, results, slices) {
+        function _analogous(color, results, slices) {
           results = results || 6;
           slices = slices || 30;
           var hsl = tinycolor(color).toHsl();
@@ -9655,14 +9712,18 @@ var Plotly = (() => {
           }
           return ret;
         }
-        function monochromatic(color, results) {
+        function _monochromatic(color, results) {
           results = results || 6;
           var hsv = tinycolor(color).toHsv();
           var h = hsv.h, s = hsv.s, v = hsv.v;
           var ret = [];
           var modification = 1 / results;
           while (results--) {
-            ret.push(tinycolor({ h, s, v }));
+            ret.push(tinycolor({
+              h,
+              s,
+              v
+            }));
             v = (v + modification) % 1;
           }
           return ret;
@@ -9683,7 +9744,7 @@ var Plotly = (() => {
         tinycolor.readability = function(color1, color2) {
           var c1 = tinycolor(color1);
           var c2 = tinycolor(color2);
-          return (Math2.max(c1.getLuminance(), c2.getLuminance()) + 0.05) / (Math2.min(c1.getLuminance(), c2.getLuminance()) + 0.05);
+          return (Math.max(c1.getLuminance(), c2.getLuminance()) + 0.05) / (Math.min(c1.getLuminance(), c2.getLuminance()) + 0.05);
         };
         tinycolor.isReadable = function(color1, color2, wcag2) {
           var readability = tinycolor.readability(color1, color2);
@@ -9720,7 +9781,10 @@ var Plotly = (() => {
               bestColor = tinycolor(colorList[i]);
             }
           }
-          if (tinycolor.isReadable(baseColor, bestColor, { "level": level, "size": size }) || !includeFallbackColors) {
+          if (tinycolor.isReadable(baseColor, bestColor, {
+            level,
+            size
+          }) || !includeFallbackColors) {
             return bestColor;
           } else {
             args.includeFallbackColors = false;
@@ -9896,21 +9960,19 @@ var Plotly = (() => {
           return a;
         }
         function bound01(n, max) {
-          if (isOnePointZero(n)) {
-            n = "100%";
-          }
+          if (isOnePointZero(n)) n = "100%";
           var processPercent = isPercentage(n);
-          n = mathMin(max, mathMax(0, parseFloat(n)));
+          n = Math.min(max, Math.max(0, parseFloat(n)));
           if (processPercent) {
             n = parseInt(n * max, 10) / 100;
           }
-          if (Math2.abs(n - max) < 1e-6) {
+          if (Math.abs(n - max) < 1e-6) {
             return 1;
           }
           return n % max / parseFloat(max);
         }
         function clamp01(val) {
-          return mathMin(1, mathMax(0, val));
+          return Math.min(1, Math.max(0, val));
         }
         function parseIntFromHex(val) {
           return parseInt(val, 16);
@@ -9931,12 +9993,12 @@ var Plotly = (() => {
           return n;
         }
         function convertDecimalToHex(d) {
-          return Math2.round(parseFloat(d) * 255).toString(16);
+          return Math.round(parseFloat(d) * 255).toString(16);
         }
         function convertHexToDecimal(h) {
           return parseIntFromHex(h) / 255;
         }
-        var matchers = function() {
+        var matchers = (function() {
           var CSS_INTEGER = "[-\\+]?\\d+%?";
           var CSS_NUMBER = "[-\\+]?\\d*\\.\\d+%?";
           var CSS_UNIT = "(?:" + CSS_NUMBER + ")|(?:" + CSS_INTEGER + ")";
@@ -9955,7 +10017,7 @@ var Plotly = (() => {
             hex4: /^#?([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})$/,
             hex8: /^#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/
           };
-        }();
+        })();
         function isValidCSSUnit(color) {
           return !!matchers.CSS_UNIT.exec(color);
         }
@@ -9966,26 +10028,59 @@ var Plotly = (() => {
             color = names[color];
             named = true;
           } else if (color == "transparent") {
-            return { r: 0, g: 0, b: 0, a: 0, format: "name" };
+            return {
+              r: 0,
+              g: 0,
+              b: 0,
+              a: 0,
+              format: "name"
+            };
           }
           var match;
           if (match = matchers.rgb.exec(color)) {
-            return { r: match[1], g: match[2], b: match[3] };
+            return {
+              r: match[1],
+              g: match[2],
+              b: match[3]
+            };
           }
           if (match = matchers.rgba.exec(color)) {
-            return { r: match[1], g: match[2], b: match[3], a: match[4] };
+            return {
+              r: match[1],
+              g: match[2],
+              b: match[3],
+              a: match[4]
+            };
           }
           if (match = matchers.hsl.exec(color)) {
-            return { h: match[1], s: match[2], l: match[3] };
+            return {
+              h: match[1],
+              s: match[2],
+              l: match[3]
+            };
           }
           if (match = matchers.hsla.exec(color)) {
-            return { h: match[1], s: match[2], l: match[3], a: match[4] };
+            return {
+              h: match[1],
+              s: match[2],
+              l: match[3],
+              a: match[4]
+            };
           }
           if (match = matchers.hsv.exec(color)) {
-            return { h: match[1], s: match[2], v: match[3] };
+            return {
+              h: match[1],
+              s: match[2],
+              v: match[3]
+            };
           }
           if (match = matchers.hsva.exec(color)) {
-            return { h: match[1], s: match[2], v: match[3], a: match[4] };
+            return {
+              h: match[1],
+              s: match[2],
+              v: match[3],
+              a: match[4]
+            };
           }
           if (match = matchers.hex8.exec(color)) {
             return {
@@ -10025,7 +10120,10 @@ var Plotly = (() => {
         }
         function validateWCAG2Parms(parms) {
           var level, size;
-          parms = parms || { "level": "AA", "size": "small" };
+          parms = parms || {
+            level: "AA",
+            size: "small"
+          };
           level = (parms.level || "AA").toUpperCase();
           size = (parms.size || "small").toLowerCase();
           if (level !== "AA" && level !== "AAA") {
@@ -10034,18 +10132,13 @@ var Plotly = (() => {
           if (size !== "small" && size !== "large") {
             size = "small";
           }
-          return { "level": level, "size": size };
+          return {
+            level,
+            size
+          };
         }
-        if (typeof module !== "undefined" && module.exports) {
-          module.exports = tinycolor;
-        } else if (typeof define === "function" && false) {
-          define(function() {
-            return tinycolor;
-          });
-        } else {
-          window.tinycolor = tinycolor;
-        }
-      })(Math);
+        return tinycolor;
+      }));
     }
   });
 
@@ -10296,6 +10389,16 @@ var Plotly = (() => {
           valType: "enumerated",
           values: ["single", "overlaying", "axis"],
           dflt: "overlaying",
+          editType: "none"
+        },
+        hoveranywhere: {
+          valType: "boolean",
+          dflt: false,
+          editType: "none"
+        },
+        clickanywhere: {
+          valType: "boolean",
+          dflt: false,
           editType: "none"
         },
         hoverdistance: {
@@ -11411,6 +11514,10 @@ var Plotly = (() => {
           valType: "boolean",
           dflt: true
         },
+        displayNotifier: {
+          valType: "boolean",
+          dflt: true
+        },
         showLink: {
           valType: "boolean",
           dflt: false
@@ -11540,7 +11647,9 @@ var Plotly = (() => {
       var d3 = require_d3();
       var isNumeric = require_fast_isnumeric();
       var NOTEDATA = [];
-      module.exports = function(text, displayLength) {
+      module.exports = function(text, displayLength, gd) {
+        var _a;
+        if (((_a = gd == null ? void 0 : gd._context) == null ? void 0 : _a.displayNotifier) === false) return;
         if (NOTEDATA.indexOf(text) !== -1) return;
         NOTEDATA.push(text);
         var ts = 1e3;
@@ -13756,9 +13865,9 @@ var Plotly = (() => {
   var require_maplibre_gl = __commonJS({
     "node_modules/maplibre-gl/dist/maplibre-gl.css"() {
       (function() {
-        if (!document.getElementById("a75c73da1cd7a97e8992659f6aed556255838daadea9ca0c9fc3af7f1ddf63c0")) {
+        if (!document.getElementById("dd0d6cd6b1314ef424c8744162d78c900e014060565fc1d93eaae3862c50bfdc")) {
           var e = document.createElement("style");
-          e.id = "a75c73da1cd7a97e8992659f6aed556255838daadea9ca0c9fc3af7f1ddf63c0";
+          e.id = "dd0d6cd6b1314ef424c8744162d78c900e014060565fc1d93eaae3862c50bfdc";
           e.textContent = `.maplibregl-map{font:12px/20px Helvetica Neue,Arial,Helvetica,sans-serif;overflow:hidden;position:relative;-webkit-tap-highlight-color:rgb(0 0 0/0)}.maplibregl-canvas{left:0;position:absolute;top:0}.maplibregl-map:fullscreen{height:100%;width:100%}.maplibregl-ctrl-group button.maplibregl-ctrl-compass{touch-action:none}.maplibregl-canvas-container.maplibregl-interactive,.maplibregl-ctrl-group button.maplibregl-ctrl-compass{cursor:grab;-webkit-user-select:none;-moz-user-select:none;user-select:none}.maplibregl-canvas-container.maplibregl-interactive.maplibregl-track-pointer{cursor:pointer}.maplibregl-canvas-container.maplibregl-interactive:active,.maplibregl-ctrl-group button.maplibregl-ctrl-compass:active{cursor:grabbing}.maplibregl-canvas-container.maplibregl-touch-zoom-rotate,.maplibregl-canvas-container.maplibregl-touch-zoom-rotate .maplibregl-canvas{touch-action:pan-x pan-y}.maplibregl-canvas-container.maplibregl-touch-drag-pan,.maplibregl-canvas-container.maplibregl-touch-drag-pan .maplibregl-canvas{touch-action:pinch-zoom}.maplibregl-canvas-container.maplibregl-touch-zoom-rotate.maplibregl-touch-drag-pan,.maplibregl-canvas-container.maplibregl-touch-zoom-rotate.maplibregl-touch-drag-pan .maplibregl-canvas{touch-action:none}.maplibregl-canvas-container.maplibregl-touch-drag-pan.maplibregl-cooperative-gestures,.maplibregl-canvas-container.maplibregl-touch-drag-pan.maplibregl-cooperative-gestures .maplibregl-canvas{touch-action:pan-x pan-y}.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right,.maplibregl-ctrl-top-left,.maplibregl-ctrl-top-right{pointer-events:none;position:absolute;z-index:2}.maplibregl-ctrl-top-left{left:0;top:0}.maplibregl-ctrl-top-right{right:0;top:0}.maplibregl-ctrl-bottom-left{bottom:0;left:0}.maplibregl-ctrl-bottom-right{bottom:0;right:0}.maplibregl-ctrl{clear:both;pointer-events:auto;transform:translate(0)}.maplibregl-ctrl-top-left .maplibregl-ctrl{float:left;margin:10px 0 0 10px}.maplibregl-ctrl-top-right .maplibregl-ctrl{float:right;margin:10px 10px 0 0}.maplibregl-ctrl-bottom-left .maplibregl-ctrl{float:left;margin:0 0 10px 10px}.maplibregl-ctrl-bottom-right .maplibregl-ctrl{float:right;margin:0 10px 10px 0}.maplibregl-ctrl-group{background:#fff;border-radius:4px}.maplibregl-ctrl-group:not(:empty){box-shadow:0 0 0 2px rgba(0,0,0,.1)}@media (forced-colors:active){.maplibregl-ctrl-group:not(:empty){box-shadow:0 0 0 2px ButtonText}}.maplibregl-ctrl-group button{background-color:transparent;border:0;box-sizing:border-box;cursor:pointer;display:block;height:29px;outline:none;padding:0;width:29px}.maplibregl-ctrl-group button+button{border-top:1px solid #ddd}.maplibregl-ctrl button .maplibregl-ctrl-icon{background-position:50%;background-repeat:no-repeat;display:block;height:100%;width:100%}@media (forced-colors:active){.maplibregl-ctrl-icon{background-color:transparent}.maplibregl-ctrl-group button+button{border-top:1px solid ButtonText}}.maplibregl-ctrl button::-moz-focus-inner{border:0;padding:0}.maplibregl-ctrl-attrib-button:focus,.maplibregl-ctrl-group button:focus{box-shadow:0 0 2px 2px #0096ff}.maplibregl-ctrl button:disabled{cursor:not-allowed}.maplibregl-ctrl button:disabled .maplibregl-ctrl-icon{opacity:.25}.maplibregl-ctrl button:not(:disabled):hover{background-color:rgb(0 0 0/5%)}.maplibregl-ctrl-group button:focus:focus-visible{box-shadow:0 0 2px 2px #0096ff}.maplibregl-ctrl-group button:focus:not(:focus-visible){box-shadow:none}.maplibregl-ctrl-group button:focus:first-child{border-radius:4px 4px 0 0}.maplibregl-ctrl-group button:focus:last-child{border-radius:0 0 4px 4px}.maplibregl-ctrl-group button:focus:only-child{border-radius:inherit}.maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23333' viewBox='0 0 29 29'%3E%3Cpath d='M10 13c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h9c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23333' viewBox='0 0 29 29'%3E%3Cpath d='M14.5 8.5c-.75 0-1.5.75-1.5 1.5v3h-3c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h3v3c0 .75.75 1.5 1.5 1.5S16 19.75 16 19v-3h3c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13h-3v-3c0-.75-.75-1.5-1.5-1.5'/%3E%3C/svg%3E")}@media (forced-colors:active){.maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 29 29'%3E%3Cpath d='M10 13c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h9c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 29 29'%3E%3Cpath d='M14.5 8.5c-.75 0-1.5.75-1.5 1.5v3h-3c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h3v3c0 .75.75 1.5 1.5 1.5S16 19.75 16 19v-3h3c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13h-3v-3c0-.75-.75-1.5-1.5-1.5'/%3E%3C/svg%3E")}}@media (forced-colors:active) and (prefers-color-scheme:light){.maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='M10 13c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h9c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='M14.5 8.5c-.75 0-1.5.75-1.5 1.5v3h-3c-.75 0-1.5.75-1.5 1.5S9.25 16 10 16h3v3c0 .75.75 1.5 1.5 1.5S16 19.75 16 19v-3h3c.75 0 1.5-.75 1.5-1.5S19.75 13 19 13h-3v-3c0-.75-.75-1.5-1.5-1.5'/%3E%3C/svg%3E")}}.maplibregl-ctrl button.maplibregl-ctrl-fullscreen .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23333' viewBox='0 0 29 29'%3E%3Cpath d='M24 16v5.5c0 1.75-.75 2.5-2.5 2.5H16v-1l3-1.5-4-5.5 1-1 5.5 4 1.5-3zM6 16l1.5 3 5.5-4 1 1-4 5.5 3 1.5v1H7.5C5.75 24 5 23.25 5 21.5V16zm7-11v1l-3 1.5 4 5.5-1 1-5.5-4L6 13H5V7.5C5 5.75 5.75 5 7.5 5zm11 2.5c0-1.75-.75-2.5-2.5-2.5H16v1l3 1.5-4 5.5 1 1 5.5-4 1.5 3h1z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-shrink .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='M18.5 16c-1.75 0-2.5.75-2.5 2.5V24h1l1.5-3 5.5 4 1-1-4-5.5 3-1.5v-1zM13 18.5c0-1.75-.75-2.5-2.5-2.5H5v1l3 1.5L4 24l1 1 5.5-4 1.5 3h1zm3-8c0 1.75.75 2.5 2.5 2.5H24v-1l-3-1.5L25 5l-1-1-5.5 4L17 5h-1zM10.5 13c1.75 0 2.5-.75 2.5-2.5V5h-1l-1.5 3L5 4 4 5l4 5.5L5 12v1z'/%3E%3C/svg%3E")}@media (forced-colors:active){.maplibregl-ctrl button.maplibregl-ctrl-fullscreen .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 29 29'%3E%3Cpath d='M24 16v5.5c0 1.75-.75 2.5-2.5 2.5H16v-1l3-1.5-4-5.5 1-1 5.5 4 1.5-3zM6 16l1.5 3 5.5-4 1 1-4 5.5 3 1.5v1H7.5C5.75 24 5 23.25 5 21.5V16zm7-11v1l-3 1.5 4 5.5-1 1-5.5-4L6 13H5V7.5C5 5.75 5.75 5 7.5 5zm11 2.5c0-1.75-.75-2.5-2.5-2.5H16v1l3 1.5-4 5.5 1 1 5.5-4 1.5 3h1z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-shrink .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 29 29'%3E%3Cpath d='M18.5 16c-1.75 0-2.5.75-2.5 2.5V24h1l1.5-3 5.5 4 1-1-4-5.5 3-1.5v-1zM13 18.5c0-1.75-.75-2.5-2.5-2.5H5v1l3 1.5L4 24l1 1 5.5-4 1.5 3h1zm3-8c0 1.75.75 2.5 2.5 2.5H24v-1l-3-1.5L25 5l-1-1-5.5 4L17 5h-1zM10.5 13c1.75 0 2.5-.75 2.5-2.5V5h-1l-1.5 3L5 4 4 5l4 5.5L5 12v1z'/%3E%3C/svg%3E")}}@media (forced-colors:active) and (prefers-color-scheme:light){.maplibregl-ctrl button.maplibregl-ctrl-fullscreen .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='M24 16v5.5c0 1.75-.75 2.5-2.5 2.5H16v-1l3-1.5-4-5.5 1-1 5.5 4 1.5-3zM6 16l1.5 3 5.5-4 1 1-4 5.5 3 1.5v1H7.5C5.75 24 5 23.25 5 21.5V16zm7-11v1l-3 1.5 4 5.5-1 1-5.5-4L6 13H5V7.5C5 5.75 5.75 5 7.5 5zm11 2.5c0-1.75-.75-2.5-2.5-2.5H16v1l3 1.5-4 5.5 1 1 5.5-4 1.5 3h1z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-shrink .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='M18.5 16c-1.75 0-2.5.75-2.5 2.5V24h1l1.5-3 5.5 4 1-1-4-5.5 3-1.5v-1zM13 18.5c0-1.75-.75-2.5-2.5-2.5H5v1l3 1.5L4 24l1 1 5.5-4 1.5 3h1zm3-8c0 1.75.75 2.5 2.5 2.5H24v-1l-3-1.5L25 5l-1-1-5.5 4L17 5h-1zM10.5 13c1.75 0 2.5-.75 2.5-2.5V5h-1l-1.5 3L5 4 4 5l4 5.5L5 12v1z'/%3E%3C/svg%3E")}}.maplibregl-ctrl button.maplibregl-ctrl-compass .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23333' viewBox='0 0 29 29'%3E%3Cpath d='m10.5 14 4-8 4 8z'/%3E%3Cpath fill='%23ccc' d='m10.5 16 4 8 4-8z'/%3E%3C/svg%3E")}@media (forced-colors:active){.maplibregl-ctrl button.maplibregl-ctrl-compass .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 29 29'%3E%3Cpath d='m10.5 14 4-8 4 8z'/%3E%3Cpath fill='%23ccc' d='m10.5 16 4 8 4-8z'/%3E%3C/svg%3E")}}@media (forced-colors:active) and (prefers-color-scheme:light){.maplibregl-ctrl button.maplibregl-ctrl-compass .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 29 29'%3E%3Cpath d='m10.5 14 4-8 4 8z'/%3E%3Cpath fill='%23ccc' d='m10.5 16 4 8 4-8z'/%3E%3C/svg%3E")}}.maplibregl-ctrl button.maplibregl-ctrl-terrain .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' fill='%23333' viewBox='0 0 22 22'%3E%3Cpath d='m1.754 13.406 4.453-4.851 3.09 3.09 3.281 3.277.969-.969-3.309-3.312 3.844-4.121 6.148 6.886h1.082v-.855l-7.207-8.07-4.84 5.187L6.169 6.57l-5.48 5.965v.871ZM.688 16.844h20.625v1.375H.688Zm0 0'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-terrain-enabled .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' fill='%2333b5e5' viewBox='0 0 22 22'%3E%3Cpath d='m1.754 13.406 4.453-4.851 3.09 3.09 3.281 3.277.969-.969-3.309-3.312 3.844-4.121 6.148 6.886h1.082v-.855l-7.207-8.07-4.84 5.187L6.169 6.57l-5.48 5.965v.871ZM.688 16.844h20.625v1.375H.688Zm0 0'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23333' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate:disabled .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23aaa' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Cpath fill='red' d='m14 5 1 1-9 9-1-1z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%2333b5e5' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active-error .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e58978' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-background .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%2333b5e5' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-background-error .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e54e33' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-waiting .maplibregl-ctrl-icon{animation:maplibregl-spin 2s linear infinite}@media (forced-colors:active){.maplibregl-ctrl button.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23fff' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate:disabled .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23999' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Cpath fill='red' d='m14 5 1 1-9 9-1-1z'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%2333b5e5' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active-error .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e58978' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-background .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%2333b5e5' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-background-error .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e54e33' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3C/svg%3E")}}@media (forced-colors:active) and (prefers-color-scheme:light){.maplibregl-ctrl button.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3C/svg%3E")}.maplibregl-ctrl button.maplibregl-ctrl-geolocate:disabled .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23666' viewBox='0 0 20 20'%3E%3Cpath d='M10 4C9 4 9 5 9 5v.1A5 5 0 0 0 5.1 9H5s-1 0-1 1 1 1 1 1h.1A5 5 0 0 0 9 14.9v.1s0 1 1 1 1-1 1-1v-.1a5 5 0 0 0 3.9-3.9h.1s1 0 1-1-1-1-1-1h-.1A5 5 0 0 0 11 5.1V5s0-1-1-1m0 2.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 1 1 0-7'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Cpath fill='red' d='m14 5 1 1-9 9-1-1z'/%3E%3C/svg%3E")}}@keyframes maplibregl-spin{0%{transform:rotate(0deg)}to{transform:rotate(1turn)}}a.maplibregl-ctrl-logo{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='23' fill='none'%3E%3Cpath fill='%23000' fill-opacity='.4' fill-rule='evenodd' d='M17.408 16.796h-1.827l2.501-12.095h.198l3.324 6.533.988 2.19.988-2.19 3.258-6.533h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.929 5.644h-.098l-2.914-5.644-.757-1.71-.345 1.71zm1.958-3.42-.726 3.663a1.255 1.255 0 0 1-1.232 1.011h-1.827a1.255 1.255 0 0 1-1.229-1.509l2.501-12.095a1.255 1.255 0 0 1 1.23-1.001h.197a1.25 1.25 0 0 1 1.12.685l3.19 6.273 3.125-6.263a1.25 1.25 0 0 1 1.123-.695h.181a1.255 1.255 0 0 1 1.227.991l1.443 6.71a5 5 0 0 1 .314-.787l.009-.016a4.6 4.6 0 0 1 1.777-1.887c.782-.46 1.668-.667 2.611-.667a4.6 4.6 0 0 1 1.7.32l.306.134c.21-.16.474-.256.759-.256h1.694a1.255 1.255 0 0 1 1.212.925 1.255 1.255 0 0 1 1.212-.925h1.711c.284 0 .545.094.755.252.613-.3 1.312-.45 2.075-.45 1.356 0 2.557.445 3.482 1.4q.47.48.763 1.064V4.701a1.255 1.255 0 0 1 1.255-1.255h1.86A1.255 1.255 0 0 1 54.44 4.7v9.194h2.217c.19 0 .37.043.532.118v-4.77c0-.356.147-.678.385-.906a2.42 2.42 0 0 1-.682-1.71c0-.665.267-1.253.735-1.7a2.45 2.45 0 0 1 1.722-.674 2.43 2.43 0 0 1 1.705.675q.318.302.504.683V4.7a1.255 1.255 0 0 1 1.255-1.255h1.744A1.255 1.255 0 0 1 65.812 4.7v3.335a4.8 4.8 0 0 1 1.526-.246c.938 0 1.817.214 2.59.69a4.47 4.47 0 0 1 1.67 1.743v-.98a1.255 1.255 0 0 1 1.256-1.256h1.777c.233 0 .451.064.639.174a3.4 3.4 0 0 1 1.567-.372c.346 0 .861.02 1.285.232a1.25 1.25 0 0 1 .689 1.004 4.7 4.7 0 0 1 .853-.588c.795-.44 1.675-.647 2.61-.647 1.385 0 2.65.39 3.525 1.396.836.938 1.168 2.173 1.168 3.528q-.001.515-.056 1.051a1.255 1.255 0 0 1-.947 1.09l.408.952a1.255 1.255 0 0 1-.477 1.552c-.418.268-.92.463-1.458.612-.613.171-1.304.244-2.049.244-1.06 0-2.043-.207-2.886-.698l-.015-.008c-.798-.48-1.419-1.135-1.818-1.963l-.004-.008a5.8 5.8 0 0 1-.548-2.512q0-.429.053-.843a1.3 1.3 0 0 1-.333-.086l-.166-.004c-.223 0-.426.062-.643.228-.03.024-.142.139-.142.59v3.883a1.255 1.255 0 0 1-1.256 1.256h-1.777a1.255 1.255 0 0 1-1.256-1.256V15.69l-.032.057a4.8 4.8 0 0 1-1.86 1.833 5.04 5.04 0 0 1-2.484.634 4.5 4.5 0 0 1-1.935-.424 1.25 1.25 0 0 1-.764.258h-1.71a1.255 1.255 0 0 1-1.256-1.255V7.687a2.4 2.4 0 0 1-.428.625c.253.23.412.561.412.93v7.553a1.255 1.255 0 0 1-1.256 1.255h-1.843a1.25 1.25 0 0 1-.894-.373c-.228.23-.544.373-.894.373H51.32a1.255 1.255 0 0 1-1.256-1.255v-1.251l-.061.117a4.7 4.7 0 0 1-1.782 1.884 4.77 4.77 0 0 1-2.485.67 5.6 5.6 0 0 1-1.485-.188l.009 2.764a1.255 1.255 0 0 1-1.255 1.259h-1.729a1.255 1.255 0 0 1-1.255-1.255v-3.537a1.255 1.255 0 0 1-1.167.793h-1.679a1.25 1.25 0 0 1-.77-.263 4.5 4.5 0 0 1-1.945.429c-.885 0-1.724-.21-2.495-.632l-.017-.01a5 5 0 0 1-1.081-.836 1.255 1.255 0 0 1-1.254 1.312h-1.81a1.255 1.255 0 0 1-1.228-.99l-.782-3.625-2.044 3.939a1.25 1.25 0 0 1-1.115.676h-.098a1.25 1.25 0 0 1-1.116-.68l-2.061-3.994zM35.92 16.63l.207-.114.223-.15q.493-.356.735-.785l.061-.118.033 1.332h1.678V9.242h-1.694l-.033 1.267q-.133-.329-.526-.658l-.032-.028a3.2 3.2 0 0 0-.668-.428l-.27-.12a3.3 3.3 0 0 0-1.235-.23q-1.136-.001-1.974.493a3.36 3.36 0 0 0-1.3 1.382q-.445.89-.444 2.074 0 1.2.51 2.107a3.8 3.8 0 0 0 1.382 1.381 3.9 3.9 0 0 0 1.893.477q.795 0 1.455-.33zm-2.789-5.38q-.576.675-.575 1.762 0 1.102.559 1.794.576.675 1.645.675a2.25 2.25 0 0 0 .934-.19 2.2 2.2 0 0 0 .468-.29l.178-.161a2.2 2.2 0 0 0 .397-.561q.244-.5.244-1.15v-.115q0-.708-.296-1.267l-.043-.077a2.2 2.2 0 0 0-.633-.709l-.13-.086-.047-.028a2.1 2.1 0 0 0-1.073-.285q-1.052 0-1.629.692zm2.316 2.706c.163-.17.28-.407.28-.83v-.114c0-.292-.06-.508-.15-.68a.96.96 0 0 0-.353-.389.85.85 0 0 0-.464-.127c-.4 0-.56.114-.664.239l-.01.012c-.148.174-.275.45-.275.945 0 .506.122.801.27.99.097.11.266.224.68.224.303 0 .504-.09.687-.269zm7.545 1.705a2.6 2.6 0 0 0 .331.423q.319.33.755.548l.173.074q.65.255 1.49.255 1.02 0 1.844-.493a3.45 3.45 0 0 0 1.316-1.4q.493-.904.493-2.089 0-1.909-.988-2.913-.988-1.02-2.584-1.02-.898 0-1.575.347a3 3 0 0 0-.415.262l-.199.166a3.4 3.4 0 0 0-.64.82V9.242h-1.712v11.553h1.729l-.017-5.134zm.53-1.138q.206.29.48.5l.155.11.053.034q.51.296 1.119.297 1.07 0 1.645-.675.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.435 0-.835.16a2 2 0 0 0-.284.136 2 2 0 0 0-.363.254 2.2 2.2 0 0 0-.46.569l-.082.162a2.6 2.6 0 0 0-.213 1.072v.115q0 .707.296 1.267l.135.211zm.964-.818a1.1 1.1 0 0 0 .367.385.94.94 0 0 0 .476.118c.423 0 .59-.117.687-.23.159-.194.28-.478.28-.95 0-.53-.133-.8-.266-.952l-.021-.025c-.078-.094-.231-.221-.68-.221a1 1 0 0 0-.503.135l-.012.007a.86.86 0 0 0-.335.343c-.073.133-.132.324-.132.614v.115a1.4 1.4 0 0 0 .14.66zm15.7-6.222q.347-.346.346-.856a1.05 1.05 0 0 0-.345-.79 1.18 1.18 0 0 0-.84-.329q-.51 0-.855.33a1.05 1.05 0 0 0-.346.79q0 .51.346.855.345.346.856.346.51 0 .839-.346zm4.337 9.314.033-1.332q.191.403.59.747l.098.081a4 4 0 0 0 .316.224l.223.122a3.2 3.2 0 0 0 1.44.322 3.8 3.8 0 0 0 1.875-.477 3.5 3.5 0 0 0 1.382-1.366q.527-.89.526-2.09 0-1.184-.444-2.073a3.24 3.24 0 0 0-1.283-1.399q-.823-.51-1.942-.51a3.5 3.5 0 0 0-1.527.344l-.086.043-.165.09a3 3 0 0 0-.33.214q-.432.315-.656.707a2 2 0 0 0-.099.198l.082-1.283V4.701h-1.744v12.095zm.473-2.509a2.5 2.5 0 0 0 .566.7q.117.098.245.18l.144.08a2.1 2.1 0 0 0 .975.232q1.07 0 1.645-.675.576-.69.576-1.778 0-1.102-.576-1.777-.56-.691-1.645-.692a2.2 2.2 0 0 0-1.015.235q-.22.113-.415.282l-.15.142a2.1 2.1 0 0 0-.42.594q-.223.479-.223 1.1v.115q0 .705.293 1.26zm2.616-.293c.157-.191.28-.479.28-.967 0-.51-.13-.79-.276-.961l-.021-.026c-.082-.1-.232-.225-.67-.225a.87.87 0 0 0-.681.279l-.012.011c-.154.155-.274.38-.274.807v.115c0 .285.057.499.144.669a1.1 1.1 0 0 0 .367.405c.137.082.28.123.455.123.423 0 .59-.118.686-.23zm8.266-3.013q.345-.13.724-.14l.069-.002q.493 0 .642.099l.247-1.794q-.196-.099-.717-.099a2.3 2.3 0 0 0-.545.063 2 2 0 0 0-.411.148 2.2 2.2 0 0 0-.4.249 2.5 2.5 0 0 0-.485.499 2.7 2.7 0 0 0-.32.581l-.05.137v-1.48h-1.778v7.553h1.777v-3.884q0-.546.159-.943a1.5 1.5 0 0 1 .466-.636 2.5 2.5 0 0 1 .399-.253 2 2 0 0 1 .224-.099zm9.784 2.656.05-.922q0-1.743-.856-2.698-.838-.97-2.584-.97-1.119-.001-2.007.493a3.46 3.46 0 0 0-1.4 1.382q-.493.906-.493 2.106 0 1.07.428 1.975.428.89 1.332 1.432.906.526 2.255.526.973 0 1.668-.185l.044-.012.135-.04q.613-.184.984-.421l-.542-1.267q-.3.162-.642.274l-.297.087q-.51.131-1.3.131-.954 0-1.497-.444a1.6 1.6 0 0 1-.192-.193q-.366-.44-.512-1.234l-.004-.021zm-5.427-1.256-.003.022h3.752v-.138q-.011-.727-.288-1.118a1 1 0 0 0-.156-.176q-.46-.428-1.316-.428-.986 0-1.494.604-.379.45-.494 1.234zm-27.053 2.77V4.7h-1.86v12.095h5.333V15.15zm7.103-5.908v7.553h-1.843V9.242h1.843z'/%3E%3Cpath fill='%23fff' d='m19.63 11.151-.757-1.71-.345 1.71-1.12 5.644h-1.827L18.083 4.7h.197l3.325 6.533.988 2.19.988-2.19L26.839 4.7h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.93 5.644h-.098l-2.913-5.644zm14.836 5.81q-1.02 0-1.893-.478a3.8 3.8 0 0 1-1.381-1.382q-.51-.906-.51-2.106 0-1.185.444-2.074a3.36 3.36 0 0 1 1.3-1.382q.839-.494 1.974-.494a3.3 3.3 0 0 1 1.234.231 3.3 3.3 0 0 1 .97.575q.396.33.527.659l.033-1.267h1.694v7.553H37.18l-.033-1.332q-.279.593-1.02 1.053a3.17 3.17 0 0 1-1.662.444zm.296-1.482q.938 0 1.58-.642.642-.66.642-1.711v-.115q0-.708-.296-1.267a2.2 2.2 0 0 0-.807-.872 2.1 2.1 0 0 0-1.119-.313q-1.053 0-1.629.692-.575.675-.575 1.76 0 1.103.559 1.795.577.675 1.645.675zm6.521-6.237h1.711v1.4q.906-1.597 2.83-1.597 1.596 0 2.584 1.02.988 1.005.988 2.914 0 1.185-.493 2.09a3.46 3.46 0 0 1-1.316 1.399 3.5 3.5 0 0 1-1.844.493q-.954 0-1.662-.329a2.67 2.67 0 0 1-1.086-.97l.017 5.134h-1.728zm4.048 6.22q1.07 0 1.645-.674.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.592 0-1.12.296-.51.28-.822.823-.296.527-.296 1.234v.115q0 .708.296 1.267.313.543.823.855.51.296 1.119.297z'/%3E%3Cpath fill='%23e1e3e9' d='M51.325 4.7h1.86v10.45h3.473v1.646h-5.333zm7.12 4.542h1.843v7.553h-1.843zm.905-1.415a1.16 1.16 0 0 1-.856-.346 1.17 1.17 0 0 1-.346-.856 1.05 1.05 0 0 1 .346-.79q.346-.329.856-.329.494 0 .839.33a1.05 1.05 0 0 1 .345.79 1.16 1.16 0 0 1-.345.855q-.33.346-.84.346zm7.875 9.133a3.17 3.17 0 0 1-1.662-.444q-.723-.46-1.004-1.053l-.033 1.332h-1.71V4.701h1.743v4.657l-.082 1.283q.279-.658 1.086-1.119a3.5 3.5 0 0 1 1.778-.477q1.119 0 1.942.51a3.24 3.24 0 0 1 1.283 1.4q.445.888.444 2.072 0 1.201-.526 2.09a3.5 3.5 0 0 1-1.382 1.366 3.8 3.8 0 0 1-1.876.477zm-.296-1.481q1.069 0 1.645-.675.577-.69.577-1.778 0-1.102-.577-1.776-.56-.691-1.645-.692a2.12 2.12 0 0 0-1.58.659q-.642.641-.642 1.694v.115q0 .71.296 1.267a2.4 2.4 0 0 0 .807.872 2.1 2.1 0 0 0 1.119.313zm5.927-6.237h1.777v1.481q.263-.757.856-1.217a2.14 2.14 0 0 1 1.349-.46q.527 0 .724.098l-.247 1.794q-.149-.099-.642-.099-.774 0-1.416.494-.626.493-.626 1.58v3.883h-1.777V9.242zm9.534 7.718q-1.35 0-2.255-.526-.904-.543-1.332-1.432a4.6 4.6 0 0 1-.428-1.975q0-1.2.493-2.106a3.46 3.46 0 0 1 1.4-1.382q.889-.495 2.007-.494 1.744 0 2.584.97.855.956.856 2.7 0 .444-.05.92h-5.43q.18 1.005.708 1.45.542.443 1.497.443.79 0 1.3-.131a4 4 0 0 0 .938-.362l.542 1.267q-.411.263-1.119.46-.708.198-1.711.197zm1.596-4.558q.016-1.02-.444-1.432-.46-.428-1.316-.428-1.728 0-1.991 1.86z'/%3E%3Cpath d='M5.074 15.948a.484.657 0 0 0-.486.659v1.84a.484.657 0 0 0 .486.659h4.101a.484.657 0 0 0 .486-.659v-1.84a.484.657 0 0 0-.486-.659zm3.56 1.16H5.617v.838h3.017z' style='fill:%23fff;fill-rule:evenodd;stroke-width:1.03600001'/%3E%3Cg style='stroke-width:1.12603545'%3E%3Cpath d='M-9.408-1.416c-3.833-.025-7.056 2.912-7.08 6.615-.02 3.08 1.653 4.832 3.107 6.268.903.892 1.721 1.74 2.32 2.902l-.525-.004c-.543-.003-.992.304-1.24.639a1.87 1.87 0 0 0-.362 1.121l-.011 1.877c-.003.402.104.787.347 1.125.244.338.688.653 1.23.656l4.142.028c.542.003.99-.306 1.238-.641a1.87 1.87 0 0 0 .363-1.121l.012-1.875a1.87 1.87 0 0 0-.348-1.127c-.243-.338-.688-.653-1.23-.656l-.518-.004c.597-1.145 1.425-1.983 2.348-2.87 1.473-1.414 3.18-3.149 3.2-6.226-.016-3.59-2.923-6.684-6.993-6.707m-.006 1.1v.002c3.274.02 5.92 2.532 5.9 5.6-.017 2.706-1.39 4.026-2.863 5.44-1.034.994-2.118 2.033-2.814 3.633-.018.041-.052.055-.075.065q-.013.004-.02.01a.34.34 0 0 1-.226.084.34.34 0 0 1-.224-.086l-.092-.077c-.699-1.615-1.768-2.669-2.781-3.67-1.454-1.435-2.797-2.762-2.78-5.478.02-3.067 2.7-5.545 5.975-5.523m-.02 2.826c-1.62-.01-2.944 1.315-2.955 2.96-.01 1.646 1.295 2.988 2.916 2.999h.002c1.621.01 2.943-1.316 2.953-2.961.011-1.646-1.294-2.988-2.916-2.998m-.005 1.1c1.017.006 1.829.83 1.822 1.89s-.83 1.874-1.848 1.867c-1.018-.006-1.829-.83-1.822-1.89s.83-1.874 1.848-1.868m-2.155 11.857 4.14.025c.271.002.49.305.487.676l-.013 1.875c-.003.37-.224.67-.495.668l-4.14-.025c-.27-.002-.487-.306-.485-.676l.012-1.875c.003-.37.224-.67.494-.668' style='color:%23000;font-style:normal;font-variant:normal;font-weight:400;font-stretch:normal;font-size:medium;line-height:normal;font-family:sans-serif;font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-feature-settings:normal;text-indent:0;text-align:start;text-decoration:none;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:%23000;letter-spacing:normal;word-spacing:normal;text-transform:none;writing-mode:lr-tb;direction:ltr;text-orientation:mixed;dominant-baseline:auto;baseline-shift:baseline;text-anchor:start;white-space:normal;shape-padding:0;clip-rule:evenodd;display:inline;overflow:visible;visibility:visible;opacity:1;isolation:auto;mix-blend-mode:normal;color-interpolation:sRGB;color-interpolation-filters:linearRGB;solid-color:%23000;solid-opacity:1;vector-effect:none;fill:%23000;fill-opacity:.4;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;color-rendering:auto;image-rendering:auto;shape-rendering:auto;text-rendering:auto' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-9.415-.316C-12.69-.338-15.37 2.14-15.39 5.207c-.017 2.716 1.326 4.041 2.78 5.477 1.013 1 2.081 2.055 2.78 3.67l.092.076a.34.34 0 0 0 .225.086.34.34 0 0 0 .227-.083l.019-.01c.022-.009.057-.024.074-.064.697-1.6 1.78-2.64 2.814-3.634 1.473-1.414 2.847-2.733 2.864-5.44.02-3.067-2.627-5.58-5.901-5.601m-.057 8.784c1.621.011 2.944-1.315 2.955-2.96.01-1.646-1.295-2.988-2.916-2.999-1.622-.01-2.945 1.315-2.955 2.96s1.295 2.989 2.916 3' style='clip-rule:evenodd;fill:%23e1e3e9;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-11.594 15.465c-.27-.002-.492.297-.494.668l-.012 1.876c-.003.371.214.673.485.675l4.14.027c.271.002.492-.298.495-.668l.012-1.877c.003-.37-.215-.672-.485-.674z' style='clip-rule:evenodd;fill:%23fff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3C/g%3E%3C/svg%3E");background-repeat:no-repeat;cursor:pointer;display:block;height:23px;margin:0 0 -4px -4px;overflow:hidden;width:88px}a.maplibregl-ctrl-logo.maplibregl-compact{width:14px}@media (forced-colors:active){a.maplibregl-ctrl-logo{background-color:transparent;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='23' fill='none'%3E%3Cpath fill='%23000' fill-opacity='.4' fill-rule='evenodd' d='M17.408 16.796h-1.827l2.501-12.095h.198l3.324 6.533.988 2.19.988-2.19 3.258-6.533h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.929 5.644h-.098l-2.914-5.644-.757-1.71-.345 1.71zm1.958-3.42-.726 3.663a1.255 1.255 0 0 1-1.232 1.011h-1.827a1.255 1.255 0 0 1-1.229-1.509l2.501-12.095a1.255 1.255 0 0 1 1.23-1.001h.197a1.25 1.25 0 0 1 1.12.685l3.19 6.273 3.125-6.263a1.25 1.25 0 0 1 1.123-.695h.181a1.255 1.255 0 0 1 1.227.991l1.443 6.71a5 5 0 0 1 .314-.787l.009-.016a4.6 4.6 0 0 1 1.777-1.887c.782-.46 1.668-.667 2.611-.667a4.6 4.6 0 0 1 1.7.32l.306.134c.21-.16.474-.256.759-.256h1.694a1.255 1.255 0 0 1 1.212.925 1.255 1.255 0 0 1 1.212-.925h1.711c.284 0 .545.094.755.252.613-.3 1.312-.45 2.075-.45 1.356 0 2.557.445 3.482 1.4q.47.48.763 1.064V4.701a1.255 1.255 0 0 1 1.255-1.255h1.86A1.255 1.255 0 0 1 54.44 4.7v9.194h2.217c.19 0 .37.043.532.118v-4.77c0-.356.147-.678.385-.906a2.42 2.42 0 0 1-.682-1.71c0-.665.267-1.253.735-1.7a2.45 2.45 0 0 1 1.722-.674 2.43 2.43 0 0 1 1.705.675q.318.302.504.683V4.7a1.255 1.255 0 0 1 1.255-1.255h1.744A1.255 1.255 0 0 1 65.812 4.7v3.335a4.8 4.8 0 0 1 1.526-.246c.938 0 1.817.214 2.59.69a4.47 4.47 0 0 1 1.67 1.743v-.98a1.255 1.255 0 0 1 1.256-1.256h1.777c.233 0 .451.064.639.174a3.4 3.4 0 0 1 1.567-.372c.346 0 .861.02 1.285.232a1.25 1.25 0 0 1 .689 1.004 4.7 4.7 0 0 1 .853-.588c.795-.44 1.675-.647 2.61-.647 1.385 0 2.65.39 3.525 1.396.836.938 1.168 2.173 1.168 3.528q-.001.515-.056 1.051a1.255 1.255 0 0 1-.947 1.09l.408.952a1.255 1.255 0 0 1-.477 1.552c-.418.268-.92.463-1.458.612-.613.171-1.304.244-2.049.244-1.06 0-2.043-.207-2.886-.698l-.015-.008c-.798-.48-1.419-1.135-1.818-1.963l-.004-.008a5.8 5.8 0 0 1-.548-2.512q0-.429.053-.843a1.3 1.3 0 0 1-.333-.086l-.166-.004c-.223 0-.426.062-.643.228-.03.024-.142.139-.142.59v3.883a1.255 1.255 0 0 1-1.256 1.256h-1.777a1.255 1.255 0 0 1-1.256-1.256V15.69l-.032.057a4.8 4.8 0 0 1-1.86 1.833 5.04 5.04 0 0 1-2.484.634 4.5 4.5 0 0 1-1.935-.424 1.25 1.25 0 0 1-.764.258h-1.71a1.255 1.255 0 0 1-1.256-1.255V7.687a2.4 2.4 0 0 1-.428.625c.253.23.412.561.412.93v7.553a1.255 1.255 0 0 1-1.256 1.255h-1.843a1.25 1.25 0 0 1-.894-.373c-.228.23-.544.373-.894.373H51.32a1.255 1.255 0 0 1-1.256-1.255v-1.251l-.061.117a4.7 4.7 0 0 1-1.782 1.884 4.77 4.77 0 0 1-2.485.67 5.6 5.6 0 0 1-1.485-.188l.009 2.764a1.255 1.255 0 0 1-1.255 1.259h-1.729a1.255 1.255 0 0 1-1.255-1.255v-3.537a1.255 1.255 0 0 1-1.167.793h-1.679a1.25 1.25 0 0 1-.77-.263 4.5 4.5 0 0 1-1.945.429c-.885 0-1.724-.21-2.495-.632l-.017-.01a5 5 0 0 1-1.081-.836 1.255 1.255 0 0 1-1.254 1.312h-1.81a1.255 1.255 0 0 1-1.228-.99l-.782-3.625-2.044 3.939a1.25 1.25 0 0 1-1.115.676h-.098a1.25 1.25 0 0 1-1.116-.68l-2.061-3.994zM35.92 16.63l.207-.114.223-.15q.493-.356.735-.785l.061-.118.033 1.332h1.678V9.242h-1.694l-.033 1.267q-.133-.329-.526-.658l-.032-.028a3.2 3.2 0 0 0-.668-.428l-.27-.12a3.3 3.3 0 0 0-1.235-.23q-1.136-.001-1.974.493a3.36 3.36 0 0 0-1.3 1.382q-.445.89-.444 2.074 0 1.2.51 2.107a3.8 3.8 0 0 0 1.382 1.381 3.9 3.9 0 0 0 1.893.477q.795 0 1.455-.33zm-2.789-5.38q-.576.675-.575 1.762 0 1.102.559 1.794.576.675 1.645.675a2.25 2.25 0 0 0 .934-.19 2.2 2.2 0 0 0 .468-.29l.178-.161a2.2 2.2 0 0 0 .397-.561q.244-.5.244-1.15v-.115q0-.708-.296-1.267l-.043-.077a2.2 2.2 0 0 0-.633-.709l-.13-.086-.047-.028a2.1 2.1 0 0 0-1.073-.285q-1.052 0-1.629.692zm2.316 2.706c.163-.17.28-.407.28-.83v-.114c0-.292-.06-.508-.15-.68a.96.96 0 0 0-.353-.389.85.85 0 0 0-.464-.127c-.4 0-.56.114-.664.239l-.01.012c-.148.174-.275.45-.275.945 0 .506.122.801.27.99.097.11.266.224.68.224.303 0 .504-.09.687-.269zm7.545 1.705a2.6 2.6 0 0 0 .331.423q.319.33.755.548l.173.074q.65.255 1.49.255 1.02 0 1.844-.493a3.45 3.45 0 0 0 1.316-1.4q.493-.904.493-2.089 0-1.909-.988-2.913-.988-1.02-2.584-1.02-.898 0-1.575.347a3 3 0 0 0-.415.262l-.199.166a3.4 3.4 0 0 0-.64.82V9.242h-1.712v11.553h1.729l-.017-5.134zm.53-1.138q.206.29.48.5l.155.11.053.034q.51.296 1.119.297 1.07 0 1.645-.675.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.435 0-.835.16a2 2 0 0 0-.284.136 2 2 0 0 0-.363.254 2.2 2.2 0 0 0-.46.569l-.082.162a2.6 2.6 0 0 0-.213 1.072v.115q0 .707.296 1.267l.135.211zm.964-.818a1.1 1.1 0 0 0 .367.385.94.94 0 0 0 .476.118c.423 0 .59-.117.687-.23.159-.194.28-.478.28-.95 0-.53-.133-.8-.266-.952l-.021-.025c-.078-.094-.231-.221-.68-.221a1 1 0 0 0-.503.135l-.012.007a.86.86 0 0 0-.335.343c-.073.133-.132.324-.132.614v.115a1.4 1.4 0 0 0 .14.66zm15.7-6.222q.347-.346.346-.856a1.05 1.05 0 0 0-.345-.79 1.18 1.18 0 0 0-.84-.329q-.51 0-.855.33a1.05 1.05 0 0 0-.346.79q0 .51.346.855.345.346.856.346.51 0 .839-.346zm4.337 9.314.033-1.332q.191.403.59.747l.098.081a4 4 0 0 0 .316.224l.223.122a3.2 3.2 0 0 0 1.44.322 3.8 3.8 0 0 0 1.875-.477 3.5 3.5 0 0 0 1.382-1.366q.527-.89.526-2.09 0-1.184-.444-2.073a3.24 3.24 0 0 0-1.283-1.399q-.823-.51-1.942-.51a3.5 3.5 0 0 0-1.527.344l-.086.043-.165.09a3 3 0 0 0-.33.214q-.432.315-.656.707a2 2 0 0 0-.099.198l.082-1.283V4.701h-1.744v12.095zm.473-2.509a2.5 2.5 0 0 0 .566.7q.117.098.245.18l.144.08a2.1 2.1 0 0 0 .975.232q1.07 0 1.645-.675.576-.69.576-1.778 0-1.102-.576-1.777-.56-.691-1.645-.692a2.2 2.2 0 0 0-1.015.235q-.22.113-.415.282l-.15.142a2.1 2.1 0 0 0-.42.594q-.223.479-.223 1.1v.115q0 .705.293 1.26zm2.616-.293c.157-.191.28-.479.28-.967 0-.51-.13-.79-.276-.961l-.021-.026c-.082-.1-.232-.225-.67-.225a.87.87 0 0 0-.681.279l-.012.011c-.154.155-.274.38-.274.807v.115c0 .285.057.499.144.669a1.1 1.1 0 0 0 .367.405c.137.082.28.123.455.123.423 0 .59-.118.686-.23zm8.266-3.013q.345-.13.724-.14l.069-.002q.493 0 .642.099l.247-1.794q-.196-.099-.717-.099a2.3 2.3 0 0 0-.545.063 2 2 0 0 0-.411.148 2.2 2.2 0 0 0-.4.249 2.5 2.5 0 0 0-.485.499 2.7 2.7 0 0 0-.32.581l-.05.137v-1.48h-1.778v7.553h1.777v-3.884q0-.546.159-.943a1.5 1.5 0 0 1 .466-.636 2.5 2.5 0 0 1 .399-.253 2 2 0 0 1 .224-.099zm9.784 2.656.05-.922q0-1.743-.856-2.698-.838-.97-2.584-.97-1.119-.001-2.007.493a3.46 3.46 0 0 0-1.4 1.382q-.493.906-.493 2.106 0 1.07.428 1.975.428.89 1.332 1.432.906.526 2.255.526.973 0 1.668-.185l.044-.012.135-.04q.613-.184.984-.421l-.542-1.267q-.3.162-.642.274l-.297.087q-.51.131-1.3.131-.954 0-1.497-.444a1.6 1.6 0 0 1-.192-.193q-.366-.44-.512-1.234l-.004-.021zm-5.427-1.256-.003.022h3.752v-.138q-.011-.727-.288-1.118a1 1 0 0 0-.156-.176q-.46-.428-1.316-.428-.986 0-1.494.604-.379.45-.494 1.234zm-27.053 2.77V4.7h-1.86v12.095h5.333V15.15zm7.103-5.908v7.553h-1.843V9.242h1.843z'/%3E%3Cpath fill='%23fff' d='m19.63 11.151-.757-1.71-.345 1.71-1.12 5.644h-1.827L18.083 4.7h.197l3.325 6.533.988 2.19.988-2.19L26.839 4.7h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.93 5.644h-.098l-2.913-5.644zm14.836 5.81q-1.02 0-1.893-.478a3.8 3.8 0 0 1-1.381-1.382q-.51-.906-.51-2.106 0-1.185.444-2.074a3.36 3.36 0 0 1 1.3-1.382q.839-.494 1.974-.494a3.3 3.3 0 0 1 1.234.231 3.3 3.3 0 0 1 .97.575q.396.33.527.659l.033-1.267h1.694v7.553H37.18l-.033-1.332q-.279.593-1.02 1.053a3.17 3.17 0 0 1-1.662.444zm.296-1.482q.938 0 1.58-.642.642-.66.642-1.711v-.115q0-.708-.296-1.267a2.2 2.2 0 0 0-.807-.872 2.1 2.1 0 0 0-1.119-.313q-1.053 0-1.629.692-.575.675-.575 1.76 0 1.103.559 1.795.577.675 1.645.675zm6.521-6.237h1.711v1.4q.906-1.597 2.83-1.597 1.596 0 2.584 1.02.988 1.005.988 2.914 0 1.185-.493 2.09a3.46 3.46 0 0 1-1.316 1.399 3.5 3.5 0 0 1-1.844.493q-.954 0-1.662-.329a2.67 2.67 0 0 1-1.086-.97l.017 5.134h-1.728zm4.048 6.22q1.07 0 1.645-.674.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.592 0-1.12.296-.51.28-.822.823-.296.527-.296 1.234v.115q0 .708.296 1.267.313.543.823.855.51.296 1.119.297z'/%3E%3Cpath fill='%23e1e3e9' d='M51.325 4.7h1.86v10.45h3.473v1.646h-5.333zm7.12 4.542h1.843v7.553h-1.843zm.905-1.415a1.16 1.16 0 0 1-.856-.346 1.17 1.17 0 0 1-.346-.856 1.05 1.05 0 0 1 .346-.79q.346-.329.856-.329.494 0 .839.33a1.05 1.05 0 0 1 .345.79 1.16 1.16 0 0 1-.345.855q-.33.346-.84.346zm7.875 9.133a3.17 3.17 0 0 1-1.662-.444q-.723-.46-1.004-1.053l-.033 1.332h-1.71V4.701h1.743v4.657l-.082 1.283q.279-.658 1.086-1.119a3.5 3.5 0 0 1 1.778-.477q1.119 0 1.942.51a3.24 3.24 0 0 1 1.283 1.4q.445.888.444 2.072 0 1.201-.526 2.09a3.5 3.5 0 0 1-1.382 1.366 3.8 3.8 0 0 1-1.876.477zm-.296-1.481q1.069 0 1.645-.675.577-.69.577-1.778 0-1.102-.577-1.776-.56-.691-1.645-.692a2.12 2.12 0 0 0-1.58.659q-.642.641-.642 1.694v.115q0 .71.296 1.267a2.4 2.4 0 0 0 .807.872 2.1 2.1 0 0 0 1.119.313zm5.927-6.237h1.777v1.481q.263-.757.856-1.217a2.14 2.14 0 0 1 1.349-.46q.527 0 .724.098l-.247 1.794q-.149-.099-.642-.099-.774 0-1.416.494-.626.493-.626 1.58v3.883h-1.777V9.242zm9.534 7.718q-1.35 0-2.255-.526-.904-.543-1.332-1.432a4.6 4.6 0 0 1-.428-1.975q0-1.2.493-2.106a3.46 3.46 0 0 1 1.4-1.382q.889-.495 2.007-.494 1.744 0 2.584.97.855.956.856 2.7 0 .444-.05.92h-5.43q.18 1.005.708 1.45.542.443 1.497.443.79 0 1.3-.131a4 4 0 0 0 .938-.362l.542 1.267q-.411.263-1.119.46-.708.198-1.711.197zm1.596-4.558q.016-1.02-.444-1.432-.46-.428-1.316-.428-1.728 0-1.991 1.86z'/%3E%3Cpath d='M5.074 15.948a.484.657 0 0 0-.486.659v1.84a.484.657 0 0 0 .486.659h4.101a.484.657 0 0 0 .486-.659v-1.84a.484.657 0 0 0-.486-.659zm3.56 1.16H5.617v.838h3.017z' style='fill:%23fff;fill-rule:evenodd;stroke-width:1.03600001'/%3E%3Cg style='stroke-width:1.12603545'%3E%3Cpath d='M-9.408-1.416c-3.833-.025-7.056 2.912-7.08 6.615-.02 3.08 1.653 4.832 3.107 6.268.903.892 1.721 1.74 2.32 2.902l-.525-.004c-.543-.003-.992.304-1.24.639a1.87 1.87 0 0 0-.362 1.121l-.011 1.877c-.003.402.104.787.347 1.125.244.338.688.653 1.23.656l4.142.028c.542.003.99-.306 1.238-.641a1.87 1.87 0 0 0 .363-1.121l.012-1.875a1.87 1.87 0 0 0-.348-1.127c-.243-.338-.688-.653-1.23-.656l-.518-.004c.597-1.145 1.425-1.983 2.348-2.87 1.473-1.414 3.18-3.149 3.2-6.226-.016-3.59-2.923-6.684-6.993-6.707m-.006 1.1v.002c3.274.02 5.92 2.532 5.9 5.6-.017 2.706-1.39 4.026-2.863 5.44-1.034.994-2.118 2.033-2.814 3.633-.018.041-.052.055-.075.065q-.013.004-.02.01a.34.34 0 0 1-.226.084.34.34 0 0 1-.224-.086l-.092-.077c-.699-1.615-1.768-2.669-2.781-3.67-1.454-1.435-2.797-2.762-2.78-5.478.02-3.067 2.7-5.545 5.975-5.523m-.02 2.826c-1.62-.01-2.944 1.315-2.955 2.96-.01 1.646 1.295 2.988 2.916 2.999h.002c1.621.01 2.943-1.316 2.953-2.961.011-1.646-1.294-2.988-2.916-2.998m-.005 1.1c1.017.006 1.829.83 1.822 1.89s-.83 1.874-1.848 1.867c-1.018-.006-1.829-.83-1.822-1.89s.83-1.874 1.848-1.868m-2.155 11.857 4.14.025c.271.002.49.305.487.676l-.013 1.875c-.003.37-.224.67-.495.668l-4.14-.025c-.27-.002-.487-.306-.485-.676l.012-1.875c.003-.37.224-.67.494-.668' style='color:%23000;font-style:normal;font-variant:normal;font-weight:400;font-stretch:normal;font-size:medium;line-height:normal;font-family:sans-serif;font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-feature-settings:normal;text-indent:0;text-align:start;text-decoration:none;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:%23000;letter-spacing:normal;word-spacing:normal;text-transform:none;writing-mode:lr-tb;direction:ltr;text-orientation:mixed;dominant-baseline:auto;baseline-shift:baseline;text-anchor:start;white-space:normal;shape-padding:0;clip-rule:evenodd;display:inline;overflow:visible;visibility:visible;opacity:1;isolation:auto;mix-blend-mode:normal;color-interpolation:sRGB;color-interpolation-filters:linearRGB;solid-color:%23000;solid-opacity:1;vector-effect:none;fill:%23000;fill-opacity:.4;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;color-rendering:auto;image-rendering:auto;shape-rendering:auto;text-rendering:auto' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-9.415-.316C-12.69-.338-15.37 2.14-15.39 5.207c-.017 2.716 1.326 4.041 2.78 5.477 1.013 1 2.081 2.055 2.78 3.67l.092.076a.34.34 0 0 0 .225.086.34.34 0 0 0 .227-.083l.019-.01c.022-.009.057-.024.074-.064.697-1.6 1.78-2.64 2.814-3.634 1.473-1.414 2.847-2.733 2.864-5.44.02-3.067-2.627-5.58-5.901-5.601m-.057 8.784c1.621.011 2.944-1.315 2.955-2.96.01-1.646-1.295-2.988-2.916-2.999-1.622-.01-2.945 1.315-2.955 2.96s1.295 2.989 2.916 3' style='clip-rule:evenodd;fill:%23e1e3e9;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-11.594 15.465c-.27-.002-.492.297-.494.668l-.012 1.876c-.003.371.214.673.485.675l4.14.027c.271.002.492-.298.495-.668l.012-1.877c.003-.37-.215-.672-.485-.674z' style='clip-rule:evenodd;fill:%23fff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3C/g%3E%3C/svg%3E")}}@media (forced-colors:active) and (prefers-color-scheme:light){a.maplibregl-ctrl-logo{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='23' fill='none'%3E%3Cpath fill='%23000' fill-opacity='.4' fill-rule='evenodd' d='M17.408 16.796h-1.827l2.501-12.095h.198l3.324 6.533.988 2.19.988-2.19 3.258-6.533h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.929 5.644h-.098l-2.914-5.644-.757-1.71-.345 1.71zm1.958-3.42-.726 3.663a1.255 1.255 0 0 1-1.232 1.011h-1.827a1.255 1.255 0 0 1-1.229-1.509l2.501-12.095a1.255 1.255 0 0 1 1.23-1.001h.197a1.25 1.25 0 0 1 1.12.685l3.19 6.273 3.125-6.263a1.25 1.25 0 0 1 1.123-.695h.181a1.255 1.255 0 0 1 1.227.991l1.443 6.71a5 5 0 0 1 .314-.787l.009-.016a4.6 4.6 0 0 1 1.777-1.887c.782-.46 1.668-.667 2.611-.667a4.6 4.6 0 0 1 1.7.32l.306.134c.21-.16.474-.256.759-.256h1.694a1.255 1.255 0 0 1 1.212.925 1.255 1.255 0 0 1 1.212-.925h1.711c.284 0 .545.094.755.252.613-.3 1.312-.45 2.075-.45 1.356 0 2.557.445 3.482 1.4q.47.48.763 1.064V4.701a1.255 1.255 0 0 1 1.255-1.255h1.86A1.255 1.255 0 0 1 54.44 4.7v9.194h2.217c.19 0 .37.043.532.118v-4.77c0-.356.147-.678.385-.906a2.42 2.42 0 0 1-.682-1.71c0-.665.267-1.253.735-1.7a2.45 2.45 0 0 1 1.722-.674 2.43 2.43 0 0 1 1.705.675q.318.302.504.683V4.7a1.255 1.255 0 0 1 1.255-1.255h1.744A1.255 1.255 0 0 1 65.812 4.7v3.335a4.8 4.8 0 0 1 1.526-.246c.938 0 1.817.214 2.59.69a4.47 4.47 0 0 1 1.67 1.743v-.98a1.255 1.255 0 0 1 1.256-1.256h1.777c.233 0 .451.064.639.174a3.4 3.4 0 0 1 1.567-.372c.346 0 .861.02 1.285.232a1.25 1.25 0 0 1 .689 1.004 4.7 4.7 0 0 1 .853-.588c.795-.44 1.675-.647 2.61-.647 1.385 0 2.65.39 3.525 1.396.836.938 1.168 2.173 1.168 3.528q-.001.515-.056 1.051a1.255 1.255 0 0 1-.947 1.09l.408.952a1.255 1.255 0 0 1-.477 1.552c-.418.268-.92.463-1.458.612-.613.171-1.304.244-2.049.244-1.06 0-2.043-.207-2.886-.698l-.015-.008c-.798-.48-1.419-1.135-1.818-1.963l-.004-.008a5.8 5.8 0 0 1-.548-2.512q0-.429.053-.843a1.3 1.3 0 0 1-.333-.086l-.166-.004c-.223 0-.426.062-.643.228-.03.024-.142.139-.142.59v3.883a1.255 1.255 0 0 1-1.256 1.256h-1.777a1.255 1.255 0 0 1-1.256-1.256V15.69l-.032.057a4.8 4.8 0 0 1-1.86 1.833 5.04 5.04 0 0 1-2.484.634 4.5 4.5 0 0 1-1.935-.424 1.25 1.25 0 0 1-.764.258h-1.71a1.255 1.255 0 0 1-1.256-1.255V7.687a2.4 2.4 0 0 1-.428.625c.253.23.412.561.412.93v7.553a1.255 1.255 0 0 1-1.256 1.255h-1.843a1.25 1.25 0 0 1-.894-.373c-.228.23-.544.373-.894.373H51.32a1.255 1.255 0 0 1-1.256-1.255v-1.251l-.061.117a4.7 4.7 0 0 1-1.782 1.884 4.77 4.77 0 0 1-2.485.67 5.6 5.6 0 0 1-1.485-.188l.009 2.764a1.255 1.255 0 0 1-1.255 1.259h-1.729a1.255 1.255 0 0 1-1.255-1.255v-3.537a1.255 1.255 0 0 1-1.167.793h-1.679a1.25 1.25 0 0 1-.77-.263 4.5 4.5 0 0 1-1.945.429c-.885 0-1.724-.21-2.495-.632l-.017-.01a5 5 0 0 1-1.081-.836 1.255 1.255 0 0 1-1.254 1.312h-1.81a1.255 1.255 0 0 1-1.228-.99l-.782-3.625-2.044 3.939a1.25 1.25 0 0 1-1.115.676h-.098a1.25 1.25 0 0 1-1.116-.68l-2.061-3.994zM35.92 16.63l.207-.114.223-.15q.493-.356.735-.785l.061-.118.033 1.332h1.678V9.242h-1.694l-.033 1.267q-.133-.329-.526-.658l-.032-.028a3.2 3.2 0 0 0-.668-.428l-.27-.12a3.3 3.3 0 0 0-1.235-.23q-1.136-.001-1.974.493a3.36 3.36 0 0 0-1.3 1.382q-.445.89-.444 2.074 0 1.2.51 2.107a3.8 3.8 0 0 0 1.382 1.381 3.9 3.9 0 0 0 1.893.477q.795 0 1.455-.33zm-2.789-5.38q-.576.675-.575 1.762 0 1.102.559 1.794.576.675 1.645.675a2.25 2.25 0 0 0 .934-.19 2.2 2.2 0 0 0 .468-.29l.178-.161a2.2 2.2 0 0 0 .397-.561q.244-.5.244-1.15v-.115q0-.708-.296-1.267l-.043-.077a2.2 2.2 0 0 0-.633-.709l-.13-.086-.047-.028a2.1 2.1 0 0 0-1.073-.285q-1.052 0-1.629.692zm2.316 2.706c.163-.17.28-.407.28-.83v-.114c0-.292-.06-.508-.15-.68a.96.96 0 0 0-.353-.389.85.85 0 0 0-.464-.127c-.4 0-.56.114-.664.239l-.01.012c-.148.174-.275.45-.275.945 0 .506.122.801.27.99.097.11.266.224.68.224.303 0 .504-.09.687-.269zm7.545 1.705a2.6 2.6 0 0 0 .331.423q.319.33.755.548l.173.074q.65.255 1.49.255 1.02 0 1.844-.493a3.45 3.45 0 0 0 1.316-1.4q.493-.904.493-2.089 0-1.909-.988-2.913-.988-1.02-2.584-1.02-.898 0-1.575.347a3 3 0 0 0-.415.262l-.199.166a3.4 3.4 0 0 0-.64.82V9.242h-1.712v11.553h1.729l-.017-5.134zm.53-1.138q.206.29.48.5l.155.11.053.034q.51.296 1.119.297 1.07 0 1.645-.675.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.435 0-.835.16a2 2 0 0 0-.284.136 2 2 0 0 0-.363.254 2.2 2.2 0 0 0-.46.569l-.082.162a2.6 2.6 0 0 0-.213 1.072v.115q0 .707.296 1.267l.135.211zm.964-.818a1.1 1.1 0 0 0 .367.385.94.94 0 0 0 .476.118c.423 0 .59-.117.687-.23.159-.194.28-.478.28-.95 0-.53-.133-.8-.266-.952l-.021-.025c-.078-.094-.231-.221-.68-.221a1 1 0 0 0-.503.135l-.012.007a.86.86 0 0 0-.335.343c-.073.133-.132.324-.132.614v.115a1.4 1.4 0 0 0 .14.66zm15.7-6.222q.347-.346.346-.856a1.05 1.05 0 0 0-.345-.79 1.18 1.18 0 0 0-.84-.329q-.51 0-.855.33a1.05 1.05 0 0 0-.346.79q0 .51.346.855.345.346.856.346.51 0 .839-.346zm4.337 9.314.033-1.332q.191.403.59.747l.098.081a4 4 0 0 0 .316.224l.223.122a3.2 3.2 0 0 0 1.44.322 3.8 3.8 0 0 0 1.875-.477 3.5 3.5 0 0 0 1.382-1.366q.527-.89.526-2.09 0-1.184-.444-2.073a3.24 3.24 0 0 0-1.283-1.399q-.823-.51-1.942-.51a3.5 3.5 0 0 0-1.527.344l-.086.043-.165.09a3 3 0 0 0-.33.214q-.432.315-.656.707a2 2 0 0 0-.099.198l.082-1.283V4.701h-1.744v12.095zm.473-2.509a2.5 2.5 0 0 0 .566.7q.117.098.245.18l.144.08a2.1 2.1 0 0 0 .975.232q1.07 0 1.645-.675.576-.69.576-1.778 0-1.102-.576-1.777-.56-.691-1.645-.692a2.2 2.2 0 0 0-1.015.235q-.22.113-.415.282l-.15.142a2.1 2.1 0 0 0-.42.594q-.223.479-.223 1.1v.115q0 .705.293 1.26zm2.616-.293c.157-.191.28-.479.28-.967 0-.51-.13-.79-.276-.961l-.021-.026c-.082-.1-.232-.225-.67-.225a.87.87 0 0 0-.681.279l-.012.011c-.154.155-.274.38-.274.807v.115c0 .285.057.499.144.669a1.1 1.1 0 0 0 .367.405c.137.082.28.123.455.123.423 0 .59-.118.686-.23zm8.266-3.013q.345-.13.724-.14l.069-.002q.493 0 .642.099l.247-1.794q-.196-.099-.717-.099a2.3 2.3 0 0 0-.545.063 2 2 0 0 0-.411.148 2.2 2.2 0 0 0-.4.249 2.5 2.5 0 0 0-.485.499 2.7 2.7 0 0 0-.32.581l-.05.137v-1.48h-1.778v7.553h1.777v-3.884q0-.546.159-.943a1.5 1.5 0 0 1 .466-.636 2.5 2.5 0 0 1 .399-.253 2 2 0 0 1 .224-.099zm9.784 2.656.05-.922q0-1.743-.856-2.698-.838-.97-2.584-.97-1.119-.001-2.007.493a3.46 3.46 0 0 0-1.4 1.382q-.493.906-.493 2.106 0 1.07.428 1.975.428.89 1.332 1.432.906.526 2.255.526.973 0 1.668-.185l.044-.012.135-.04q.613-.184.984-.421l-.542-1.267q-.3.162-.642.274l-.297.087q-.51.131-1.3.131-.954 0-1.497-.444a1.6 1.6 0 0 1-.192-.193q-.366-.44-.512-1.234l-.004-.021zm-5.427-1.256-.003.022h3.752v-.138q-.011-.727-.288-1.118a1 1 0 0 0-.156-.176q-.46-.428-1.316-.428-.986 0-1.494.604-.379.45-.494 1.234zm-27.053 2.77V4.7h-1.86v12.095h5.333V15.15zm7.103-5.908v7.553h-1.843V9.242h1.843z'/%3E%3Cpath fill='%23fff' d='m19.63 11.151-.757-1.71-.345 1.71-1.12 5.644h-1.827L18.083 4.7h.197l3.325 6.533.988 2.19.988-2.19L26.839 4.7h.181l2.6 12.095h-1.81l-1.218-5.644-.362-1.71-.658 1.71-2.93 5.644h-.098l-2.913-5.644zm14.836 5.81q-1.02 0-1.893-.478a3.8 3.8 0 0 1-1.381-1.382q-.51-.906-.51-2.106 0-1.185.444-2.074a3.36 3.36 0 0 1 1.3-1.382q.839-.494 1.974-.494a3.3 3.3 0 0 1 1.234.231 3.3 3.3 0 0 1 .97.575q.396.33.527.659l.033-1.267h1.694v7.553H37.18l-.033-1.332q-.279.593-1.02 1.053a3.17 3.17 0 0 1-1.662.444zm.296-1.482q.938 0 1.58-.642.642-.66.642-1.711v-.115q0-.708-.296-1.267a2.2 2.2 0 0 0-.807-.872 2.1 2.1 0 0 0-1.119-.313q-1.053 0-1.629.692-.575.675-.575 1.76 0 1.103.559 1.795.577.675 1.645.675zm6.521-6.237h1.711v1.4q.906-1.597 2.83-1.597 1.596 0 2.584 1.02.988 1.005.988 2.914 0 1.185-.493 2.09a3.46 3.46 0 0 1-1.316 1.399 3.5 3.5 0 0 1-1.844.493q-.954 0-1.662-.329a2.67 2.67 0 0 1-1.086-.97l.017 5.134h-1.728zm4.048 6.22q1.07 0 1.645-.674.577-.69.576-1.762 0-1.119-.576-1.777-.558-.675-1.645-.675-.592 0-1.12.296-.51.28-.822.823-.296.527-.296 1.234v.115q0 .708.296 1.267.313.543.823.855.51.296 1.119.297z'/%3E%3Cpath fill='%23e1e3e9' d='M51.325 4.7h1.86v10.45h3.473v1.646h-5.333zm7.12 4.542h1.843v7.553h-1.843zm.905-1.415a1.16 1.16 0 0 1-.856-.346 1.17 1.17 0 0 1-.346-.856 1.05 1.05 0 0 1 .346-.79q.346-.329.856-.329.494 0 .839.33a1.05 1.05 0 0 1 .345.79 1.16 1.16 0 0 1-.345.855q-.33.346-.84.346zm7.875 9.133a3.17 3.17 0 0 1-1.662-.444q-.723-.46-1.004-1.053l-.033 1.332h-1.71V4.701h1.743v4.657l-.082 1.283q.279-.658 1.086-1.119a3.5 3.5 0 0 1 1.778-.477q1.119 0 1.942.51a3.24 3.24 0 0 1 1.283 1.4q.445.888.444 2.072 0 1.201-.526 2.09a3.5 3.5 0 0 1-1.382 1.366 3.8 3.8 0 0 1-1.876.477zm-.296-1.481q1.069 0 1.645-.675.577-.69.577-1.778 0-1.102-.577-1.776-.56-.691-1.645-.692a2.12 2.12 0 0 0-1.58.659q-.642.641-.642 1.694v.115q0 .71.296 1.267a2.4 2.4 0 0 0 .807.872 2.1 2.1 0 0 0 1.119.313zm5.927-6.237h1.777v1.481q.263-.757.856-1.217a2.14 2.14 0 0 1 1.349-.46q.527 0 .724.098l-.247 1.794q-.149-.099-.642-.099-.774 0-1.416.494-.626.493-.626 1.58v3.883h-1.777V9.242zm9.534 7.718q-1.35 0-2.255-.526-.904-.543-1.332-1.432a4.6 4.6 0 0 1-.428-1.975q0-1.2.493-2.106a3.46 3.46 0 0 1 1.4-1.382q.889-.495 2.007-.494 1.744 0 2.584.97.855.956.856 2.7 0 .444-.05.92h-5.43q.18 1.005.708 1.45.542.443 1.497.443.79 0 1.3-.131a4 4 0 0 0 .938-.362l.542 1.267q-.411.263-1.119.46-.708.198-1.711.197zm1.596-4.558q.016-1.02-.444-1.432-.46-.428-1.316-.428-1.728 0-1.991 1.86z'/%3E%3Cpath d='M5.074 15.948a.484.657 0 0 0-.486.659v1.84a.484.657 0 0 0 .486.659h4.101a.484.657 0 0 0 .486-.659v-1.84a.484.657 0 0 0-.486-.659zm3.56 1.16H5.617v.838h3.017z' style='fill:%23fff;fill-rule:evenodd;stroke-width:1.03600001'/%3E%3Cg style='stroke-width:1.12603545'%3E%3Cpath d='M-9.408-1.416c-3.833-.025-7.056 2.912-7.08 6.615-.02 3.08 1.653 4.832 3.107 6.268.903.892 1.721 1.74 2.32 2.902l-.525-.004c-.543-.003-.992.304-1.24.639a1.87 1.87 0 0 0-.362 1.121l-.011 1.877c-.003.402.104.787.347 1.125.244.338.688.653 1.23.656l4.142.028c.542.003.99-.306 1.238-.641a1.87 1.87 0 0 0 .363-1.121l.012-1.875a1.87 1.87 0 0 0-.348-1.127c-.243-.338-.688-.653-1.23-.656l-.518-.004c.597-1.145 1.425-1.983 2.348-2.87 1.473-1.414 3.18-3.149 3.2-6.226-.016-3.59-2.923-6.684-6.993-6.707m-.006 1.1v.002c3.274.02 5.92 2.532 5.9 5.6-.017 2.706-1.39 4.026-2.863 5.44-1.034.994-2.118 2.033-2.814 3.633-.018.041-.052.055-.075.065q-.013.004-.02.01a.34.34 0 0 1-.226.084.34.34 0 0 1-.224-.086l-.092-.077c-.699-1.615-1.768-2.669-2.781-3.67-1.454-1.435-2.797-2.762-2.78-5.478.02-3.067 2.7-5.545 5.975-5.523m-.02 2.826c-1.62-.01-2.944 1.315-2.955 2.96-.01 1.646 1.295 2.988 2.916 2.999h.002c1.621.01 2.943-1.316 2.953-2.961.011-1.646-1.294-2.988-2.916-2.998m-.005 1.1c1.017.006 1.829.83 1.822 1.89s-.83 1.874-1.848 1.867c-1.018-.006-1.829-.83-1.822-1.89s.83-1.874 1.848-1.868m-2.155 11.857 4.14.025c.271.002.49.305.487.676l-.013 1.875c-.003.37-.224.67-.495.668l-4.14-.025c-.27-.002-.487-.306-.485-.676l.012-1.875c.003-.37.224-.67.494-.668' style='color:%23000;font-style:normal;font-variant:normal;font-weight:400;font-stretch:normal;font-size:medium;line-height:normal;font-family:sans-serif;font-variant-ligatures:normal;font-variant-position:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-alternates:normal;font-feature-settings:normal;text-indent:0;text-align:start;text-decoration:none;text-decoration-line:none;text-decoration-style:solid;text-decoration-color:%23000;letter-spacing:normal;word-spacing:normal;text-transform:none;writing-mode:lr-tb;direction:ltr;text-orientation:mixed;dominant-baseline:auto;baseline-shift:baseline;text-anchor:start;white-space:normal;shape-padding:0;clip-rule:evenodd;display:inline;overflow:visible;visibility:visible;opacity:1;isolation:auto;mix-blend-mode:normal;color-interpolation:sRGB;color-interpolation-filters:linearRGB;solid-color:%23000;solid-opacity:1;vector-effect:none;fill:%23000;fill-opacity:.4;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;color-rendering:auto;image-rendering:auto;shape-rendering:auto;text-rendering:auto' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-9.415-.316C-12.69-.338-15.37 2.14-15.39 5.207c-.017 2.716 1.326 4.041 2.78 5.477 1.013 1 2.081 2.055 2.78 3.67l.092.076a.34.34 0 0 0 .225.086.34.34 0 0 0 .227-.083l.019-.01c.022-.009.057-.024.074-.064.697-1.6 1.78-2.64 2.814-3.634 1.473-1.414 2.847-2.733 2.864-5.44.02-3.067-2.627-5.58-5.901-5.601m-.057 8.784c1.621.011 2.944-1.315 2.955-2.96.01-1.646-1.295-2.988-2.916-2.999-1.622-.01-2.945 1.315-2.955 2.96s1.295 2.989 2.916 3' style='clip-rule:evenodd;fill:%23e1e3e9;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3Cpath d='M-11.594 15.465c-.27-.002-.492.297-.494.668l-.012 1.876c-.003.371.214.673.485.675l4.14.027c.271.002.492-.298.495-.668l.012-1.877c.003-.37-.215-.672-.485-.674z' style='clip-rule:evenodd;fill:%23fff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:2.47727823;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:.4' transform='translate(15.553 2.85)scale(.88807)'/%3E%3C/g%3E%3C/svg%3E")}}.maplibregl-ctrl.maplibregl-ctrl-attrib{background-color:hsla(0,0%,100%,.5);margin:0;padding:0 5px}@media screen{.maplibregl-ctrl-attrib.maplibregl-compact{background-color:#fff;border-radius:12px;box-sizing:content-box;color:#000;margin:10px;min-height:20px;padding:2px 24px 2px 0;position:relative}.maplibregl-ctrl-attrib.maplibregl-compact-show{padding:2px 28px 2px 8px;visibility:visible}.maplibregl-ctrl-bottom-left>.maplibregl-ctrl-attrib.maplibregl-compact-show,.maplibregl-ctrl-top-left>.maplibregl-ctrl-attrib.maplibregl-compact-show{border-radius:12px;padding:2px 8px 2px 28px}.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-inner{display:none}.maplibregl-ctrl-attrib-button{background-color:hsla(0,0%,100%,.5);background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill-rule='evenodd' viewBox='0 0 20 20'%3E%3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E%3C/svg%3E");border:0;border-radius:12px;box-sizing:border-box;cursor:pointer;display:none;height:24px;outline:none;position:absolute;right:0;top:0;width:24px}.maplibregl-ctrl-attrib summary.maplibregl-ctrl-attrib-button{-webkit-appearance:none;-moz-appearance:none;appearance:none;list-style:none}.maplibregl-ctrl-attrib summary.maplibregl-ctrl-attrib-button::-webkit-details-marker{display:none}.maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib-button,.maplibregl-ctrl-top-left .maplibregl-ctrl-attrib-button{left:0}.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button,.maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner{display:block}.maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-button{background-color:rgb(0 0 0/5%)}.maplibregl-ctrl-bottom-right>.maplibregl-ctrl-attrib.maplibregl-compact:after{bottom:0;right:0}.maplibregl-ctrl-top-right>.maplibregl-ctrl-attrib.maplibregl-compact:after{right:0;top:0}.maplibregl-ctrl-top-left>.maplibregl-ctrl-attrib.maplibregl-compact:after{left:0;top:0}.maplibregl-ctrl-bottom-left>.maplibregl-ctrl-attrib.maplibregl-compact:after{bottom:0;left:0}}@media screen and (forced-colors:active){.maplibregl-ctrl-attrib.maplibregl-compact:after{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='%23fff' fill-rule='evenodd' viewBox='0 0 20 20'%3E%3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E%3C/svg%3E")}}@media screen and (forced-colors:active) and (prefers-color-scheme:light){.maplibregl-ctrl-attrib.maplibregl-compact:after{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill-rule='evenodd' viewBox='0 0 20 20'%3E%3Cpath d='M4 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m5-3a1 1 0 1 0 2 0 1 1 0 1 0-2 0m0 3a1 1 0 1 1 2 0v3a1 1 0 1 1-2 0'/%3E%3C/svg%3E")}}.maplibregl-ctrl-attrib a{color:rgba(0,0,0,.75);text-decoration:none}.maplibregl-ctrl-attrib a:hover{color:inherit;text-decoration:underline}.maplibregl-attrib-empty{display:none}.maplibregl-ctrl-scale{background-color:hsla(0,0%,100%,.75);border:2px solid #333;border-top:#333;box-sizing:border-box;color:#333;font-size:10px;padding:0 5px}.maplibregl-popup{display:flex;left:0;pointer-events:none;position:absolute;top:0;will-change:transform}.maplibregl-popup-anchor-top,.maplibregl-popup-anchor-top-left,.maplibregl-popup-anchor-top-right{flex-direction:column}.maplibregl-popup-anchor-bottom,.maplibregl-popup-anchor-bottom-left,.maplibregl-popup-anchor-bottom-right{flex-direction:column-reverse}.maplibregl-popup-anchor-left{flex-direction:row}.maplibregl-popup-anchor-right{flex-direction:row-reverse}.maplibregl-popup-tip{border:10px solid transparent;height:0;width:0;z-index:1}.maplibregl-popup-anchor-top .maplibregl-popup-tip{align-self:center;border-bottom-color:#fff;border-top:none}.maplibregl-popup-anchor-top-left .maplibregl-popup-tip{align-self:flex-start;border-bottom-color:#fff;border-left:none;border-top:none}.maplibregl-popup-anchor-top-right .maplibregl-popup-tip{align-self:flex-end;border-bottom-color:#fff;border-right:none;border-top:none}.maplibregl-popup-anchor-bottom .maplibregl-popup-tip{align-self:center;border-bottom:none;border-top-color:#fff}.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip{align-self:flex-start;border-bottom:none;border-left:none;border-top-color:#fff}.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip{align-self:flex-end;border-bottom:none;border-right:none;border-top-color:#fff}.maplibregl-popup-anchor-left .maplibregl-popup-tip{align-self:center;border-left:none;border-right-color:#fff}.maplibregl-popup-anchor-right .maplibregl-popup-tip{align-self:center;border-left-color:#fff;border-right:none}.maplibregl-popup-close-button{background-color:transparent;border:0;border-radius:0 3px 0 0;cursor:pointer;position:absolute;right:0;top:0}.maplibregl-popup-close-button:hover{background-color:rgb(0 0 0/5%)}.maplibregl-popup-content{background:#fff;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.1);padding:15px 10px;pointer-events:auto;position:relative}.maplibregl-popup-anchor-top-left .maplibregl-popup-content{border-top-left-radius:0}.maplibregl-popup-anchor-top-right .maplibregl-popup-content{border-top-right-radius:0}.maplibregl-popup-anchor-bottom-left .maplibregl-popup-content{border-bottom-left-radius:0}.maplibregl-popup-anchor-bottom-right .maplibregl-popup-content{border-bottom-right-radius:0}.maplibregl-popup-track-pointer{display:none}.maplibregl-popup-track-pointer *{pointer-events:none;-webkit-user-select:none;-moz-user-select:none;user-select:none}.maplibregl-map:hover .maplibregl-popup-track-pointer{display:flex}.maplibregl-map:active .maplibregl-popup-track-pointer{display:none}.maplibregl-marker{left:0;position:absolute;top:0;transition:opacity .2s;will-change:transform}.maplibregl-user-location-dot,.maplibregl-user-location-dot:before{background-color:#1da1f2;border-radius:50%;height:15px;width:15px}.maplibregl-user-location-dot:before{animation:maplibregl-user-location-dot-pulse 2s infinite;content:"";position:absolute}.maplibregl-user-location-dot:after{border:2px solid #fff;border-radius:50%;box-shadow:0 0 3px rgba(0,0,0,.35);box-sizing:border-box;content:"";height:19px;left:-2px;position:absolute;top:-2px;width:19px}@keyframes maplibregl-user-location-dot-pulse{0%{opacity:1;transform:scale(1)}70%{opacity:0;transform:scale(3)}to{opacity:0;transform:scale(1)}}.maplibregl-user-location-dot-stale{background-color:#aaa}.maplibregl-user-location-dot-stale:after{display:none}.maplibregl-user-location-accuracy-circle{background-color:#1da1f233;border-radius:100%;height:1px;width:1px}.maplibregl-crosshair,.maplibregl-crosshair .maplibregl-interactive,.maplibregl-crosshair .maplibregl-interactive:active{cursor:crosshair}.maplibregl-boxzoom{background:#fff;border:2px dotted #202020;height:0;left:0;opacity:.5;position:absolute;top:0;width:0}.maplibregl-cooperative-gesture-screen{align-items:center;background:rgba(0,0,0,.4);color:#fff;display:flex;font-size:1.4em;inset:0;justify-content:center;line-height:1.2;opacity:0;padding:1rem;pointer-events:none;position:absolute;transition:opacity 1s ease 1s;z-index:99999}.maplibregl-cooperative-gesture-screen.maplibregl-show{opacity:1;transition:opacity .05s}.maplibregl-cooperative-gesture-screen .maplibregl-mobile-message{display:none}@media (hover:none),(width <= 480px){.maplibregl-cooperative-gesture-screen .maplibregl-desktop-message{display:none}.maplibregl-cooperative-gesture-screen .maplibregl-mobile-message{display:block}}.maplibregl-pseudo-fullscreen{height:100%!important;left:0!important;position:fixed!important;top:0!important;width:100%!important;z-index:99999}`;
           document.head.appendChild(e);
         }
@@ -15963,6 +16072,11 @@ var Plotly = (() => {
       "use strict";
       var Lib = require_lib();
       var rules = {
+        Y: 'font-family:"Open Sans",verdana,arial,sans-serif;position:fixed;top:50px;right:20px;z-index:10000;font-size:10pt;max-width:180px;',
+        "Y p": "margin:0;",
+        "Y .notifier-note": "min-width:180px;max-width:250px;border:1px solid #fff;z-index:3000;margin:0;background-color:#8c97af;background-color:rgba(140,151,175,.9);color:#fff;padding:10px;overflow-wrap:break-word;word-wrap:break-word;-ms-hyphens:auto;-webkit-hyphens:auto;hyphens:auto;",
+        "Y .notifier-close": "color:#fff;opacity:.8;float:right;padding:0 5px;background:none;border:none;font-size:20px;font-weight:bold;line-height:20px;",
+        "Y .notifier-close:hover": "color:#444;text-decoration:none;cursor:pointer;",
         "X,X div": 'direction:ltr;font-family:"Open Sans",verdana,arial,sans-serif;margin:0;padding:0;border:0;',
         "X input,X button": 'font-family:"Open Sans",verdana,arial,sans-serif;',
         "X input:focus,X button:focus": "outline:none;",
@@ -16005,17 +16119,12 @@ var Plotly = (() => {
         "X .modebar.vertical svg": "top:-1px;",
         "X .modebar.vertical .modebar-group": "display:block;float:none;padding-left:0px;padding-bottom:8px;",
         "X .modebar.vertical .modebar-group .modebar-btn": "display:block;text-align:center;",
-        "X [data-title]:before,X [data-title]:after": "position:absolute;-webkit-transform:translate3d(0, 0, 0);-moz-transform:translate3d(0, 0, 0);-ms-transform:translate3d(0, 0, 0);-o-transform:translate3d(0, 0, 0);transform:translate3d(0, 0, 0);display:none;opacity:0;z-index:1001;pointer-events:none;top:110%;right:50%;",
+        "X [data-title]:before,X [data-title]:after": "position:absolute;-webkit-transform:translate3d(0, 0, 0);-moz-transform:translate3d(0, 0, 0);-ms-transform:translate3d(0, 0, 0);-o-transform:translate3d(0, 0, 0);transform:translate3d(0, 0, 0);display:none;opacity:0;z-index:1000000;pointer-events:none;top:110%;right:50%;",
         "X [data-title]:hover:before,X [data-title]:hover:after": "display:block;opacity:1;",
-        "X [data-title]:before": 'content:"";position:absolute;background:rgba(0,0,0,0);border:6px solid rgba(0,0,0,0);z-index:1002;margin-top:-12px;border-bottom-color:#69738a;margin-right:-6px;',
+        "X [data-title]:before": 'content:"";position:absolute;background:rgba(0,0,0,0);border:6px solid rgba(0,0,0,0);z-index:1000001;margin-top:-12px;border-bottom-color:#69738a;margin-right:-6px;',
         "X [data-title]:after": "content:attr(data-title);background:#69738a;color:#fff;padding:8px 10px;font-size:12px;line-height:12px;white-space:nowrap;margin-right:-18px;border-radius:2px;",
         "X .vertical [data-title]:before,X .vertical [data-title]:after": "top:0%;right:200%;",
-        "X .vertical [data-title]:before": "border:6px solid rgba(0,0,0,0);border-left-color:#69738a;margin-top:8px;margin-right:-30px;",
-        Y: 'font-family:"Open Sans",verdana,arial,sans-serif;position:fixed;top:50px;right:20px;z-index:10000;font-size:10pt;max-width:180px;',
-        "Y p": "margin:0;",
-        "Y .notifier-note": "min-width:180px;max-width:250px;border:1px solid #fff;z-index:3000;margin:0;background-color:#8c97af;background-color:rgba(140,151,175,.9);color:#fff;padding:10px;overflow-wrap:break-word;word-wrap:break-word;-ms-hyphens:auto;-webkit-hyphens:auto;hyphens:auto;",
-        "Y .notifier-close": "color:#fff;opacity:.8;float:right;padding:0 5px;background:none;border:none;font-size:20px;font-weight:bold;line-height:20px;",
-        "Y .notifier-close:hover": "color:#444;text-decoration:none;cursor:pointer;"
+        "X .vertical [data-title]:before": "border:6px solid rgba(0,0,0,0);border-left-color:#69738a;margin-top:8px;margin-right:-30px;"
       };
       for (selector in rules) {
         fullSelector = selector.replace(/^,/, " ,").replace(/X/g, ".js-plotly-plot .plotly").replace(/Y/g, ".plotly-notifier");
@@ -28348,7 +28457,7 @@ var Plotly = (() => {
           });
         }
         var hasRangeSlider = Registry.getComponentMethod("rangeslider", "isVisible")(ax);
-        if (!opts.skipTitle && !(hasRangeSlider && ax.side === "bottom")) {
+        if (!opts.skipTitle && !(hasRangeSlider && ax.side === "bottom") && !(hasRangeSlider && ax._id.charAt(0) === "y" && ax.side === "left")) {
           seq.push(function() {
             return drawTitle(gd, ax);
           });
@@ -30471,7 +30580,7 @@ var Plotly = (() => {
         if (legendItem.groupTitle && legendItem.noClick) return;
         var groupClick = legendObj.groupclick;
         if (mode === "toggle" && legendObj.itemdoubleclick === "toggleothers" && SHOWISOLATETIP && gd.data && gd._context.showTips) {
-          Lib.notifier(Lib._(gd, "Double-click on legend to isolate one trace"), "long");
+          Lib.notifier(Lib._(gd, "Double-click on legend to isolate one trace"), "long", gd);
           SHOWISOLATETIP = false;
         }
         var toggleGroup = groupClick === "togglegroup";
@@ -32467,6 +32576,8 @@ var Plotly = (() => {
               y0: y0 + gTop,
               y1: y1 + gTop
             };
+            eventData.xPixel = (_x0 + _x1) / 2;
+            eventData.yPixel = (_y0 + _y1) / 2;
             if (opts.inOut_bbox) {
               opts.inOut_bbox.push(eventData.bbox);
             }
@@ -32678,6 +32789,12 @@ var Plotly = (() => {
             Lib.warn("Fx.hover failed", evt, gd);
             return dragElement.unhoverRaw(gd, evt);
           }
+        }
+        if (fullLayout.clickanywhere) {
+          gd._hoverXVals = xvalArray;
+          gd._hoverYVals = yvalArray;
+          gd._hoverXAxes = xaArray;
+          gd._hoverYAxes = yaArray;
         }
         var distance = Infinity;
         function findHoverPoints(customXVal, customYVal) {
@@ -32913,6 +33030,17 @@ var Plotly = (() => {
               createSpikelines(gd, spikePoints, spikelineOpts);
             }
           }
+          if (fullLayout.hoveranywhere && !noHoverEvent && eventTarget) {
+            var oldHoverData = gd._hoverdata;
+            if (oldHoverData && oldHoverData.length) {
+              gd.emit("plotly_unhover", {
+                event: evt,
+                points: oldHoverData
+              });
+              gd._hoverdata = [];
+            }
+            emitHover([]);
+          }
           return result;
         }
         if (hasCartesian) {
@@ -32986,6 +33114,8 @@ var Plotly = (() => {
               y0: y0 + gTop,
               y1: y1 + gTop
             };
+            eventData.xPixel = (_x0 + _x1) / 2;
+            eventData.yPixel = (_y0 + _y1) / 2;
           }
           pt.eventData = [eventData];
           newhoverdata.push(eventData);
@@ -33012,21 +33142,25 @@ var Plotly = (() => {
           var hasClickToShow = Registry.getComponentMethod("annotations", "hasClickToShow")(gd, newhoverdata);
           overrideCursor(d3.select(eventTarget), hasClickToShow ? "pointer" : "");
         }
-        if (!eventTarget || noHoverEvent || !hoverChanged(gd, evt, oldhoverdata)) return;
-        if (oldhoverdata) {
+        var _hoverChanged = hoverChanged(gd, evt, oldhoverdata);
+        if (!eventTarget || noHoverEvent || !_hoverChanged && !fullLayout.hoveranywhere) return;
+        if (oldhoverdata && _hoverChanged) {
           gd.emit("plotly_unhover", {
             event: evt,
             points: oldhoverdata
           });
         }
-        gd.emit("plotly_hover", {
-          event: evt,
-          points: gd._hoverdata,
-          xaxes: xaArray,
-          yaxes: yaArray,
-          xvals: xvalArray,
-          yvals: yvalArray
-        });
+        emitHover(gd._hoverdata);
+        function emitHover(points) {
+          gd.emit("plotly_hover", {
+            event: evt,
+            points,
+            xaxes: xaArray,
+            yaxes: yaArray,
+            xvals: xvalArray,
+            yvals: yvalArray
+          });
+        }
       }
       function hoverDataKey(d) {
         return [d.trace.index, d.index, d.x0, d.y0, d.name, d.attr, d.xa ? d.xa._id : "", d.ya ? d.ya._id : ""].join(",");
@@ -34203,6 +34337,8 @@ var Plotly = (() => {
         }
         coerce("clickmode");
         coerce("hoversubplots");
+        coerce("hoveranywhere");
+        coerce("clickanywhere");
         return coerce("hovermode");
       };
     }
@@ -34292,13 +34428,21 @@ var Plotly = (() => {
       var hover = require_hover().hover;
       module.exports = function click(gd, evt, subplot) {
         var annotationsDone = Registry.getComponentMethod("annotations", "onClick")(gd, gd._hoverdata);
+        var fullLayout = gd._fullLayout;
         if (subplot !== void 0) {
           hover(gd, evt, subplot, true);
         }
         function emitClick() {
-          gd.emit("plotly_click", { points: gd._hoverdata, event: evt });
+          var _a, _b, _c, _d;
+          var clickData = { points: gd._hoverdata, event: evt };
+          (_a = clickData.xaxes) != null ? _a : clickData.xaxes = gd._hoverXAxes;
+          (_b = clickData.yaxes) != null ? _b : clickData.yaxes = gd._hoverYAxes;
+          (_c = clickData.xvals) != null ? _c : clickData.xvals = gd._hoverXVals;
+          (_d = clickData.yvals) != null ? _d : clickData.yvals = gd._hoverYVals;
+          gd.emit("plotly_click", clickData);
         }
-        if (gd._hoverdata && evt && evt.target) {
+        if ((gd._hoverdata || fullLayout.clickanywhere) && evt && evt.target) {
+          if (!gd._hoverdata) gd._hoverdata = [];
           if (annotationsDone && annotationsDone.then) {
             annotationsDone.then(emitClick);
           } else emitClick();
@@ -36716,16 +36860,16 @@ var Plotly = (() => {
         click: function(gd) {
           var toImageButtonOptions = gd._context.toImageButtonOptions;
           var opts = { format: toImageButtonOptions.format || "png" };
-          Lib.notifier(_(gd, "Taking snapshot - this may take a few seconds"), "long");
+          Lib.notifier(_(gd, "Taking snapshot - this may take a few seconds"), "long", gd);
           ["filename", "width", "height", "scale"].forEach(function(key) {
             if (key in toImageButtonOptions) {
               opts[key] = toImageButtonOptions[key];
             }
           });
           Registry.call("downloadImage", gd, opts).then(function(filename) {
-            Lib.notifier(_(gd, "Snapshot succeeded") + " - " + filename, "long");
+            Lib.notifier(_(gd, "Snapshot succeeded") + " - " + filename, "long", gd);
           }).catch(function() {
-            Lib.notifier(_(gd, "Sorry, there was a problem downloading your snapshot!"), "long");
+            Lib.notifier(_(gd, "Sorry, there was a problem downloading your snapshot!"), "long", gd);
           });
         }
       };
@@ -43685,7 +43829,7 @@ var Plotly = (() => {
       }
       function showDoubleClickNotifier(gd) {
         if (SHOWZOOMOUTTIP && gd.data && gd._context.showTips) {
-          Lib.notifier(Lib._(gd, "Double-click to zoom back out"), "long");
+          Lib.notifier(Lib._(gd, "Double-click to zoom back out"), "long", gd);
           SHOWZOOMOUTTIP = false;
         }
       }
@@ -44867,6 +45011,14 @@ var Plotly = (() => {
           return gd;
         });
       }
+      function resetRangeSliders(gd) {
+        gd = Lib.getGraphDiv(gd);
+        if (!Lib.isPlotDiv(gd)) {
+          throw new Error("This element is not a Plotly plot: " + gd);
+        }
+        var Registry2 = require_registry();
+        return Registry2.getComponentMethod("rangeslider", "resetRangeSliders")(gd);
+      }
       function newPlot(gd, data, layout, config) {
         gd = Lib.getGraphDiv(gd);
         Plots.cleanPlot([], {}, gd._fullData || [], gd._fullLayout || {});
@@ -45613,6 +45765,10 @@ var Plotly = (() => {
         seq.push(
           clearOutline,
           subroutines.doAutoRangeAndConstraints,
+          // Recompute rangeslider full extent after any axis-range change so that
+          // opts.range reflects the actual data extent (needed for resetRangeSliders
+          // and any relayout that clears rangeslider.range with autorange:true).
+          Registry.getComponentMethod("rangeslider", "calcAutorange"),
           drawAxes,
           subroutines.drawData,
           subroutines.finalDraw
@@ -46854,6 +47010,7 @@ var Plotly = (() => {
       exports.redraw = redraw;
       exports.relayout = relayout;
       exports.restyle = restyle;
+      exports.resetRangeSliders = resetRangeSliders;
       exports.setPlotConfig = setPlotConfig;
       exports.update = update;
       exports._guiRelayout = guiEdit(relayout);
@@ -51810,8 +51967,16 @@ var Plotly = (() => {
           axLayoutOut = layoutOut[axName];
           var anchoredAxis = layoutOut[id2name(axLayoutOut.anchor)];
           var fixedRangeDflt = getComponentMethod("rangeslider", "isVisible")(anchoredAxis);
+          rangeSliderDefaults(layoutIn, layoutOut, axName);
+          if (!fixedRangeDflt) {
+            fixedRangeDflt = getComponentMethod("rangeslider", "isVisible")(axLayoutOut);
+          }
           coerce("fixedrange", fixedRangeDflt);
           coerce("modebardisable");
+          if (getComponentMethod("rangeslider", "isVisible")(axLayoutOut)) {
+            var anchoredXAxOut = layoutOut[id2name(axLayoutOut.anchor)];
+            if (anchoredXAxOut) anchoredXAxOut.fixedrange = true;
+          }
         }
         constraints.handleDefaults(layoutIn, layoutOut, {
           axIds: allAxisIds.concat(missingMatchedAxisIds).sort(axisIds.idSort),
@@ -56550,10 +56715,28 @@ var Plotly = (() => {
           max: 1,
           editType: "plot"
         },
+        minthickness: {
+          valType: "number",
+          dflt: 0,
+          min: 0,
+          editType: "plot"
+        },
+        maxthickness: {
+          valType: "number",
+          dflt: Infinity,
+          min: 0,
+          editType: "plot"
+        },
         visible: {
           valType: "boolean",
           dflt: true,
           editType: "calc"
+        },
+        side: {
+          valType: "enumerated",
+          values: ["same", "opposite"],
+          dflt: "same",
+          editType: "plot"
         },
         editType: "calc"
       };
@@ -56567,7 +56750,7 @@ var Plotly = (() => {
       module.exports = {
         // not really a 'subplot' attribute container,
         // but this is the flag we use to denote attributes that
-        // support yaxis, yaxis2, yaxis3, ... counters
+        // support yaxis/xaxis counters
         _isSubplotObj: true,
         rangemode: {
           valType: "enumerated",
@@ -56614,10 +56797,13 @@ var Plotly = (() => {
         maskColor: "rgba(0,0,0,0.4)",
         maskOppAxisColor: "rgba(0,0,0,0.2)",
         slideBoxFill: "transparent",
-        slideBoxCursor: "ew-resize",
+        slideBoxCursorH: "ew-resize",
+        slideBoxCursorV: "ns-resize",
         grabAreaFill: "transparent",
-        grabAreaCursor: "col-resize",
+        grabAreaCursorH: "col-resize",
+        grabAreaCursorV: "row-resize",
         grabAreaWidth: 10,
+        grabAreaHeight: 10,
         handleWidth: 4,
         handleRadius: 1,
         handleStrokeWidth: 1,
@@ -56641,44 +56827,137 @@ var Plotly = (() => {
       }
       exports.isVisible = isVisible;
       exports.makeData = function(fullLayout) {
-        var axes = axisIDs.list({ _fullLayout: fullLayout }, "x", true);
         var margin = fullLayout.margin;
+        var gs = fullLayout._size;
         var rangeSliderData = [];
-        for (var i = 0; i < axes.length; i++) {
-          var ax = axes[i];
+        var xAxes = axisIDs.list({ _fullLayout: fullLayout }, "x", true);
+        for (var i = 0; i < xAxes.length; i++) {
+          var ax = xAxes[i];
           if (isVisible(ax)) {
             rangeSliderData.push(ax);
             var opts = ax[name];
             opts._id = name + ax._id;
-            opts._height = (fullLayout.height - margin.b - margin.t) * opts.thickness;
+            opts._isVertical = false;
+            var rawHeight = (fullLayout.height - margin.b - margin.t) * opts.thickness;
+            opts._height = Math.min(
+              isFinite(opts.maxthickness) ? opts.maxthickness : Infinity,
+              Math.max(opts.minthickness || 0, rawHeight)
+            );
             opts._offsetShift = Math.floor(opts.borderwidth / 2);
           }
         }
+        var yAxes = axisIDs.list({ _fullLayout: fullLayout }, "y", true);
+        for (var j = 0; j < yAxes.length; j++) {
+          var yAx = yAxes[j];
+          if (isVisible(yAx)) {
+            rangeSliderData.push(yAx);
+            var yOpts = yAx[name];
+            yOpts._id = name + yAx._id;
+            yOpts._isVertical = true;
+            var rawWidth = (fullLayout.width - margin.l - margin.r) * yOpts.thickness;
+            yOpts._width = Math.min(
+              isFinite(yOpts.maxthickness) ? yOpts.maxthickness : Infinity,
+              Math.max(yOpts.minthickness || 0, rawWidth)
+            );
+            yOpts._height = gs.h * (yAx.domain[1] - yAx.domain[0]);
+            yOpts._offsetShift = Math.floor(yOpts.borderwidth / 2);
+          }
+        }
         fullLayout._rangeSliderData = rangeSliderData;
+      };
+      exports.resolvedSide = function(ax) {
+        var opts = ax[name];
+        var axLetter = ax._id.charAt(0);
+        var sliderSide = opts.side;
+        if (axLetter === "x") {
+          var axSide = ax.side || "bottom";
+          if (sliderSide === "opposite") {
+            return axSide === "bottom" ? "top" : "bottom";
+          }
+          return axSide;
+        } else {
+          var yAxSide = ax.side || "left";
+          if (sliderSide === "opposite") {
+            return yAxSide === "left" ? "right" : "left";
+          }
+          return yAxSide;
+        }
       };
       exports.autoMarginOpts = function(gd, ax) {
         var fullLayout = gd._fullLayout;
         var opts = ax[name];
         var axLetter = ax._id.charAt(0);
-        var bottomDepth = 0;
-        var titleHeight = 0;
-        if (ax.side === "bottom") {
-          bottomDepth = ax._depth;
-          if (ax.title.text !== fullLayout._dfltTitle[axLetter]) {
-            titleHeight = 1.5 * ax.title.font.size + 10 + opts._offsetShift;
-            var extraLines = (ax.title.text.match(svgTextUtils.BR_TAG_ALL) || []).length;
-            titleHeight += extraLines * ax.title.font.size * LINE_SPACING;
+        var resolvedSide = exports.resolvedSide(ax);
+        if (axLetter === "x") {
+          var axSide = ax.side || "bottom";
+          var bottomDepth = 0;
+          var titleHeight = 0;
+          if (resolvedSide === "bottom" && axSide === "bottom") {
+            bottomDepth = ax._depth;
+            if (ax.title.text !== fullLayout._dfltTitle[axLetter]) {
+              titleHeight = 1.5 * ax.title.font.size + 10 + opts._offsetShift;
+              var extraLines = (ax.title.text.match(svgTextUtils.BR_TAG_ALL) || []).length;
+              titleHeight += extraLines * ax.title.font.size * LINE_SPACING;
+            }
           }
+          var topDepth = resolvedSide === "top" && axSide === "top" ? ax._depth || 0 : 0;
+          var marginPush = {
+            x: 0,
+            // Plots.autoMargin pairs (k1.b, k2.t) where k2.t.val > k1.b.val.
+            // Bottom slider: anchor at counterDomainMin (≈0) → pairs with base's t.val=1 ✓
+            // Top slider:    anchor at counterDomainMax (≈1) → base's b.val=0 pairs with our t.val=1 ✓
+            y: resolvedSide === "bottom" ? ax._counterDomainMin : ax._counterDomainMax || 1,
+            l: 0,
+            r: 0,
+            t: 0,
+            b: 0,
+            pad: constants.extraPad + opts._offsetShift * 2
+          };
+          if (resolvedSide === "bottom") {
+            marginPush.b = opts._height + bottomDepth + Math.max(fullLayout.margin.b, titleHeight);
+          } else {
+            marginPush.t = opts._height + topDepth + constants.extraPad + opts._offsetShift * 2;
+          }
+          return marginPush;
+        } else {
+          var vDepth = resolvedSide === "left" ? ax._depth || 0 : 0;
+          var marginPushV = {
+            // Plots.autoMargin pairs (k1.l, k2.r) where k2.r.val > k1.l.val.
+            // Left slider:  anchor at counterDomainMin (≈0) → pairs with base's r.val=1 ✓
+            // Right slider: anchor at counterDomainMax (≈1) → base's l.val=0 pairs with our r.val=1 ✓
+            x: resolvedSide === "left" ? ax._counterDomainMin : ax._counterDomainMax || 1,
+            y: 0,
+            l: 0,
+            r: 0,
+            t: 0,
+            b: 0,
+            pad: constants.extraPad + opts._offsetShift * 2
+          };
+          if (resolvedSide === "left") {
+            marginPushV.l = opts._width + vDepth + Math.max(fullLayout.margin.l, 0);
+          } else {
+            marginPushV.r = opts._width + (ax._depth || 0) + constants.extraPad + opts._offsetShift * 2;
+          }
+          return marginPushV;
         }
-        return {
-          x: 0,
-          y: ax._counterDomainMin,
-          l: 0,
-          r: 0,
-          t: 0,
-          b: opts._height + bottomDepth + Math.max(fullLayout.margin.b, titleHeight),
-          pad: constants.extraPad + opts._offsetShift * 2
-        };
+      };
+      exports.resetRangeSliders = function(gd) {
+        var fullLayout = gd && gd._fullLayout;
+        if (!fullLayout) return Promise.resolve();
+        var patch = {};
+        var allAxes = axisIDs.list(gd, "", true);
+        for (var i = 0; i < allAxes.length; i++) {
+          var ax = allAxes[i];
+          if (!isVisible(ax)) continue;
+          var n = ax._name;
+          patch[n + ".autorange"] = true;
+          patch[n + ".range"] = null;
+          patch[n + ".rangeslider.autorange"] = true;
+          patch[n + ".rangeslider.range"] = null;
+        }
+        if (!Object.keys(patch).length) return Promise.resolve();
+        var Registry = require_registry();
+        return Registry.call("relayout", gd, patch);
       };
     }
   });
@@ -56714,28 +56993,55 @@ var Plotly = (() => {
         coerce("bordercolor");
         coerce("borderwidth");
         coerce("thickness");
+        coerce("minthickness");
+        coerce("maxthickness");
+        coerce("side");
         coerce("autorange", !axOut.isValidRange(containerIn.range));
         coerce("range");
+        var axLetter = axOut._id.charAt(0);
         var subplots = layoutOut._subplots;
         if (subplots) {
-          var yIds = subplots.cartesian.filter(function(subplotId) {
-            return subplotId.slice(0, Math.max(0, subplotId.indexOf("y"))) === axisIds.name2id(axName);
-          }).map(function(subplotId) {
-            return subplotId.slice(subplotId.indexOf("y"), subplotId.length);
-          });
-          var yNames = Lib.simpleMap(yIds, axisIds.id2name);
-          for (var i = 0; i < yNames.length; i++) {
-            var yName = yNames[i];
-            rangeContainerIn = containerIn[yName] || {};
-            rangeContainerOut = Template.newContainer(containerOut, yName, "yaxis");
-            var yAxOut = layoutOut[yName];
-            var rangemodeDflt;
-            if (rangeContainerIn.range && yAxOut.isValidRange(rangeContainerIn.range)) {
-              rangemodeDflt = "fixed";
+          if (axLetter === "x") {
+            var yIds = subplots.cartesian.filter(function(subplotId) {
+              return subplotId.slice(0, Math.max(0, subplotId.indexOf("y"))) === axisIds.name2id(axName);
+            }).map(function(subplotId) {
+              return subplotId.slice(subplotId.indexOf("y"), subplotId.length);
+            });
+            var yNames = Lib.simpleMap(yIds, axisIds.id2name);
+            for (var i = 0; i < yNames.length; i++) {
+              var yName = yNames[i];
+              rangeContainerIn = containerIn[yName] || {};
+              rangeContainerOut = Template.newContainer(containerOut, yName, "yaxis");
+              var yAxOut = layoutOut[yName];
+              var rangemodeDflt;
+              if (rangeContainerIn.range && yAxOut.isValidRange(rangeContainerIn.range)) {
+                rangemodeDflt = "fixed";
+              }
+              var rangeMode = coerceRange("rangemode", rangemodeDflt);
+              if (rangeMode !== "match") {
+                coerceRange("range", yAxOut.range.slice());
+              }
             }
-            var rangeMode = coerceRange("rangemode", rangemodeDflt);
-            if (rangeMode !== "match") {
-              coerceRange("range", yAxOut.range.slice());
+          } else {
+            var xIds = subplots.cartesian.filter(function(subplotId) {
+              return subplotId.slice(subplotId.indexOf("y"), subplotId.length) === axisIds.name2id(axName);
+            }).map(function(subplotId) {
+              return subplotId.slice(0, subplotId.indexOf("y")) || "x";
+            });
+            var xNames = Lib.simpleMap(xIds, axisIds.id2name);
+            for (var j = 0; j < xNames.length; j++) {
+              var xName = xNames[j];
+              rangeContainerIn = containerIn[xName] || {};
+              rangeContainerOut = Template.newContainer(containerOut, xName, "xaxis");
+              var xAxOut = layoutOut[xName];
+              var xRangemodeDflt;
+              if (rangeContainerIn.range && xAxOut.isValidRange(rangeContainerIn.range)) {
+                xRangemodeDflt = "fixed";
+              }
+              var xRangeMode = coerceRange("rangemode", xRangemodeDflt);
+              if (xRangeMode !== "match") {
+                coerceRange("range", xAxOut.range.slice());
+              }
             }
           }
         }
@@ -56752,7 +57058,7 @@ var Plotly = (() => {
       var getAutoRange = require_autorange().getAutoRange;
       var constants = require_constants12();
       module.exports = function calcAutorange(gd) {
-        var axes = listAxes(gd, "x", true);
+        var axes = listAxes(gd, "x", true).concat(listAxes(gd, "y", true));
         for (var i = 0; i < axes.length; i++) {
           var ax = axes[i];
           var opts = ax[constants.name];
@@ -56782,6 +57088,7 @@ var Plotly = (() => {
       var dragElement = require_dragelement();
       var setCursor = require_setcursor();
       var constants = require_constants12();
+      var helpers = require_helpers11();
       module.exports = function(gd) {
         var fullLayout = gd._fullLayout;
         var rangeSliderData = fullLayout._rangeSliderData;
@@ -56802,6 +57109,8 @@ var Plotly = (() => {
         rangeSliders.each(function(axisOpts) {
           var rangeSlider = d3.select(this);
           var opts2 = axisOpts[constants.name];
+          var isVertical = opts2._isVertical;
+          var resolvedSide = helpers.resolvedSide(axisOpts);
           var oppAxisOpts = fullLayout[axisIDs.id2name(axisOpts.anchor)];
           var oppAxisRangeOpts = opts2[axisIDs.id2name(axisOpts.anchor)];
           if (opts2.range) {
@@ -56824,23 +57133,53 @@ var Plotly = (() => {
           axisOpts.cleanRange("rangeslider.range");
           var gs = fullLayout._size;
           var domain = axisOpts.domain;
-          opts2._width = gs.w * (domain[1] - domain[0]);
-          var x = Math.round(gs.l + gs.w * domain[0]);
-          var y = Math.round(
-            gs.t + gs.h * (1 - axisOpts._counterDomainMin) + (axisOpts.side === "bottom" ? axisOpts._depth : 0) + opts2._offsetShift + constants.extraPad
-          );
+          var x, y;
+          if (!isVertical) {
+            opts2._width = gs.w * (domain[1] - domain[0]);
+            x = Math.round(gs.l + gs.w * domain[0]);
+            if (resolvedSide === "bottom") {
+              y = Math.round(
+                gs.t + gs.h * (1 - axisOpts._counterDomainMin) + (axisOpts.side === "bottom" ? axisOpts._depth : 0) + opts2._offsetShift + constants.extraPad
+              );
+            } else {
+              y = Math.round(
+                gs.t + gs.h * (1 - axisOpts._counterDomainMax) - opts2._height - (axisOpts.side === "top" ? axisOpts._depth : 0) - opts2._offsetShift - constants.extraPad
+              );
+            }
+          } else {
+            opts2._height = gs.h * (domain[1] - domain[0]);
+            y = Math.round(gs.t + gs.h * (1 - domain[1]));
+            if (resolvedSide === "left") {
+              x = Math.round(
+                gs.l + gs.w * axisOpts._counterDomainMin - opts2._width - (axisOpts.side === "left" ? axisOpts._depth : 0) - opts2._offsetShift - constants.extraPad
+              );
+            } else {
+              x = Math.round(
+                gs.l + gs.w * axisOpts._counterDomainMax + (axisOpts.side === "right" ? axisOpts._depth : 0) + opts2._offsetShift + constants.extraPad
+              );
+            }
+          }
           rangeSlider.attr("transform", strTranslate(x, y));
           opts2._rl = Lib.simpleMap(opts2.range, axisOpts.r2l);
           var rl0 = opts2._rl[0];
           var rl1 = opts2._rl[1];
           var drl = rl1 - rl0;
-          opts2.p2d = function(v) {
-            return v / opts2._width * drl + rl0;
-          };
-          opts2.d2p = function(v) {
-            return (v - rl0) / drl * opts2._width;
-          };
-          if (axisOpts.rangebreaks) {
+          if (!isVertical) {
+            opts2.p2d = function(v) {
+              return v / opts2._width * drl + rl0;
+            };
+            opts2.d2p = function(v) {
+              return (v - rl0) / drl * opts2._width;
+            };
+          } else {
+            opts2.p2d = function(v) {
+              return rl1 - v / opts2._height * drl;
+            };
+            opts2.d2p = function(v) {
+              return (rl1 - v) / drl * opts2._height;
+            };
+          }
+          if (!isVertical && axisOpts.rangebreaks) {
             var rsBreaks = axisOpts.locateBreaks(rl0, rl1);
             if (rsBreaks.length) {
               var j, brk;
@@ -56884,14 +57223,20 @@ var Plotly = (() => {
             var range0OppAxis = oppAxisOpts.r2l(oppAxisRangeOpts.range[0]);
             var range1OppAxis = oppAxisOpts.r2l(oppAxisRangeOpts.range[1]);
             var distOppAxis = range1OppAxis - range0OppAxis;
-            opts2.d2pOppAxis = function(v) {
-              return (v - range0OppAxis) / distOppAxis * opts2._height;
-            };
+            if (!isVertical) {
+              opts2.d2pOppAxis = function(v) {
+                return (v - range0OppAxis) / distOppAxis * opts2._height;
+              };
+            } else {
+              opts2.d2pOppAxis = function(v) {
+                return (v - range0OppAxis) / distOppAxis * opts2._width;
+              };
+            }
           }
           rangeSlider.call(drawBg, gd, axisOpts, opts2).call(addClipPath, gd, axisOpts, opts2).call(drawRangePlot, gd, axisOpts, opts2).call(drawMasks, gd, axisOpts, opts2, oppAxisRangeOpts).call(drawSlideBox, gd, axisOpts, opts2).call(drawGrabbers, gd, axisOpts, opts2);
           setupDragElement(rangeSlider, gd, axisOpts, opts2);
           setPixelRange(rangeSlider, gd, axisOpts, opts2, oppAxisOpts, oppAxisRangeOpts);
-          if (axisOpts.side === "bottom") {
+          if (!isVertical && resolvedSide === "bottom") {
             Titles.draw(gd, axisOpts._id + "title", {
               propContainer: axisOpts,
               propName: axisOpts._name + ".title.text",
@@ -56914,68 +57259,118 @@ var Plotly = (() => {
         }
         return 0;
       }
+      function eventY(event) {
+        if (typeof event.clientY === "number") {
+          return event.clientY;
+        }
+        if (event.touches && event.touches.length > 0) {
+          return event.touches[0].clientY;
+        }
+        return 0;
+      }
       function setupDragElement(rangeSlider, gd, axisOpts, opts) {
         if (gd._context.staticPlot) return;
+        var isVertical = opts._isVertical;
         var slideBox = rangeSlider.select("rect." + constants.slideBoxClassName).node();
         var grabAreaMin = rangeSlider.select("rect." + constants.grabAreaMinClassName).node();
         var grabAreaMax = rangeSlider.select("rect." + constants.grabAreaMaxClassName).node();
         function mouseDownHandler() {
           var event = d3.event;
           var target = event.target;
-          var startX = eventX(event);
-          var offsetX = startX - rangeSlider.node().getBoundingClientRect().left;
+          var bbox = rangeSlider.node().getBoundingClientRect();
           var minVal = opts.d2p(axisOpts._rl[0]);
           var maxVal = opts.d2p(axisOpts._rl[1]);
           var dragCover = dragElement.coverSlip();
+          var mouseMove;
+          if (!isVertical) {
+            var startX = eventX(event);
+            var offsetX = startX - bbox.left;
+            mouseMove = function(e) {
+              var clientX = eventX(e);
+              var delta = +clientX - startX;
+              var pixelMin, pixelMax, cursor;
+              switch (target) {
+                case slideBox:
+                  cursor = constants.slideBoxCursorH;
+                  if (minVal + delta > axisOpts._length || maxVal + delta < 0) return;
+                  pixelMin = minVal + delta;
+                  pixelMax = maxVal + delta;
+                  break;
+                case grabAreaMin:
+                  cursor = constants.grabAreaCursorH;
+                  if (minVal + delta > axisOpts._length) return;
+                  pixelMin = minVal + delta;
+                  pixelMax = maxVal;
+                  break;
+                case grabAreaMax:
+                  cursor = constants.grabAreaCursorH;
+                  if (maxVal + delta < 0) return;
+                  pixelMin = minVal;
+                  pixelMax = maxVal + delta;
+                  break;
+                default:
+                  cursor = constants.slideBoxCursorH;
+                  pixelMin = offsetX;
+                  pixelMax = offsetX + delta;
+                  break;
+              }
+              if (pixelMax < pixelMin) {
+                var tmp = pixelMax;
+                pixelMax = pixelMin;
+                pixelMin = tmp;
+              }
+              opts._pixelMin = pixelMin;
+              opts._pixelMax = pixelMax;
+              setCursor(d3.select(dragCover), cursor);
+              setDataRange(rangeSlider, gd, axisOpts, opts);
+            };
+          } else {
+            var startY = eventY(event);
+            var offsetY = startY - bbox.top;
+            mouseMove = function(e) {
+              var clientY = eventY(e);
+              var delta = +clientY - startY;
+              var pixelMin, pixelMax, cursor;
+              switch (target) {
+                case slideBox:
+                  cursor = constants.slideBoxCursorV;
+                  if (minVal + delta > axisOpts._length || maxVal + delta < 0) return;
+                  pixelMin = minVal + delta;
+                  pixelMax = maxVal + delta;
+                  break;
+                case grabAreaMin:
+                  cursor = constants.grabAreaCursorV;
+                  if (minVal + delta < 0) return;
+                  pixelMin = minVal + delta;
+                  pixelMax = maxVal;
+                  break;
+                case grabAreaMax:
+                  cursor = constants.grabAreaCursorV;
+                  if (maxVal + delta > axisOpts._length) return;
+                  pixelMin = minVal;
+                  pixelMax = maxVal + delta;
+                  break;
+                default:
+                  cursor = constants.slideBoxCursorV;
+                  pixelMin = offsetY;
+                  pixelMax = offsetY + delta;
+                  break;
+              }
+              if (pixelMin < pixelMax) {
+                var tmp = pixelMax;
+                pixelMax = pixelMin;
+                pixelMin = tmp;
+              }
+              opts._pixelMin = pixelMin;
+              opts._pixelMax = pixelMax;
+              setCursor(d3.select(dragCover), cursor);
+              setDataRange(rangeSlider, gd, axisOpts, opts);
+            };
+          }
           this.addEventListener("touchmove", mouseMove);
           this.addEventListener("touchend", mouseUp);
           dragCover.addEventListener("mousemove", mouseMove);
           dragCover.addEventListener("mouseup", mouseUp);
-          function mouseMove(e) {
-            var clientX = eventX(e);
-            var delta = +clientX - startX;
-            var pixelMin, pixelMax, cursor;
-            switch (target) {
-              case slideBox:
-                cursor = "ew-resize";
-                if (minVal + delta > axisOpts._length || maxVal + delta < 0) {
-                  return;
-                }
-                pixelMin = minVal + delta;
-                pixelMax = maxVal + delta;
-                break;
-              case grabAreaMin:
-                cursor = "col-resize";
-                if (minVal + delta > axisOpts._length) {
-                  return;
-                }
-                pixelMin = minVal + delta;
-                pixelMax = maxVal;
-                break;
-              case grabAreaMax:
-                cursor = "col-resize";
-                if (maxVal + delta < 0) {
-                  return;
-                }
-                pixelMin = minVal;
-                pixelMax = maxVal + delta;
-                break;
-              default:
-                cursor = "ew-resize";
-                pixelMin = offsetX;
-                pixelMax = offsetX + delta;
-                break;
-            }
-            if (pixelMax < pixelMin) {
-              var tmp = pixelMax;
-              pixelMax = pixelMin;
-              pixelMin = tmp;
-            }
-            opts._pixelMin = pixelMin;
-            opts._pixelMax = pixelMax;
-            setCursor(d3.select(dragCover), cursor);
-            setDataRange(rangeSlider, gd, axisOpts, opts);
-          }
           function mouseUp() {
             dragCover.removeEventListener("mousemove", mouseMove);
             dragCover.removeEventListener("mouseup", mouseUp);
@@ -56999,32 +57394,60 @@ var Plotly = (() => {
       }
       function setPixelRange(rangeSlider, gd, axisOpts, opts, oppAxisOpts, oppAxisRangeOpts) {
         var hw2 = constants.handleWidth / 2;
-        function clamp(v) {
-          return Lib.constrain(v, 0, opts._width);
+        var isVertical = opts._isVertical;
+        if (!isVertical) {
+          let clamp = function(v) {
+            return Lib.constrain(v, 0, opts._width);
+          }, clampHandle = function(v) {
+            return Lib.constrain(v, -hw2, opts._width + hw2);
+          };
+          var pixelMin = clamp(opts.d2p(axisOpts._rl[0]));
+          var pixelMax = clamp(opts.d2p(axisOpts._rl[1]));
+          rangeSlider.select("rect." + constants.slideBoxClassName).attr("x", pixelMin).attr("width", pixelMax - pixelMin);
+          rangeSlider.select("rect." + constants.maskMinClassName).attr("width", pixelMin);
+          rangeSlider.select("rect." + constants.maskMaxClassName).attr("x", pixelMax).attr("width", opts._width - pixelMax);
+          if (oppAxisRangeOpts.rangemode !== "match") {
+            var clampOpp = function(v) {
+              return Lib.constrain(v, 0, opts._height);
+            };
+            var pixelMinOpp = opts._height - clampOpp(opts.d2pOppAxis(oppAxisOpts._rl[1]));
+            var pixelMaxOpp = opts._height - clampOpp(opts.d2pOppAxis(oppAxisOpts._rl[0]));
+            rangeSlider.select("rect." + constants.maskMinOppAxisClassName).attr("x", pixelMin).attr("height", pixelMinOpp).attr("width", pixelMax - pixelMin);
+            rangeSlider.select("rect." + constants.maskMaxOppAxisClassName).attr("x", pixelMin).attr("y", pixelMaxOpp).attr("height", opts._height - pixelMaxOpp).attr("width", pixelMax - pixelMin);
+            rangeSlider.select("rect." + constants.slideBoxClassName).attr("y", pixelMinOpp).attr("height", pixelMaxOpp - pixelMinOpp);
+          }
+          var offset = 0.5;
+          var xMin = Math.round(clampHandle(pixelMin - hw2)) - offset;
+          var xMax = Math.round(clampHandle(pixelMax - hw2)) + offset;
+          rangeSlider.select("g." + constants.grabberMinClassName).attr("transform", strTranslate(xMin, offset));
+          rangeSlider.select("g." + constants.grabberMaxClassName).attr("transform", strTranslate(xMax, offset));
+        } else {
+          let clampV = function(v) {
+            return Lib.constrain(v, 0, opts._height);
+          }, clampHandleV = function(v) {
+            return Lib.constrain(v, -hw2, opts._height + hw2);
+          };
+          var pixelBottom = clampV(opts.d2p(axisOpts._rl[0]));
+          var pixelTop = clampV(opts.d2p(axisOpts._rl[1]));
+          rangeSlider.select("rect." + constants.slideBoxClassName).attr("y", pixelTop).attr("height", pixelBottom - pixelTop);
+          rangeSlider.select("rect." + constants.maskMinClassName).attr("height", pixelTop);
+          rangeSlider.select("rect." + constants.maskMaxClassName).attr("y", pixelBottom).attr("height", opts._height - pixelBottom);
+          if (oppAxisRangeOpts.rangemode !== "match") {
+            var clampOppV = function(v) {
+              return Lib.constrain(v, 0, opts._width);
+            };
+            var pixelLeftOpp = clampOppV(opts.d2pOppAxis(oppAxisOpts._rl[0]));
+            var pixelRightOpp = clampOppV(opts.d2pOppAxis(oppAxisOpts._rl[1]));
+            rangeSlider.select("rect." + constants.maskMinOppAxisClassName).attr("y", pixelTop).attr("width", pixelLeftOpp).attr("height", pixelBottom - pixelTop);
+            rangeSlider.select("rect." + constants.maskMaxOppAxisClassName).attr("y", pixelTop).attr("x", pixelRightOpp).attr("width", opts._width - pixelRightOpp).attr("height", pixelBottom - pixelTop);
+            rangeSlider.select("rect." + constants.slideBoxClassName).attr("x", pixelLeftOpp).attr("width", pixelRightOpp - pixelLeftOpp);
+          }
+          var offsetV = 0.5;
+          var yMin = Math.round(clampHandleV(pixelBottom - hw2)) - offsetV;
+          var yMax = Math.round(clampHandleV(pixelTop - hw2)) + offsetV;
+          rangeSlider.select("g." + constants.grabberMinClassName).attr("transform", strTranslate(offsetV, yMin));
+          rangeSlider.select("g." + constants.grabberMaxClassName).attr("transform", strTranslate(offsetV, yMax));
         }
-        function clampOppAxis(v) {
-          return Lib.constrain(v, 0, opts._height);
-        }
-        function clampHandle(v) {
-          return Lib.constrain(v, -hw2, opts._width + hw2);
-        }
-        var pixelMin = clamp(opts.d2p(axisOpts._rl[0]));
-        var pixelMax = clamp(opts.d2p(axisOpts._rl[1]));
-        rangeSlider.select("rect." + constants.slideBoxClassName).attr("x", pixelMin).attr("width", pixelMax - pixelMin);
-        rangeSlider.select("rect." + constants.maskMinClassName).attr("width", pixelMin);
-        rangeSlider.select("rect." + constants.maskMaxClassName).attr("x", pixelMax).attr("width", opts._width - pixelMax);
-        if (oppAxisRangeOpts.rangemode !== "match") {
-          var pixelMinOppAxis = opts._height - clampOppAxis(opts.d2pOppAxis(oppAxisOpts._rl[1]));
-          var pixelMaxOppAxis = opts._height - clampOppAxis(opts.d2pOppAxis(oppAxisOpts._rl[0]));
-          rangeSlider.select("rect." + constants.maskMinOppAxisClassName).attr("x", pixelMin).attr("height", pixelMinOppAxis).attr("width", pixelMax - pixelMin);
-          rangeSlider.select("rect." + constants.maskMaxOppAxisClassName).attr("x", pixelMin).attr("y", pixelMaxOppAxis).attr("height", opts._height - pixelMaxOppAxis).attr("width", pixelMax - pixelMin);
-          rangeSlider.select("rect." + constants.slideBoxClassName).attr("y", pixelMinOppAxis).attr("height", pixelMaxOppAxis - pixelMinOppAxis);
-        }
-        var offset = 0.5;
-        var xMin = Math.round(clampHandle(pixelMin - hw2)) - offset;
-        var xMax = Math.round(clampHandle(pixelMax - hw2)) + offset;
-        rangeSlider.select("g." + constants.grabberMinClassName).attr("transform", strTranslate(xMin, offset));
-        rangeSlider.select("g." + constants.grabberMaxClassName).attr("transform", strTranslate(xMax, offset));
       }
       function drawBg(rangeSlider, gd, axisOpts, opts) {
         var bg = Lib.ensureSingle(rangeSlider, "rect", constants.bgClassName, function(s) {
@@ -57056,6 +57479,7 @@ var Plotly = (() => {
       }
       function drawRangePlot(rangeSlider, gd, axisOpts, opts) {
         var calcData = gd.calcdata;
+        var isVertical = opts._isVertical;
         var rangePlots = rangeSlider.selectAll("g." + constants.rangePlotClassName).data(axisOpts._subplotsWith, Lib.identity);
         rangePlots.enter().append("g").attr("class", function(id) {
           return constants.rangePlotClassName + " " + id;
@@ -57066,39 +57490,76 @@ var Plotly = (() => {
         rangePlots.each(function(id, i) {
           var plotgroup = d3.select(this);
           var isMainPlot = i === 0;
-          var oppAxisOpts = axisIDs.getFromId(gd, id, "y");
-          var oppAxisName = oppAxisOpts._name;
-          var oppAxisRangeOpts = opts[oppAxisName];
-          var mockFigure = {
-            data: [],
-            layout: {
-              xaxis: {
-                type: axisOpts.type,
-                domain: [0, 1],
-                range: opts.range.slice(),
-                calendar: axisOpts.calendar
+          var mockFigure, xa, ya;
+          if (!isVertical) {
+            var oppAxisOpts = axisIDs.getFromId(gd, id, "y");
+            var oppAxisName = oppAxisOpts._name;
+            var oppAxisRangeOpts = opts[oppAxisName];
+            mockFigure = {
+              data: [],
+              layout: {
+                xaxis: {
+                  type: axisOpts.type,
+                  domain: [0, 1],
+                  range: opts.range.slice(),
+                  calendar: axisOpts.calendar
+                },
+                width: opts._width,
+                height: opts._height,
+                margin: { t: 0, b: 0, l: 0, r: 0 }
               },
-              width: opts._width,
-              height: opts._height,
-              margin: { t: 0, b: 0, l: 0, r: 0 }
-            },
-            _context: gd._context
-          };
-          if (axisOpts.rangebreaks) {
-            mockFigure.layout.xaxis.rangebreaks = axisOpts.rangebreaks;
+              _context: gd._context
+            };
+            if (axisOpts.rangebreaks) {
+              mockFigure.layout.xaxis.rangebreaks = axisOpts.rangebreaks;
+            }
+            mockFigure.layout[oppAxisName] = {
+              type: oppAxisOpts.type,
+              domain: [0, 1],
+              range: oppAxisRangeOpts.rangemode !== "match" ? oppAxisRangeOpts.range.slice() : oppAxisOpts.range.slice(),
+              calendar: oppAxisOpts.calendar
+            };
+            if (oppAxisOpts.rangebreaks) {
+              mockFigure.layout[oppAxisName].rangebreaks = oppAxisOpts.rangebreaks;
+            }
+            Plots.supplyDefaults(mockFigure);
+            xa = mockFigure._fullLayout.xaxis;
+            ya = mockFigure._fullLayout[oppAxisName];
+          } else {
+            var oppXAxisOpts = axisIDs.getFromId(gd, id, "x");
+            var oppXAxisName = oppXAxisOpts._name;
+            var oppXAxisRangeOpts = opts[oppXAxisName];
+            mockFigure = {
+              data: [],
+              layout: {
+                yaxis: {
+                  type: axisOpts.type,
+                  domain: [0, 1],
+                  range: opts.range.slice(),
+                  calendar: axisOpts.calendar
+                },
+                width: opts._width,
+                height: opts._height,
+                margin: { t: 0, b: 0, l: 0, r: 0 }
+              },
+              _context: gd._context
+            };
+            if (axisOpts.rangebreaks) {
+              mockFigure.layout.yaxis.rangebreaks = axisOpts.rangebreaks;
+            }
+            mockFigure.layout[oppXAxisName] = {
+              type: oppXAxisOpts.type,
+              domain: [0, 1],
+              range: oppXAxisRangeOpts.rangemode !== "match" ? oppXAxisRangeOpts.range.slice() : oppXAxisOpts.range.slice(),
+              calendar: oppXAxisOpts.calendar
+            };
+            if (oppXAxisOpts.rangebreaks) {
+              mockFigure.layout[oppXAxisName].rangebreaks = oppXAxisOpts.rangebreaks;
+            }
+            Plots.supplyDefaults(mockFigure);
+            ya = mockFigure._fullLayout.yaxis;
+            xa = mockFigure._fullLayout[oppXAxisName];
           }
-          mockFigure.layout[oppAxisName] = {
-            type: oppAxisOpts.type,
-            domain: [0, 1],
-            range: oppAxisRangeOpts.rangemode !== "match" ? oppAxisRangeOpts.range.slice() : oppAxisOpts.range.slice(),
-            calendar: oppAxisOpts.calendar
-          };
-          if (oppAxisOpts.rangebreaks) {
-            mockFigure.layout[oppAxisName].rangebreaks = oppAxisOpts.rangebreaks;
-          }
-          Plots.supplyDefaults(mockFigure);
-          var xa = mockFigure._fullLayout.xaxis;
-          var ya = mockFigure._fullLayout[oppAxisName];
           xa.clearCalc();
           xa.setScale();
           ya.clearCalc();
@@ -57130,91 +57591,151 @@ var Plotly = (() => {
         return out;
       }
       function drawMasks(rangeSlider, gd, axisOpts, opts, oppAxisRangeOpts) {
-        var maskMin = Lib.ensureSingle(rangeSlider, "rect", constants.maskMinClassName, function(s) {
-          s.attr({
-            x: 0,
-            y: 0,
-            "shape-rendering": "crispEdges"
+        var isVertical = opts._isVertical;
+        if (!isVertical) {
+          var maskMin = Lib.ensureSingle(rangeSlider, "rect", constants.maskMinClassName, function(s) {
+            s.attr({ x: 0, y: 0, "shape-rendering": "crispEdges" });
           });
-        });
-        maskMin.attr("height", opts._height).call(Color.fill, constants.maskColor);
-        var maskMax = Lib.ensureSingle(rangeSlider, "rect", constants.maskMaxClassName, function(s) {
-          s.attr({
-            y: 0,
-            "shape-rendering": "crispEdges"
+          maskMin.attr("height", opts._height).call(Color.fill, constants.maskColor);
+          var maskMax = Lib.ensureSingle(rangeSlider, "rect", constants.maskMaxClassName, function(s) {
+            s.attr({ y: 0, "shape-rendering": "crispEdges" });
           });
-        });
-        maskMax.attr("height", opts._height).call(Color.fill, constants.maskColor);
-        if (oppAxisRangeOpts.rangemode !== "match") {
-          var maskMinOppAxis = Lib.ensureSingle(rangeSlider, "rect", constants.maskMinOppAxisClassName, function(s) {
-            s.attr({
-              y: 0,
-              "shape-rendering": "crispEdges"
+          maskMax.attr("height", opts._height).call(Color.fill, constants.maskColor);
+          if (oppAxisRangeOpts.rangemode !== "match") {
+            var maskMinOppAxis = Lib.ensureSingle(rangeSlider, "rect", constants.maskMinOppAxisClassName, function(s) {
+              s.attr({ y: 0, "shape-rendering": "crispEdges" });
             });
-          });
-          maskMinOppAxis.attr("width", opts._width).call(Color.fill, constants.maskOppAxisColor);
-          var maskMaxOppAxis = Lib.ensureSingle(rangeSlider, "rect", constants.maskMaxOppAxisClassName, function(s) {
-            s.attr({
-              y: 0,
-              "shape-rendering": "crispEdges"
+            maskMinOppAxis.attr("width", opts._width).call(Color.fill, constants.maskOppAxisColor);
+            var maskMaxOppAxis = Lib.ensureSingle(rangeSlider, "rect", constants.maskMaxOppAxisClassName, function(s) {
+              s.attr({ y: 0, "shape-rendering": "crispEdges" });
             });
+            maskMaxOppAxis.attr("width", opts._width).call(Color.fill, constants.maskOppAxisColor);
+          }
+        } else {
+          var maskMinV = Lib.ensureSingle(rangeSlider, "rect", constants.maskMinClassName, function(s) {
+            s.attr({ x: 0, y: 0, "shape-rendering": "crispEdges" });
           });
-          maskMaxOppAxis.attr("width", opts._width).style("border-top", constants.maskOppBorder).call(Color.fill, constants.maskOppAxisColor);
+          maskMinV.attr("width", opts._width).call(Color.fill, constants.maskColor);
+          var maskMaxV = Lib.ensureSingle(rangeSlider, "rect", constants.maskMaxClassName, function(s) {
+            s.attr({ x: 0, "shape-rendering": "crispEdges" });
+          });
+          maskMaxV.attr("width", opts._width).call(Color.fill, constants.maskColor);
+          if (oppAxisRangeOpts.rangemode !== "match") {
+            var maskMinOppAxisV = Lib.ensureSingle(rangeSlider, "rect", constants.maskMinOppAxisClassName, function(s) {
+              s.attr({ x: 0, "shape-rendering": "crispEdges" });
+            });
+            maskMinOppAxisV.attr("height", opts._height).call(Color.fill, constants.maskOppAxisColor);
+            var maskMaxOppAxisV = Lib.ensureSingle(rangeSlider, "rect", constants.maskMaxOppAxisClassName, function(s) {
+              s.attr({ x: 0, "shape-rendering": "crispEdges" });
+            });
+            maskMaxOppAxisV.attr("height", opts._height).call(Color.fill, constants.maskOppAxisColor);
+          }
         }
       }
       function drawSlideBox(rangeSlider, gd, axisOpts, opts) {
         if (gd._context.staticPlot) return;
+        var isVertical = opts._isVertical;
+        var cursor = isVertical ? constants.slideBoxCursorV : constants.slideBoxCursorH;
         var slideBox = Lib.ensureSingle(rangeSlider, "rect", constants.slideBoxClassName, function(s) {
           s.attr({
-            y: 0,
-            cursor: constants.slideBoxCursor,
             "shape-rendering": "crispEdges"
           });
         });
-        slideBox.attr({
-          height: opts._height,
-          fill: constants.slideBoxFill
-        });
+        if (!isVertical) {
+          slideBox.attr({
+            y: 0,
+            cursor,
+            height: opts._height,
+            fill: constants.slideBoxFill
+          });
+        } else {
+          slideBox.attr({
+            x: 0,
+            cursor,
+            width: opts._width,
+            fill: constants.slideBoxFill
+          });
+        }
       }
       function drawGrabbers(rangeSlider, gd, axisOpts, opts) {
+        var isVertical = opts._isVertical;
         var grabberMin = Lib.ensureSingle(rangeSlider, "g", constants.grabberMinClassName);
         var grabberMax = Lib.ensureSingle(rangeSlider, "g", constants.grabberMaxClassName);
-        var handleFixAttrs = {
-          x: 0,
-          width: constants.handleWidth,
-          rx: constants.handleRadius,
-          fill: Color.background,
-          stroke: Color.defaultLine,
-          "stroke-width": constants.handleStrokeWidth,
-          "shape-rendering": "crispEdges"
-        };
-        var handleDynamicAttrs = {
-          y: Math.round(opts._height / 4),
-          height: Math.round(opts._height / 2)
-        };
-        var handleMin = Lib.ensureSingle(grabberMin, "rect", constants.handleMinClassName, function(s) {
-          s.attr(handleFixAttrs);
-        });
-        handleMin.attr(handleDynamicAttrs);
-        var handleMax = Lib.ensureSingle(grabberMax, "rect", constants.handleMaxClassName, function(s) {
-          s.attr(handleFixAttrs);
-        });
-        handleMax.attr(handleDynamicAttrs);
-        var grabAreaFixAttrs = {
-          width: constants.grabAreaWidth,
-          x: 0,
-          y: 0,
-          fill: constants.grabAreaFill,
-          cursor: !gd._context.staticPlot ? constants.grabAreaCursor : void 0
-        };
-        var grabAreaMin = Lib.ensureSingle(grabberMin, "rect", constants.grabAreaMinClassName, function(s) {
-          s.attr(grabAreaFixAttrs);
-        });
-        grabAreaMin.attr("height", opts._height);
-        var grabAreaMax = Lib.ensureSingle(grabberMax, "rect", constants.grabAreaMaxClassName, function(s) {
-          s.attr(grabAreaFixAttrs);
-        });
-        grabAreaMax.attr("height", opts._height);
+        if (!isVertical) {
+          var handleFixAttrs = {
+            x: 0,
+            width: constants.handleWidth,
+            rx: constants.handleRadius,
+            fill: Color.background,
+            stroke: Color.defaultLine,
+            "stroke-width": constants.handleStrokeWidth,
+            "shape-rendering": "crispEdges"
+          };
+          var handleDynamicAttrs = {
+            y: Math.round(opts._height / 4),
+            height: Math.round(opts._height / 2)
+          };
+          var handleMin = Lib.ensureSingle(grabberMin, "rect", constants.handleMinClassName, function(s) {
+            s.attr(handleFixAttrs);
+          });
+          handleMin.attr(handleDynamicAttrs);
+          var handleMax = Lib.ensureSingle(grabberMax, "rect", constants.handleMaxClassName, function(s) {
+            s.attr(handleFixAttrs);
+          });
+          handleMax.attr(handleDynamicAttrs);
+          var grabAreaFixAttrs = {
+            width: constants.grabAreaWidth,
+            x: 0,
+            y: 0,
+            fill: constants.grabAreaFill,
+            cursor: !gd._context.staticPlot ? constants.grabAreaCursorH : void 0
+          };
+          var grabAreaMin = Lib.ensureSingle(grabberMin, "rect", constants.grabAreaMinClassName, function(s) {
+            s.attr(grabAreaFixAttrs);
+          });
+          grabAreaMin.attr("height", opts._height);
+          var grabAreaMax = Lib.ensureSingle(grabberMax, "rect", constants.grabAreaMaxClassName, function(s) {
+            s.attr(grabAreaFixAttrs);
+          });
+          grabAreaMax.attr("height", opts._height);
+        } else {
+          var handleFixAttrsV = {
+            y: 0,
+            height: constants.handleWidth,
+            ry: constants.handleRadius,
+            fill: Color.background,
+            stroke: Color.defaultLine,
+            "stroke-width": constants.handleStrokeWidth,
+            "shape-rendering": "crispEdges"
+          };
+          var handleDynamicAttrsV = {
+            x: Math.round(opts._width / 4),
+            width: Math.round(opts._width / 2)
+          };
+          var handleMinV = Lib.ensureSingle(grabberMin, "rect", constants.handleMinClassName, function(s) {
+            s.attr(handleFixAttrsV);
+          });
+          handleMinV.attr(handleDynamicAttrsV);
+          var handleMaxV = Lib.ensureSingle(grabberMax, "rect", constants.handleMaxClassName, function(s) {
+            s.attr(handleFixAttrsV);
+          });
+          handleMaxV.attr(handleDynamicAttrsV);
+          var grabAreaFixAttrsV = {
+            height: constants.grabAreaHeight,
+            x: 0,
+            y: 0,
+            fill: constants.grabAreaFill,
+            cursor: !gd._context.staticPlot ? constants.grabAreaCursorV : void 0
+          };
+          var grabAreaMinV = Lib.ensureSingle(grabberMin, "rect", constants.grabAreaMinClassName, function(s) {
+            s.attr(grabAreaFixAttrsV);
+          });
+          grabAreaMinV.attr("width", opts._width);
+          var grabAreaMaxV = Lib.ensureSingle(grabberMax, "rect", constants.grabAreaMaxClassName, function(s) {
+            s.attr(grabAreaFixAttrsV);
+          });
+          grabAreaMaxV.attr("width", opts._width);
+        }
       }
     }
   });
@@ -57236,6 +57757,11 @@ var Plotly = (() => {
               rangeslider: Lib.extendFlat({}, attrs, {
                 yaxis: oppAxisAttrs
               })
+            },
+            yaxis: {
+              rangeslider: Lib.extendFlat({}, attrs, {
+                xaxis: oppAxisAttrs
+              })
             }
           }
         },
@@ -57245,7 +57771,8 @@ var Plotly = (() => {
         draw: require_draw9(),
         isVisible: helpers.isVisible,
         makeData: helpers.makeData,
-        autoMarginOpts: helpers.autoMarginOpts
+        autoMarginOpts: helpers.autoMarginOpts,
+        resetRangeSliders: helpers.resetRangeSliders
       };
     }
   });

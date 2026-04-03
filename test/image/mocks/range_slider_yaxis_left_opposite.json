@@ -1,0 +1,42 @@
+{
+    "data": [
+        {
+            "y": [
+                "A",
+                "B",
+                "C",
+                "D",
+                "E",
+                "F"
+            ],
+            "x": [
+                10,
+                40,
+                30,
+                20,
+                50,
+                15
+            ],
+            "type": "bar",
+            "orientation": "h"
+        }
+    ],
+    "layout": {
+        "yaxis": {
+            "title": {
+                "text": "Left Y Axis – slider opposite (right)",
+                "font": {
+                    "size": 14
+                }
+            },
+            "rangeslider": {
+                "visible": true,
+                "side": "opposite"
+            },
+            "side": "left",
+            "automargin": true
+        },
+        "width": 600,
+        "height": 400
+    }
+}

@@ -1,3 +1,5 @@
+@use 'vars' as *;
+
 .plotly-notifier {
     font-family: 'Open Sans', verdana, arial, sans-serif; // Because not all contexts have this specified.
     position: fixed;

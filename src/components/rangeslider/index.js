@@ -15,6 +15,11 @@ module.exports = {
                 rangeslider: Lib.extendFlat({}, attrs, {
                     yaxis: oppAxisAttrs
                 })
+            },
+            yaxis: {
+                rangeslider: Lib.extendFlat({}, attrs, {
+                    xaxis: oppAxisAttrs
+                })
             }
         }
     },
@@ -25,5 +30,6 @@ module.exports = {
     draw: require('./draw'),
     isVisible: helpers.isVisible,
     makeData: helpers.makeData,
-    autoMarginOpts: helpers.autoMarginOpts
+    autoMarginOpts: helpers.autoMarginOpts,
+    resetRangeSliders: helpers.resetRangeSliders
 };

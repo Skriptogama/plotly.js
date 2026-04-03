@@ -24,7 +24,7 @@ var traceIs = Registry.traceIs;
 var getComponentMethod = Registry.getComponentMethod;
 
 function appendList(cont, k, item) {
-    if(Array.isArray(cont[k])) cont[k].push(item);
+    if (Array.isArray(cont[k])) cont[k].push(item);
     else cont[k] = [item];
 }
 
@@ -44,49 +44,49 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
     var i, j;
 
     // look for axes in the data
-    for(i = 0; i < fullData.length; i++) {
+    for (i = 0; i < fullData.length; i++) {
         var trace = fullData[i];
-        if(!traceIs(trace, 'cartesian')) continue;
+        if (!traceIs(trace, 'cartesian')) continue;
 
         var xaName;
-        if(trace.xaxis) {
+        if (trace.xaxis) {
             xaName = id2name(trace.xaxis);
             appendList(ax2traces, xaName, trace);
-        } else if(trace.xaxes) {
-            for(j = 0; j < trace.xaxes.length; j++) {
+        } else if (trace.xaxes) {
+            for (j = 0; j < trace.xaxes.length; j++) {
                 appendList(ax2traces, id2name(trace.xaxes[j]), trace);
             }
         }
 
         var yaName;
-        if(trace.yaxis) {
+        if (trace.yaxis) {
             yaName = id2name(trace.yaxis);
             appendList(ax2traces, yaName, trace);
-        } else if(trace.yaxes) {
-            for(j = 0; j < trace.yaxes.length; j++) {
+        } else if (trace.yaxes) {
+            for (j = 0; j < trace.yaxes.length; j++) {
                 appendList(ax2traces, id2name(trace.yaxes[j]), trace);
             }
         }
 
         // logic for funnels
-        if(trace.type === 'funnel') {
-            if(trace.orientation === 'h') {
-                if(xaName) xaMayHide[xaName] = true;
-                if(yaName) yaMayReverse[yaName] = true;
+        if (trace.type === 'funnel') {
+            if (trace.orientation === 'h') {
+                if (xaName) xaMayHide[xaName] = true;
+                if (yaName) yaMayReverse[yaName] = true;
             } else {
-                if(yaName) yaMayHide[yaName] = true;
+                if (yaName) yaMayHide[yaName] = true;
             }
-        } else if(trace.type === 'image') {
-            if(yaName) axHasImage[yaName] = true;
-            if(xaName) axHasImage[xaName] = true;
+        } else if (trace.type === 'image') {
+            if (yaName) axHasImage[yaName] = true;
+            if (xaName) axHasImage[xaName] = true;
         } else {
-            if(yaName) {
+            if (yaName) {
                 yaMustDisplay[yaName] = true;
                 yaMustNotReverse[yaName] = true;
             }
 
-            if(!traceIs(trace, 'carpet') || (trace.type === 'carpet' && !trace._cheater)) {
-                if(xaName) xaMustDisplay[xaName] = true;
+            if (!traceIs(trace, 'carpet') || (trace.type === 'carpet' && !trace._cheater)) {
+                if (xaName) xaMustDisplay[xaName] = true;
             }
         }
 
@@ -98,17 +98,17 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
         // second list tracks which axes *could* be a cheater so that the
         // full condition triggering hiding is:
         //   *could* be a cheater and *is not definitely visible*
-        if(trace.type === 'carpet' && trace._cheater) {
-            if(xaName) xaMayHide[xaName] = true;
+        if (trace.type === 'carpet' && trace._cheater) {
+            if (xaName) xaMayHide[xaName] = true;
         }
 
         // check for default formatting tweaks
-        if(traceIs(trace, '2dMap')) {
+        if (traceIs(trace, '2dMap')) {
             outerTicks[xaName] = true;
             outerTicks[yaName] = true;
         }
 
-        if(traceIs(trace, 'oriented')) {
+        if (traceIs(trace, 'oriented')) {
             var positionAxis = trace.orientation === 'h' ? yaName : xaName;
             noGrids[positionAxis] = true;
         }
@@ -124,7 +124,7 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
     // plot_bgcolor only makes sense if there's a (2D) plot!
     // TODO: bgcolor for each subplot, to inherit from the main one
     var plotBgColor = Color.background;
-    if(xIds.length && yIds.length) {
+    if (xIds.length && yIds.length) {
         plotBgColor = Lib.coerce(layoutIn, layoutOut, basePlotLayoutAttributes, 'plot_bgcolor');
     }
 
@@ -143,7 +143,7 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
 
     function newAxLayoutOut() {
         var traces = ax2traces[axName] || [];
-        axLayoutOut._traceIndices = traces.map(function(t) { return t.index; });
+        axLayoutOut._traceIndices = traces.map(function (t) { return t.index; });
         axLayoutOut._annIndices = [];
         axLayoutOut._shapeIndices = [];
         axLayoutOut._selectionIndices = [];
@@ -170,10 +170,10 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
         var list = (axLetter === 'x') ? xNames : yNames;
         var out = [];
 
-        for(var j = 0; j < list.length; j++) {
+        for (var j = 0; j < list.length; j++) {
             var axName2 = list[j];
 
-            if(axName2 !== axName && !(layoutIn[axName2] || {}).overlaying) {
+            if (axName2 !== axName && !(layoutIn[axName2] || {}).overlaying) {
                 out.push(name2id(axName2));
             }
         }
@@ -182,7 +182,7 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
     }
 
     // list of available counter axis names
-    var counterAxes = {x: getCounterAxes('x'), y: getCounterAxes('y')};
+    var counterAxes = { x: getCounterAxes('x'), y: getCounterAxes('y') };
     // list of all x AND y axis ids
     var allAxisIds = counterAxes.x.concat(counterAxes.y);
     // lookup and list of axis ids that axes in axNames have a reference to,
@@ -195,7 +195,7 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
     // it to the missing axes
     function addMissingMatchedAxis() {
         var matchesIn = axLayoutIn.matches;
-        if(AX_ID_PATTERN.test(matchesIn) && allAxisIds.indexOf(matchesIn) === -1) {
+        if (AX_ID_PATTERN.test(matchesIn) && allAxisIds.indexOf(matchesIn) === -1) {
             missingMatchedAxisIdsLookup[matchesIn] = axLayoutIn.type;
             missingMatchedAxisIds = Object.keys(missingMatchedAxisIdsLookup);
         }
@@ -205,12 +205,12 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
     var unifiedHover = isUnifiedHover(hovermode);
 
     // first pass creates the containers, determines types, and handles most of the settings
-    for(i = 0; i < axNames.length; i++) {
+    for (i = 0; i < axNames.length; i++) {
         axName = axNames[i];
         axId = name2id(axName);
         axLetter = axName.charAt(0);
 
-        if(!Lib.isPlainObject(layoutIn[axName])) {
+        if (!Lib.isPlainObject(layoutIn[axName])) {
             layoutIn[axName] = {};
         }
 
@@ -224,10 +224,10 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
 
         var reverseDflt =
             (axLetter === 'y' &&
-              (
-                (!yaMustNotReverse[axName] && yaMayReverse[axName]) ||
-                axHasImage[axName]
-              ));
+                (
+                    (!yaMustNotReverse[axName] && yaMayReverse[axName]) ||
+                    axHasImage[axName]
+                ));
 
         var defaultOptions = {
             hasMinor: true,
@@ -259,7 +259,7 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
         var spikesnap = coerce2('spikesnap');
         var showSpikes = coerce('showspikes', !!unifiedSpike || !!spikecolor || !!spikethickness || !!spikedash || !!spikemode || !!spikesnap);
 
-        if(!showSpikes) {
+        if (!showSpikes) {
             delete axLayoutOut.spikecolor;
             delete axLayoutOut.spikethickness;
             delete axLayoutOut.spikedash;
@@ -271,9 +271,9 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
         var overlayingAxis = id2name(axLayoutIn.overlaying);
         var overlayingAnchorDomain = [0, 1];
 
-        if(layoutOut[overlayingAxis] !== undefined) {
+        if (layoutOut[overlayingAxis] !== undefined) {
             var overlayingAnchor = id2name(layoutOut[overlayingAxis].anchor);
-            if(layoutOut[overlayingAnchor] !== undefined) {
+            if (layoutOut[overlayingAnchor] !== undefined) {
                 overlayingAnchorDomain = layoutOut[overlayingAnchor].domain;
             }
         }
@@ -296,12 +296,12 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
 
     // coerce the 'missing' axes
     i = 0;
-    while(i < missingMatchedAxisIds.length) {
+    while (i < missingMatchedAxisIds.length) {
         axId = missingMatchedAxisIds[i++];
         axName = id2name(axId);
         axLetter = axName.charAt(0);
 
-        if(!Lib.isPlainObject(layoutIn[axName])) {
+        if (!Lib.isPlainObject(layoutIn[axName])) {
             layoutIn[axName] = {};
         }
 
@@ -349,14 +349,14 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
     var rangeSliderDefaults = getComponentMethod('rangeslider', 'handleDefaults');
     var rangeSelectorDefaults = getComponentMethod('rangeselector', 'handleDefaults');
 
-    for(i = 0; i < xNames.length; i++) {
+    for (i = 0; i < xNames.length; i++) {
         axName = xNames[i];
         axLayoutIn = layoutIn[axName];
         axLayoutOut = layoutOut[axName];
 
         rangeSliderDefaults(layoutIn, layoutOut, axName);
 
-        if(axLayoutOut.type === 'date') {
+        if (axLayoutOut.type === 'date') {
             rangeSelectorDefaults(
                 axLayoutIn,
                 axLayoutOut,
@@ -370,17 +370,31 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut, fullData) {
         coerce('modebardisable');
     }
 
-    for(i = 0; i < yNames.length; i++) {
+    for (i = 0; i < yNames.length; i++) {
         axName = yNames[i];
         axLayoutIn = layoutIn[axName];
         axLayoutOut = layoutOut[axName];
 
         var anchoredAxis = layoutOut[id2name(axLayoutOut.anchor)];
 
+        // y-axis is fixed if the *anchored x-axis* has a visible horizontal range slider,
+        // OR if the y-axis itself has a visible vertical range slider.
         var fixedRangeDflt = getComponentMethod('rangeslider', 'isVisible')(anchoredAxis);
+
+        rangeSliderDefaults(layoutIn, layoutOut, axName);
+
+        if (!fixedRangeDflt) {
+            fixedRangeDflt = getComponentMethod('rangeslider', 'isVisible')(axLayoutOut);
+        }
 
         coerce('fixedrange', fixedRangeDflt);
         coerce('modebardisable');
+
+        // When a yaxis has a vertical rangeslider, set the anchored xaxis to fixedrange
+        if (getComponentMethod('rangeslider', 'isVisible')(axLayoutOut)) {
+            var anchoredXAxOut = layoutOut[id2name(axLayoutOut.anchor)];
+            if (anchoredXAxOut) anchoredXAxOut.fixedrange = true;
+        }
     }
 
     // Finally, handle scale constraints and matching axes.

@@ -32,11 +32,14 @@ module.exports = {
     maskOppAxisColor: 'rgba(0,0,0,0.2)',
 
     slideBoxFill: 'transparent',
-    slideBoxCursor: 'ew-resize',
+    slideBoxCursorH: 'ew-resize',
+    slideBoxCursorV: 'ns-resize',
 
     grabAreaFill: 'transparent',
-    grabAreaCursor: 'col-resize',
+    grabAreaCursorH: 'col-resize',
+    grabAreaCursorV: 'row-resize',
     grabAreaWidth: 10,
+    grabAreaHeight: 10,
 
     handleWidth: 4,
     handleRadius: 1,

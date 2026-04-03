@@ -544,6 +544,25 @@ function redraw(gd) {
 }
 
 /**
+ * Reset all visible rangesliders to show 100% of the data.
+ *
+ * Useful after a data update (e.g. filter change in QlikSense) when you want
+ * the slider to reflect the full extent of the new dataset rather than keeping
+ * the previous selection.
+ *
+ * @param {string|HTMLElement} gd  - graph div id or element
+ * @returns {Promise}
+ */
+function resetRangeSliders(gd) {
+    gd = Lib.getGraphDiv(gd);
+    if (!Lib.isPlotDiv(gd)) {
+        throw new Error('This element is not a Plotly plot: ' + gd);
+    }
+    var Registry = require('../registry');
+    return Registry.getComponentMethod('rangeslider', 'resetRangeSliders')(gd);
+}
+
+/**
  * Convenience function to make idempotent plot option obvious to users.
  *
  * @param gd
@@ -740,7 +759,7 @@ function assertExtendTracesArgs(gd, update, indices, maxPoints) {
         ) {
             throw new Error(
                 'when maxPoints is set as a key:value object it must contain a 1:1 ' +
-                    'correspondence with the keys and number of traces in the update object'
+                'correspondence with the keys and number of traces in the update object'
             );
         }
     }
@@ -1812,37 +1831,41 @@ function addAxRangeSequence(seq, rangesAltered) {
     // executed after drawData
     var drawAxes = rangesAltered
         ? function (gd) {
-              var axIds = [];
-              var skipTitle = true;
+            var axIds = [];
+            var skipTitle = true;
 
-              for (var id in rangesAltered) {
-                  var ax = Axes.getFromId(gd, id);
-                  axIds.push(id);
+            for (var id in rangesAltered) {
+                var ax = Axes.getFromId(gd, id);
+                axIds.push(id);
 
-                  if ((ax.ticklabelposition || '').indexOf('inside') !== -1) {
-                      if (ax._anchorAxis) {
-                          axIds.push(ax._anchorAxis._id);
-                      }
-                  }
+                if ((ax.ticklabelposition || '').indexOf('inside') !== -1) {
+                    if (ax._anchorAxis) {
+                        axIds.push(ax._anchorAxis._id);
+                    }
+                }
 
-                  if (ax._matchGroup) {
-                      for (var id2 in ax._matchGroup) {
-                          if (!rangesAltered[id2]) {
-                              axIds.push(id2);
-                          }
-                      }
-                  }
-              }
+                if (ax._matchGroup) {
+                    for (var id2 in ax._matchGroup) {
+                        if (!rangesAltered[id2]) {
+                            axIds.push(id2);
+                        }
+                    }
+                }
+            }
 
-              return Axes.draw(gd, axIds, { skipTitle: skipTitle });
-          }
+            return Axes.draw(gd, axIds, { skipTitle: skipTitle });
+        }
         : function (gd) {
-              return Axes.draw(gd, 'redraw');
-          };
+            return Axes.draw(gd, 'redraw');
+        };
 
     seq.push(
         clearOutline,
         subroutines.doAutoRangeAndConstraints,
+        // Recompute rangeslider full extent after any axis-range change so that
+        // opts.range reflects the actual data extent (needed for resetRangeSliders
+        // and any relayout that clears rangeslider.range with autorange:true).
+        Registry.getComponentMethod('rangeslider', 'calcAutorange'),
         drawAxes,
         subroutines.drawData,
         subroutines.finalDraw
@@ -3061,10 +3084,10 @@ function animate(gd, frameOrGroupNameOrFrameList, animationOpts) {
     if (!Lib.isPlotDiv(gd)) {
         throw new Error(
             'This element is not a Plotly plot: ' +
-                gd +
-                ". It's likely that you've failed " +
-                'to create a plot before animating it. For more details, see ' +
-                'https://plotly.com/javascript/animations/'
+            gd +
+            ". It's likely that you've failed " +
+            'to create a plot before animating it. For more details, see ' +
+            'https://plotly.com/javascript/animations/'
         );
     }
 
@@ -3431,10 +3454,10 @@ function addFrames(gd, frameList, indices) {
     if (!Lib.isPlotDiv(gd)) {
         throw new Error(
             'This element is not a Plotly plot: ' +
-                gd +
-                ". It's likely that you've failed " +
-                'to create a plot before adding frames. For more details, see ' +
-                'https://plotly.com/javascript/animations/'
+            gd +
+            ". It's likely that you've failed " +
+            'to create a plot before adding frames. For more details, see ' +
+            'https://plotly.com/javascript/animations/'
         );
     }
 
@@ -3476,19 +3499,19 @@ function addFrames(gd, frameList, indices) {
 
             Lib.warn(
                 'addFrames: overwriting frame "' +
-                    (_frameHash[name] || _frameHashLocal[name]).name +
-                    '" with a frame whose name of type "number" also equates to "' +
-                    name +
-                    '". This is valid but may potentially lead to unexpected ' +
-                    'behavior since all plotly.js frame names are stored internally ' +
-                    'as strings.'
+                (_frameHash[name] || _frameHashLocal[name]).name +
+                '" with a frame whose name of type "number" also equates to "' +
+                name +
+                '". This is valid but may potentially lead to unexpected ' +
+                'behavior since all plotly.js frame names are stored internally ' +
+                'as strings.'
             );
 
             if (numericNameWarningCount === numericNameWarningCountLimit) {
                 Lib.warn(
                     'addFrames: This API call has yielded too many of these warnings. ' +
-                        'For the rest of this call, further warnings about numeric frame ' +
-                        'names will be suppressed.'
+                    'For the rest of this call, further warnings about numeric frame ' +
+                    'names will be suppressed.'
                 );
             }
         }
@@ -3518,7 +3541,7 @@ function addFrames(gd, frameList, indices) {
         if (typeof frame.name === 'number') {
             Lib.warn(
                 'Warning: addFrames accepts frames with numeric names, but the numbers are' +
-                    'implicitly cast to strings'
+                'implicitly cast to strings'
             );
         }
 
@@ -3824,6 +3847,7 @@ exports.react = react;
 exports.redraw = redraw;
 exports.relayout = relayout;
 exports.restyle = restyle;
+exports.resetRangeSliders = resetRangeSliders;
 
 exports.setPlotConfig = setPlotConfig;
 

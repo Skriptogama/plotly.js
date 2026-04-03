@@ -26,7 +26,7 @@ module.exports = {
         valType: 'boolean',
         dflt: true,
         editType: 'calc',
-        impliedEdits: {'range[0]': undefined, 'range[1]': undefined},
+        impliedEdits: { 'range[0]': undefined, 'range[1]': undefined },
         description: [
             'Determines whether or not the range slider range is',
             'computed in relation to the input data.',
@@ -36,11 +36,11 @@ module.exports = {
     range: {
         valType: 'info_array',
         items: [
-            {valType: 'any', editType: 'calc', impliedEdits: {'^autorange': false}},
-            {valType: 'any', editType: 'calc', impliedEdits: {'^autorange': false}}
+            { valType: 'any', editType: 'calc', impliedEdits: { '^autorange': false } },
+            { valType: 'any', editType: 'calc', impliedEdits: { '^autorange': false } }
         ],
         editType: 'calc',
-        impliedEdits: {autorange: false},
+        impliedEdits: { autorange: false },
         description: [
             'Sets the range of the range slider.',
             'If not set, defaults to the full xaxis range.',
@@ -65,6 +65,28 @@ module.exports = {
             'total plot area height.'
         ].join(' ')
     },
+    minthickness: {
+        valType: 'number',
+        dflt: 0,
+        min: 0,
+        editType: 'plot',
+        description: [
+            'Sets a minimum pixel size for the range slider thickness.',
+            'The computed thickness (from `thickness` × plot dimension) will not go below this value.',
+            'For a horizontal slider this is a height in pixels; for a vertical slider a width in pixels.'
+        ].join(' ')
+    },
+    maxthickness: {
+        valType: 'number',
+        dflt: Infinity,
+        min: 0,
+        editType: 'plot',
+        description: [
+            'Sets a maximum pixel size for the range slider thickness.',
+            'The computed thickness (from `thickness` × plot dimension) will not exceed this value.',
+            'For a horizontal slider this is a height in pixels; for a vertical slider a width in pixels.'
+        ].join(' ')
+    },
     visible: {
         valType: 'boolean',
         dflt: true,
@@ -72,6 +94,17 @@ module.exports = {
         description: [
             'Determines whether or not the range slider will be visible.',
             'If visible, perpendicular axes will be set to `fixedrange`'
+        ].join(' ')
+    },
+    side: {
+        valType: 'enumerated',
+        values: ['same', 'opposite'],
+        dflt: 'same',
+        editType: 'plot',
+        description: [
+            'Sets the position of the range slider relative to the axis it belongs to.',
+            '*same* places the slider on the same side as the axis (default: bottom for xaxis, left for yaxis).',
+            '*opposite* places it on the opposite side (top for xaxis, right for yaxis).'
         ].join(' ')
     },
     editType: 'calc'

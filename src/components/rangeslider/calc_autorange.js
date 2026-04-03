@@ -5,18 +5,19 @@ var getAutoRange = require('../../plots/cartesian/autorange').getAutoRange;
 var constants = require('./constants');
 
 module.exports = function calcAutorange(gd) {
-    var axes = listAxes(gd, 'x', true);
+    // Process both x-axes (horizontal sliders) and y-axes (vertical sliders)
+    var axes = listAxes(gd, 'x', true).concat(listAxes(gd, 'y', true));
 
     // Compute new slider range using axis autorange if necessary.
     //
     // Copy back range to input range slider container to skip
     // this step in subsequent draw calls.
 
-    for(var i = 0; i < axes.length; i++) {
+    for (var i = 0; i < axes.length; i++) {
         var ax = axes[i];
         var opts = ax[constants.name];
 
-        if(opts && opts.visible && opts.autorange) {
+        if (opts && opts.visible && opts.autorange) {
             opts._input.autorange = true;
             opts._input.range = opts.range = getAutoRange(gd, ax);
         }

@@ -1,0 +1,45 @@
+{
+    "data": [
+        {
+            "x": [
+                "a",
+                "b",
+                "c",
+                "d",
+                "long category",
+                "another even longer",
+                "the longest one yet!!!!!!"
+            ],
+            "y": [
+                0,
+                10,
+                20,
+                30,
+                40,
+                50,
+                60
+            ]
+        }
+    ],
+    "layout": {
+        "xaxis": {
+            "title": {
+                "text": "Bottom X Axis – slider opposite (top)",
+                "font": {
+                    "size": 18
+                }
+            },
+            "rangeslider": {
+                "visible": true,
+                "side": "opposite"
+            },
+            "side": "bottom",
+            "automargin": true
+        },
+        "width": 600,
+        "height": 400,
+        "margin": {
+            "t": 20
+        }
+    }
+}
