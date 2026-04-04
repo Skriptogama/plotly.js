@@ -4,8 +4,10 @@ var Plots = require('../../../src/plots/plots');
 var Lib = require('../../../src/lib');
 var Queue = require('../../../src/lib/queue');
 var Scatter = require('../../../src/traces/scatter');
+var ScatterGl = require('../../../src/traces/scattergl');
 var Bar = require('../../../src/traces/bar');
 var Legend = require('../../../src/components/legend');
+var Cartesian = require('../../../src/plots/cartesian');
 var Axes = require('../../../src/plots/cartesian/axes');
 var pkg = require('../../../package.json');
 var subroutines = require('../../../src/plot_api/subroutines');
@@ -580,7 +582,7 @@ describe('Test plot api', function () {
             supplyAllDefaults(gd);
             Plots.supplyDefaults.calls.reset();
             Plots.doCalcdata(gd);
-            gd.emit = function () {};
+            gd.emit = function () { };
             return gd;
         }
 
@@ -771,7 +773,7 @@ describe('Test plot api', function () {
             gd.calcdata = gd._fullData.map(function (trace) {
                 return [{ x: 1, y: 1, trace: trace }];
             });
-            gd.emit = function () {};
+            gd.emit = function () { };
         }
 
         it('calls Scatter.arraysToCalcdata and Plots.style on scatter styling', function (done) {
@@ -1852,6 +1854,588 @@ describe('Test plot api', function () {
         });
     });
 
+    describe('Plotly.addTraces incremental rendering', function () {
+        var gd;
+        var originalTimeout;
+
+        beforeEach(function () { gd = createGraphDiv(); });
+        afterEach(destroyGraphDiv);
+
+        beforeAll(function () {
+            originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
+            jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
+        });
+
+        afterAll(function () {
+            jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
+        });
+
+        it('should preserve existing calcdata entries when appending a trace', function (done) {
+            var trace0 = { x: [1, 2, 3], y: [1, 2, 3], type: 'scatter' };
+            var trace1 = { x: [1, 2, 3], y: [3, 2, 1], type: 'scatter' };
+
+            Plotly.newPlot(gd, [trace0, trace1])
+                .then(function () {
+                    return Plotly.addTraces(gd, { x: [4, 5], y: [4, 5], type: 'scatter' });
+                })
+                .then(function () {
+                    // All 3 calcdata entries must be present after incremental add
+                    expect(gd.calcdata.length).toBe(3);
+                    // original trace data is intact (first point of trace 0)
+                    expect(gd.calcdata[0][0].x).toBe(1);
+                    expect(gd.calcdata[0][0].y).toBe(1);
+                    // original trace 1 data intact
+                    expect(gd.calcdata[1][0].x).toBe(1);
+                    expect(gd.calcdata[1][0].y).toBe(3);
+                    // new trace data present
+                    expect(gd.calcdata[2][0].x).toBe(4);
+                })
+                .then(done, done.fail);
+        });
+
+        it('should add new trace SVG group to the DOM', function (done) {
+            Plotly.newPlot(gd, [
+                { x: [1, 2], y: [1, 2], type: 'scatter' }
+            ])
+                .then(function () {
+                    var beforeCount = gd.querySelectorAll('.scatter').length;
+                    return Plotly.addTraces(gd, { x: [3, 4], y: [3, 4], type: 'scatter' });
+                })
+                .then(function () {
+                    expect(gd.querySelectorAll('.scatter').length).toBe(2);
+                    expect(gd.calcdata.length).toBe(2);
+                })
+                .then(done, done.fail);
+        });
+
+        it('@gl should preserve all scattergl traces in scene after incremental add', function (done) {
+            Plotly.newPlot(gd, [
+                { x: [1, 2, 3], y: [1, 2, 3], type: 'scattergl', mode: 'lines' },
+                { x: [1, 2, 3], y: [3, 2, 1], type: 'scattergl', mode: 'lines' }
+            ])
+                .then(function () {
+                    var scene = gd._fullLayout._plots.xy._scene;
+                    expect(scene.count).toBe(2);
+
+                    return Plotly.addTraces(gd, { x: [4, 5, 6], y: [2, 3, 4], type: 'scattergl', mode: 'lines' });
+                })
+                .then(function () {
+                    // scene must accumulate all 3 traces; if partial doCalcdata were used
+                    // sceneUpdate would reset count to 0 and only the new trace would be added
+                    var scene = gd._fullLayout._plots.xy._scene;
+                    expect(scene.count).toBe(3);
+                    expect(gd.calcdata.length).toBe(3);
+                    // first two calcdata entries must still reference their original data
+                    // (scattergl stores data in cd[0].t.x / cd[0].t.y — not cd[0].x)
+                    expect(gd.calcdata[0][0].t.x[0]).toBe(1);
+                    expect(gd.calcdata[1][0].t.y[0]).toBe(3);
+                })
+                .then(done, done.fail);
+        });
+
+        it('@gl should only recalc the new scattergl trace during incremental append', function (done) {
+            spyOn(ScatterGl, 'calc').and.callThrough();
+
+            Plotly.newPlot(gd, [
+                { x: [1, 2, 3], y: [1, 2, 3], type: 'scattergl', mode: 'lines' }
+            ])
+                .then(function () {
+                    expect(ScatterGl.calc).toHaveBeenCalledTimes(1);
+
+                    return Plotly.addTraces(gd, {
+                        x: [4, 5, 6],
+                        y: [2, 3, 4],
+                        type: 'scattergl',
+                        mode: 'lines'
+                    });
+                })
+                .then(function () {
+                    expect(ScatterGl.calc).toHaveBeenCalledTimes(2);
+                    expect(gd._fullLayout._plots.xy._scene.count).toBe(2);
+                })
+                .then(done, done.fail);
+        });
+
+        it('@gl should bootstrap scattergl framework when first trace is appended to an empty chart', function (done) {
+            Plotly.newPlot(gd, [], {
+                xaxis: { rangeslider: { visible: true } }
+            })
+                .then(function () {
+                    expect(gd._fullLayout._glcanvas).toBeUndefined();
+
+                    return Plotly.addTraces(gd, {
+                        x: [1, 2, 3],
+                        y: [3, 1, 2],
+                        type: 'scattergl',
+                        mode: 'lines'
+                    });
+                })
+                .then(function () {
+                    var scene = gd._fullLayout._plots.xy._scene;
+
+                    expect(gd._fullLayout._glcanvas).toBeDefined();
+                    expect(scene).toBeDefined();
+                    expect(scene.count).toBe(1);
+                    expect(gd.calcdata.length).toBe(1);
+                    expect(gd._fullLayout.xaxis.rangeslider.visible).toBe(true);
+                })
+                .then(done, done.fail);
+        });
+
+        it('@gl should keep scattergl scene count aligned across repeated appends with rangeslider', function (done) {
+            var traceCount = 6;
+            var promises = [];
+
+            function makeTrace(i) {
+                return {
+                    x: [0, 1, 2, 3],
+                    y: [i, i + 1, i + 0.5, i + 2],
+                    type: 'scattergl',
+                    mode: 'lines'
+                };
+            }
+
+            Plotly.newPlot(gd, [], {
+                xaxis: { rangeslider: { visible: true } }
+            })
+                .then(function () {
+                    var p = Promise.resolve();
+
+                    for (var i = 0; i < traceCount; i++) {
+                        (function (index) {
+                            p = p.then(function () {
+                                return Plotly.addTraces(gd, makeTrace(index));
+                            });
+                        })(i);
+                    }
+
+                    return p;
+                })
+                .then(function () {
+                    var scene = gd._fullLayout._plots.xy._scene;
+
+                    expect(scene).toBeDefined();
+                    expect(scene.count).toBe(traceCount);
+                    expect(scene.dirty).toBe(false);
+                    expect(scene.lineOptions.length).toBe(traceCount);
+                    expect(gd.calcdata.length).toBe(traceCount);
+                    expect(gd._fullLayout.xaxis.rangeslider.visible).toBe(true);
+                })
+                .then(done, done.fail);
+        });
+
+        it('@gl should render scattergl traces inside the rangeslider navigator', function (done) {
+            Plotly.newPlot(gd, [], {
+                xaxis: { rangeslider: { visible: true } }
+            })
+                .then(function () {
+                    return Plotly.addTraces(gd, [
+                        { x: [0, 1, 2, 3], y: [0, 2, 1, 3], type: 'scattergl', mode: 'lines' },
+                        { x: [0, 1, 2, 3], y: [3, 1, 2, 0], type: 'scattergl', mode: 'lines' }
+                    ]);
+                })
+                .then(function () {
+                    var rangeScene = gd._fullLayout._rangePlotScenes.xy;
+                    var navigatorCanvas = gd.querySelector('.rangeslider-gl-canvas');
+
+                    expect(navigatorCanvas).toBeTruthy();
+                    expect(rangeScene).toBeDefined();
+                    expect(rangeScene.count).toBe(2);
+                    expect(rangeScene.dirty).toBe(false);
+                })
+                .then(done, done.fail);
+        });
+
+        it('@gl should keep rangeslider scattergl incremental append when autorange expands', function (done) {
+            Plotly.newPlot(gd, [
+                { x: [0, 1, 2, 3], y: [0, 1, 0.5, 1.5], type: 'scattergl', mode: 'lines', line: { shape: 'cardinal' } }
+            ], {
+                xaxis: { rangeslider: { visible: true } }
+            })
+                .then(function () {
+                    spyOn(Cartesian, 'rangePlot').and.callThrough();
+
+                    return Plotly.addTraces(gd, {
+                        x: [0, 1, 2, 3],
+                        y: [10, 11, 12, 13],
+                        type: 'scattergl',
+                        mode: 'lines',
+                        line: { shape: 'cardinal' }
+                    });
+                })
+                .then(function () {
+                    var rangePlotArgs = Cartesian.rangePlot.calls.mostRecent().args[3];
+
+                    expect(rangePlotArgs).toBeDefined();
+                    expect(rangePlotArgs.partialUpdate).toBe(true);
+                    expect(rangePlotArgs.newTraceIndices).toEqual([1]);
+                    expect(gd._fullLayout._rangePlotScenes.xy.count).toBe(2);
+                })
+                .then(done, done.fail);
+        });
+
+        var incrementalCurveModes = [
+            'linear',
+            'hv',
+            'spline',
+            'cardinal',
+            'catmull-rom',
+            'monotone',
+            'natural'
+        ];
+
+        function makeIncrementalLayout(withRangeSlider) {
+            return {
+                xaxis: {
+                    range: [0, 3],
+                    autorange: false,
+                    rangeslider: { visible: withRangeSlider }
+                },
+                yaxis: {
+                    range: [-1, 4],
+                    autorange: false
+                }
+            };
+        }
+
+        function makeIncrementalTrace(type, shape, offset) {
+            var trace = {
+                x: [0, 1, 2, 3],
+                y: [offset, offset + 1, offset + 0.5, offset + 1.5],
+                type: type,
+                mode: 'lines',
+                line: {
+                    shape: shape
+                }
+            };
+
+            if (shape === 'spline') {
+                trace.line.smoothing = 1.1;
+            }
+
+            return trace;
+        }
+
+        ['scatter', 'scattergl'].forEach(function (traceType) {
+            [false, true].forEach(function (withRangeSlider) {
+                incrementalCurveModes.forEach(function (shape) {
+                    var testName = [
+                        'should keep incremental add path stable for',
+                        traceType,
+                        'shape=' + shape,
+                        withRangeSlider ? 'with rangeslider' : 'without rangeslider'
+                    ].join(' ');
+
+                    it(testName, function (done) {
+                        var baseTrace = makeIncrementalTrace(traceType, shape, 0);
+                        var newTrace = makeIncrementalTrace(traceType, shape, 1);
+
+                        Plotly.newPlot(gd, [baseTrace], makeIncrementalLayout(withRangeSlider))
+                            .then(function () {
+                                if (traceType === 'scatter') {
+                                    spyOn(subroutines, 'drawData').and.callThrough();
+                                } else {
+                                    spyOn(ScatterGl, 'calc').and.callThrough();
+                                }
+
+                                if (withRangeSlider) {
+                                    spyOn(Cartesian, 'rangePlot').and.callThrough();
+                                }
+
+                                return Plotly.addTraces(gd, newTrace);
+                            })
+                            .then(function () {
+                                if (traceType === 'scatter') {
+                                    expect(subroutines.drawData).not.toHaveBeenCalled();
+                                    if (!withRangeSlider) {
+                                        expect(gd.querySelectorAll('.scatterlayer .trace').length).toBe(2);
+                                    }
+                                } else {
+                                    expect(ScatterGl.calc).toHaveBeenCalledTimes(1);
+                                    expect(gd._fullLayout._plots.xy._scene.count).toBe(2);
+                                }
+
+                                if (withRangeSlider) {
+                                    var rangePlotArgs = Cartesian.rangePlot.calls.mostRecent().args[3];
+                                    expect(rangePlotArgs).toBeDefined();
+                                    expect(rangePlotArgs.partialUpdate).toBe(true);
+                                    expect(rangePlotArgs.newTraceIndices).toEqual([1]);
+
+                                    if (traceType === 'scatter') {
+                                        expect(Cartesian.rangePlot.calls.count()).toBeGreaterThan(0);
+                                    } else {
+                                        expect(gd._fullLayout._rangePlotScenes.xy.count).toBe(2);
+                                    }
+                                }
+                            })
+                            .then(done, done.fail);
+                    });
+                });
+            });
+        });
+
+        it('@bench benchmarks 60 incremental scatter appends with rangeslider and renders every series', function (done) {
+            var traceCount = 60;
+            var pointCount = 2500;
+            var addDurations = [];
+            var metrics = {
+                calcMs: 0,
+                calcCalls: 0,
+                scatterMs: 0,
+                scatterCalls: 0,
+                rangePlotMs: 0,
+                rangePlotCalls: 0
+            };
+
+            function makeTrace(seed) {
+                var x = new Array(pointCount);
+                var y = new Array(pointCount);
+                var state = seed + 1;
+
+                for (var i = 0; i < pointCount; i++) {
+                    state = (1664525 * state + 1013904223) >>> 0;
+                    x[i] = i;
+                    y[i] = (state / 4294967296) * 100;
+                }
+
+                return {
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: x,
+                    y: y,
+                    name: 'trace-' + seed
+                };
+            }
+
+            function mainTraceCount() {
+                return gd._fullLayout._plots.xy.plot.node().querySelectorAll('.scatterlayer .trace').length;
+            }
+
+            function navigatorTraceCount() {
+                return gd.querySelectorAll('.rangeslider-rangeplot .scatterlayer .trace').length;
+            }
+
+            Plotly.newPlot(gd, [], {
+                xaxis: {
+                    rangeslider: { visible: true }
+                }
+            })
+                .then(function () {
+                    var originalDoCalcdata = Plots.doCalcdata;
+                    var originalScatterPlot = Scatter.plot;
+                    var originalRangePlot = Cartesian.rangePlot;
+
+                    spyOn(Plots, 'doCalcdata').and.callFake(function () {
+                        var t0 = performance.now();
+                        var out = originalDoCalcdata.apply(this, arguments);
+                        metrics.calcMs += performance.now() - t0;
+                        metrics.calcCalls++;
+                        return out;
+                    });
+
+                    spyOn(Scatter, 'plot').and.callFake(function () {
+                        var t0 = performance.now();
+                        var out = originalScatterPlot.apply(this, arguments);
+                        metrics.scatterMs += performance.now() - t0;
+                        metrics.scatterCalls++;
+                        return out;
+                    });
+
+                    spyOn(Cartesian, 'rangePlot').and.callFake(function () {
+                        var t0 = performance.now();
+                        var out = originalRangePlot.apply(this, arguments);
+                        metrics.rangePlotMs += performance.now() - t0;
+                        metrics.rangePlotCalls++;
+                        return out;
+                    });
+
+                    var chain = Promise.resolve();
+
+                    for (var i = 0; i < traceCount; i++) {
+                        (function (traceIndex) {
+                            chain = chain.then(function () {
+                                var t0 = performance.now();
+
+                                return Plotly.addTraces(gd, makeTrace(traceIndex)).then(function () {
+                                    addDurations.push(performance.now() - t0);
+                                    expect(gd.calcdata.length).toBe(traceIndex + 1);
+                                    expect(mainTraceCount()).toBe(traceIndex + 1);
+                                    expect(navigatorTraceCount()).toBe(traceIndex + 1);
+                                });
+                            });
+                        })(i);
+                    }
+
+                    return chain;
+                })
+                .then(function () {
+                    var first10 = addDurations.slice(0, 10);
+                    var last10 = addDurations.slice(-10);
+                    var sum = function (values) {
+                        var total = 0;
+                        for (var i = 0; i < values.length; i++) total += values[i];
+                        return total;
+                    };
+
+                    console.log('addTraces benchmark (60x2500 scatter + rangeslider) total ms:', sum(addDurations).toFixed(2));
+                    console.log('addTraces benchmark first10 avg ms:', (sum(first10) / first10.length).toFixed(2));
+                    console.log('addTraces benchmark last10 avg ms:', (sum(last10) / last10.length).toFixed(2));
+                    console.log('addTraces benchmark doCalcdata ms/calls:', metrics.calcMs.toFixed(2), metrics.calcCalls);
+                    console.log('addTraces benchmark Scatter.plot ms/calls:', metrics.scatterMs.toFixed(2), metrics.scatterCalls);
+                    console.log('addTraces benchmark Cartesian.rangePlot ms/calls:', metrics.rangePlotMs.toFixed(2), metrics.rangePlotCalls);
+
+                    expect(metrics.calcCalls).toBe(traceCount);
+                    expect(metrics.rangePlotCalls).toBe(traceCount);
+                })
+                .then(done, done.fail);
+        });
+
+        it('@bench benchmarks 60 incremental scattergl appends with rangeslider and preserves flat upload cost', function (done) {
+            var traceCount = 60;
+            var pointCount = 2500;
+            var addDurations = [];
+            var metrics = {
+                calcMs: 0,
+                calcCalls: 0,
+                scatterGlMs: 0,
+                scatterGlCalls: 0,
+                rangePlotMs: 0,
+                rangePlotCalls: 0
+            };
+
+            function makeTrace(seed) {
+                var x = new Array(pointCount);
+                var y = new Array(pointCount);
+                var state = seed + 1;
+
+                for (var i = 0; i < pointCount; i++) {
+                    state = (1664525 * state + 1013904223) >>> 0;
+                    x[i] = i;
+                    y[i] = (state / 4294967296) * 100;
+                }
+
+                return {
+                    type: 'scattergl',
+                    mode: 'lines',
+                    x: x,
+                    y: y,
+                    name: 'trace-' + seed
+                };
+            }
+
+            function mainTraceCount() {
+                return gd._fullLayout._plots.xy._scene.count;
+            }
+
+            function navigatorTraceCount() {
+                return gd._fullLayout._rangePlotScenes.xy.count;
+            }
+
+            Plotly.newPlot(gd, [], {
+                xaxis: {
+                    rangeslider: { visible: true }
+                }
+            })
+                .then(function () {
+                    var originalDoCalcdata = Plots.doCalcdata;
+                    var originalScatterGlPlot = ScatterGl.plot;
+                    var originalRangePlot = Cartesian.rangePlot;
+
+                    spyOn(Plots, 'doCalcdata').and.callFake(function () {
+                        var t0 = performance.now();
+                        var out = originalDoCalcdata.apply(this, arguments);
+                        metrics.calcMs += performance.now() - t0;
+                        metrics.calcCalls++;
+                        return out;
+                    });
+
+                    spyOn(ScatterGl, 'plot').and.callFake(function () {
+                        var t0 = performance.now();
+                        var out = originalScatterGlPlot.apply(this, arguments);
+                        metrics.scatterGlMs += performance.now() - t0;
+                        metrics.scatterGlCalls++;
+                        return out;
+                    });
+
+                    spyOn(Cartesian, 'rangePlot').and.callFake(function () {
+                        var t0 = performance.now();
+                        var out = originalRangePlot.apply(this, arguments);
+                        metrics.rangePlotMs += performance.now() - t0;
+                        metrics.rangePlotCalls++;
+                        return out;
+                    });
+
+                    var chain = Promise.resolve();
+
+                    for (var i = 0; i < traceCount; i++) {
+                        (function (traceIndex) {
+                            chain = chain.then(function () {
+                                var t0 = performance.now();
+
+                                return Plotly.addTraces(gd, makeTrace(traceIndex)).then(function () {
+                                    addDurations.push(performance.now() - t0);
+                                    expect(gd.calcdata.length).toBe(traceIndex + 1);
+                                    expect(mainTraceCount()).toBe(traceIndex + 1);
+                                    expect(navigatorTraceCount()).toBe(traceIndex + 1);
+                                });
+                            });
+                        })(i);
+                    }
+
+                    return chain;
+                })
+                .then(function () {
+                    var first10 = addDurations.slice(0, 10);
+                    var last10 = addDurations.slice(-10);
+                    var sum = function (values) {
+                        var total = 0;
+                        for (var i = 0; i < values.length; i++) total += values[i];
+                        return total;
+                    };
+
+                    console.log('addTraces benchmark (60x2500 scattergl + rangeslider) total ms:', sum(addDurations).toFixed(2));
+                    console.log('addTraces benchmark first10 avg ms:', (sum(first10) / first10.length).toFixed(2));
+                    console.log('addTraces benchmark last10 avg ms:', (sum(last10) / last10.length).toFixed(2));
+                    console.log('addTraces benchmark doCalcdata ms/calls:', metrics.calcMs.toFixed(2), metrics.calcCalls);
+                    console.log('addTraces benchmark ScatterGl.plot ms/calls:', metrics.scatterGlMs.toFixed(2), metrics.scatterGlCalls);
+                    console.log('addTraces benchmark Cartesian.rangePlot ms/calls:', metrics.rangePlotMs.toFixed(2), metrics.rangePlotCalls);
+
+                    expect(metrics.calcCalls).toBe(traceCount);
+                    expect(metrics.rangePlotCalls).toBe(traceCount);
+                })
+                .then(done, done.fail);
+        });
+    });
+
+    describe('Plotly.addTraces category axis autorange', function () {
+        var gd;
+
+        beforeEach(function () { gd = createGraphDiv(); });
+        afterEach(destroyGraphDiv);
+
+        it('should expand category axis range when new categories are added', function (done) {
+            var rangeAfterFirst;
+
+            Plotly.newPlot(gd, [
+                { x: ['a', 'b'], y: [1, 2], type: 'scatter' }
+            ])
+                .then(function () {
+                    rangeAfterFirst = gd._fullLayout.xaxis.range.slice();
+                    // 2 categories — axis range should be finite
+                    expect(gd._fullLayout.xaxis.range.length).toBe(2);
+                    expect(gd._fullLayout.xaxis._categories.length).toBe(2);
+
+                    return Plotly.addTraces(gd, { x: ['c', 'd'], y: [3, 4], type: 'scatter' });
+                })
+                .then(function () {
+                    // adding 2 new categories must grow the axis
+                    expect(gd._fullLayout.xaxis._categories.length).toBe(4);
+                    expect(gd._fullLayout.xaxis.range[1]).toBeGreaterThan(rangeAfterFirst[1]);
+                })
+                .then(done, done.fail);
+        });
+    });
+
     describe('Plotly.moveTraces should', function () {
         var gd;
         beforeEach(function () {
@@ -2027,7 +2611,7 @@ describe('Test plot api', function () {
             }).toThrow(
                 new Error(
                     'when maxPoints is set as a key:value object it must contain a 1:1 ' +
-                        'correspondence with the keys and number of traces in the update object'
+                    'correspondence with the keys and number of traces in the update object'
                 )
             );
 
@@ -2036,7 +2620,7 @@ describe('Test plot api', function () {
             }).toThrow(
                 new Error(
                     'when maxPoints is set as a key:value object it must contain a 1:1 ' +
-                        'correspondence with the keys and number of traces in the update object'
+                    'correspondence with the keys and number of traces in the update object'
                 )
             );
         });

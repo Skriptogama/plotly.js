@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plotly Big Data Progressive Add Demo</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f3f6f8;
+            --panel: #ffffff;
+            --panel-alt: #eef4f8;
+            --text: #16313f;
+            --muted: #607887;
+            --accent: #006d77;
+            --accent-2: #e29578;
+            --border: #d4e2ea;
+            --shadow: 0 18px 40px rgba(7, 34, 48, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Georgia, "Palatino Linotype", serif;
+            background:
+                radial-gradient(circle at top left, rgba(0, 109, 119, 0.12), transparent 28%),
+                radial-gradient(circle at top right, rgba(226, 149, 120, 0.12), transparent 22%),
+                linear-gradient(180deg, #f8fbfc 0%, var(--bg) 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .page {
+            width: min(1400px, calc(100vw - 32px));
+            margin: 24px auto;
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.7fr);
+            gap: 20px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .hero {
+            padding: 24px 24px 8px;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: clamp(1.8rem, 3vw, 3rem);
+            line-height: 1.02;
+            letter-spacing: -0.03em;
+        }
+
+        .lede {
+            margin: 0;
+            color: var(--muted);
+            max-width: 70ch;
+            line-height: 1.55;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 12px;
+            padding: 20px 24px 24px;
+        }
+
+        .control {
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 12px;
+        }
+
+        .control label,
+        .metric-label {
+            display: block;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .control input,
+        .control select {
+            width: 100%;
+            border: 1px solid #bfd0d9;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font: inherit;
+            color: var(--text);
+            background: #fff;
+        }
+
+        .control-help {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .toggle-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .toggle-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            color: var(--text);
+            text-transform: none;
+            letter-spacing: 0;
+            margin: 0;
+        }
+
+        .toggle-option input {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+        }
+
+        .actions {
+            padding: 0 24px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+
+        button {
+            appearance: none;
+            border: 0;
+            border-radius: 999px;
+            padding: 12px 18px;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        .primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .secondary {
+            background: #d9e7ee;
+            color: var(--text);
+        }
+
+        .danger {
+            background: var(--accent-2);
+            color: #fff;
+        }
+
+        .status {
+            margin-left: auto;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        #chart {
+            width: 100%;
+            height: 720px;
+        }
+
+        .sidebar {
+            display: grid;
+            gap: 20px;
+        }
+
+        .stats {
+            padding: 22px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .metric {
+            background: var(--panel-alt);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .metric-note {
+            margin-top: 6px;
+            font-size: 0.88rem;
+            color: var(--muted);
+        }
+
+        .console-panel {
+            padding: 22px;
+        }
+
+        #log {
+            height: 620px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #0f1d25;
+            color: #d7f5ff;
+            border-radius: 16px;
+            padding: 14px;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .hint {
+            padding: 0 24px 24px;
+            color: var(--muted);
+            font-size: 0.93rem;
+        }
+
+        @media (max-width: 1100px) {
+            .page {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            #chart {
+                height: 580px;
+            }
+
+            #log {
+                height: 340px;
+            }
+        }
+
+        @media (max-width: 700px) {
+
+            .controls,
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .actions {
+                align-items: stretch;
+            }
+
+            .status {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <section class="panel">
+            <div class="hero">
+                <h1>Progressive 60-Series Plotly Repro</h1>
+                <p class="lede">
+                    This page appends 60 series with 2500 points each using <strong>Plotly.addTraces</strong>.
+                    It can switch between SVG scatter and WebGL <strong>scattergl</strong>, with or without
+                    a range slider,
+                    then logs how long each append takes and summarizes how append time changes as the chart grows.
+                </p>
+            </div>
+
+            <div class="controls">
+                <div class="control">
+                    <label for="modeSelect">Mode</label>
+                    <select id="modeSelect">
+                        <option value="scatter">Scatter</option>
+                        <option value="scatter-range">Scatter with RangeSlider</option>
+                        <option value="scattergl">ScatterGL</option>
+                        <option value="scattergl-range">ScatterGL with RangeSlider</option>
+                    </select>
+                </div>
+                <div class="control">
+                    <label for="curveModeSelect">Curve Mode</label>
+                    <select id="curveModeSelect">
+                        <option value="linear">linear</option>
+                        <option value="cardinal">cardinal</option>
+                        <option value="catmull-rom">catmull-rom</option>
+                        <option value="monotone">monotone</option>
+                        <option value="natural">natural</option>
+                        <option value="step">step</option>
+                    </select>
+                </div>
+                <div class="control">
+                    <label for="seriesCount">Series Count</label>
+                    <input id="seriesCount" type="number" min="1" max="500" value="60">
+                </div>
+                <div class="control">
+                    <label for="pointCount">Points Per Series</label>
+                    <input id="pointCount" type="number" min="10" max="50000" value="2500">
+                </div>
+                <div class="control">
+                    <label for="pauseMs">Pause Between Adds (ms)</label>
+                    <input id="pauseMs" type="number" min="0" max="5000" value="0">
+                </div>
+                <div class="control">
+                    <label for="lineWidth">Line Width</label>
+                    <input id="lineWidth" type="number" min="1" max="8" value="1">
+                </div>
+                <div class="control">
+                    <label>Render Options</label>
+                    <div class="toggle-list">
+                        <label class="toggle-option" for="showMarkers">
+                            <input id="showMarkers" type="checkbox">
+                            <span>Markers</span>
+                        </label>
+                        <label class="toggle-option" for="showLabels">
+                            <input id="showLabels" type="checkbox">
+                            <span>Labels</span>
+                        </label>
+                        <label class="toggle-option" for="showErrorBars">
+                            <input id="showErrorBars" type="checkbox">
+                            <span>Error bars</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="startBtn" class="primary">Start Progressive Add</button>
+                <button id="resetBtn" class="secondary">Reset Chart</button>
+                <button id="stopBtn" class="danger">Stop</button>
+                <span id="status" class="status">Idle</span>
+            </div>
+
+            <div class="hint">
+                Open devtools to compare browser timing with the in-page log. This sample uses the local GL-capable
+                bundle at <code>dist/plotly-gl2d.js</code>.
+            </div>
+
+            <div id="chart"></div>
+        </section>
+
+        <aside class="sidebar">
+            <section class="panel stats">
+                <div class="stats-grid">
+                    <div class="metric">
+                        <span class="metric-label">Added Series</span>
+                        <div id="addedSeries" class="metric-value">0</div>
+                        <div class="metric-note">Successfully appended traces</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Main Plot Traces</span>
+                        <div id="plotTraceCount" class="metric-value">0</div>
+                        <div id="plotTraceNote" class="metric-note">DOM traces in plot area</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Navigator Traces</span>
+                        <div id="navTraceCount" class="metric-value">0</div>
+                        <div id="navTraceNote" class="metric-note">DOM traces in range slider</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Last Add</span>
+                        <div id="lastAddMs" class="metric-value">0 ms</div>
+                        <div class="metric-note">Plotly.addTraces duration</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">First 10 Avg</span>
+                        <div id="firstAvgMs" class="metric-value">0 ms</div>
+                        <div class="metric-note">Average of earliest adds</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Last 10 Avg</span>
+                        <div id="lastAvgMs" class="metric-value">0 ms</div>
+                        <div class="metric-note">Average of latest adds</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel console-panel">
+                <div class="metric-label">Log</div>
+                <div id="log"></div>
+            </section>
+        </aside>
+    </div>
+
+    <script src="../../dist/plotly-gl2d.js"></script>
+    <script>
+        (function () {
+            var chart = document.getElementById('chart');
+            var logEl = document.getElementById('log');
+            var statusEl = document.getElementById('status');
+            var startBtn = document.getElementById('startBtn');
+            var resetBtn = document.getElementById('resetBtn');
+            var stopBtn = document.getElementById('stopBtn');
+
+            var addedSeriesEl = document.getElementById('addedSeries');
+            var plotTraceCountEl = document.getElementById('plotTraceCount');
+            var navTraceCountEl = document.getElementById('navTraceCount');
+            var plotTraceNoteEl = document.getElementById('plotTraceNote');
+            var navTraceNoteEl = document.getElementById('navTraceNote');
+            var lastAddMsEl = document.getElementById('lastAddMs');
+            var firstAvgMsEl = document.getElementById('firstAvgMs');
+            var lastAvgMsEl = document.getElementById('lastAvgMs');
+
+            var modeSelect = document.getElementById('modeSelect');
+            var curveModeSelect = document.getElementById('curveModeSelect');
+            var seriesCountInput = document.getElementById('seriesCount');
+            var pointCountInput = document.getElementById('pointCount');
+            var pauseMsInput = document.getElementById('pauseMs');
+            var lineWidthInput = document.getElementById('lineWidth');
+            var showMarkersInput = document.getElementById('showMarkers');
+            var showLabelsInput = document.getElementById('showLabels');
+            var showErrorBarsInput = document.getElementById('showErrorBars');
+
+            var stopRequested = false;
+            var addDurations = [];
+
+            function log(message) {
+                var time = new Date().toLocaleTimeString();
+                var line = '[' + time + '] ' + message;
+                console.log(line);
+                logEl.textContent += line + '\n';
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+
+            function setStatus(message) {
+                statusEl.textContent = message;
+            }
+
+            function wait(ms) {
+                return new Promise(function (resolve) {
+                    setTimeout(resolve, ms);
+                });
+            }
+
+            function nextFrame() {
+                return new Promise(function (resolve) {
+                    requestAnimationFrame(function () {
+                        requestAnimationFrame(resolve);
+                    });
+                });
+            }
+
+            function syncCurveModeControl() {
+                var options = curveModeSelect.querySelectorAll('option');
+
+                for (var i = 0; i < options.length; i++) {
+                    options[i].disabled = false;
+                }
+            }
+
+            function getRequestedCurveMode() {
+                return curveModeSelect.value;
+            }
+
+            function resolveCurveShape(modeConfig) {
+                var requested = getRequestedCurveMode();
+
+                if (requested === 'step') {
+                    return {
+                        requested: requested,
+                        shape: 'hv',
+                        label: 'step (hv)'
+                    };
+                }
+
+                return {
+                    requested: requested,
+                    shape: requested,
+                    label: requested
+                };
+            }
+
+            function getModeConfig() {
+                var mode = modeSelect.value;
+                var isScatterGlMode = mode === 'scattergl' || mode === 'scattergl-range';
+                var curve = resolveCurveShape({ traceType: isScatterGlMode ? 'scattergl' : 'scatter' });
+
+                if (mode === 'scattergl-range') {
+                    return {
+                        mode: mode,
+                        traceType: 'scattergl',
+                        title: 'Progressively Added ScatterGL Series with Range Slider',
+                        showRangeSlider: true,
+                        expectsNavigatorTraces: true,
+                        navigatorCountLabel: null,
+                        curve: curve,
+                        plotTraceNote: 'Rendered traces in the WebGL scene',
+                        navTraceNote: 'Rendered traces in the rangeslider WebGL scene'
+                    };
+                }
+
+                if (mode === 'scattergl') {
+                    return {
+                        mode: mode,
+                        traceType: 'scattergl',
+                        title: 'Progressively Added ScatterGL Series',
+                        showRangeSlider: false,
+                        expectsNavigatorTraces: false,
+                        navigatorCountLabel: '0',
+                        curve: curve,
+                        plotTraceNote: 'Rendered traces in the WebGL scene',
+                        navTraceNote: 'Range slider disabled in this mode'
+                    };
+                }
+
+                if (mode === 'scatter') {
+                    return {
+                        mode: mode,
+                        traceType: 'scatter',
+                        title: 'Progressively Added SVG Scatter Series',
+                        showRangeSlider: false,
+                        expectsNavigatorTraces: false,
+                        navigatorCountLabel: '0',
+                        curve: curve,
+                        plotTraceNote: 'DOM traces in plot area',
+                        navTraceNote: 'Range slider disabled in this mode'
+                    };
+                }
+
+                return {
+                    mode: 'scatter-range',
+                    traceType: 'scatter',
+                    title: 'Progressively Added Series with Range Slider',
+                    showRangeSlider: true,
+                    expectsNavigatorTraces: true,
+                    navigatorCountLabel: null,
+                    curve: curve,
+                    plotTraceNote: 'DOM traces in plot area',
+                    navTraceNote: 'DOM traces in range slider'
+                };
+            }
+
+            function getRenderOptions() {
+                return {
+                    showMarkers: showMarkersInput.checked,
+                    showLabels: showLabelsInput.checked,
+                    showErrorBars: showErrorBarsInput.checked
+                };
+            }
+
+            function getSeriesColor(index) {
+                var hue = (index * 47) % 360;
+                return {
+                    line: 'hsla(' + hue + ', 68%, 38%, 0.88)',
+                    marker: 'hsla(' + hue + ', 76%, 40%, 0.82)',
+                    error: 'hsla(' + hue + ', 78%, 34%, 0.92)'
+                };
+            }
+
+            function makeTrace(index, pointCount, lineWidth, modeConfig, renderOptions) {
+                var x = new Array(pointCount);
+                var y = new Array(pointCount);
+                var text = renderOptions.showLabels ? new Array(pointCount) : null;
+                var errorY = renderOptions.showErrorBars ? new Array(pointCount) : null;
+                var seriesColor = getSeriesColor(index);
+                var isScatterGl = modeConfig.traceType === 'scattergl';
+                var state = index + 1;
+                var drift = (index % 7) * 4;
+                var wobble = 8 + (index % 5);
+
+                for (var i = 0; i < pointCount; i++) {
+                    state = (1664525 * state + 1013904223) >>> 0;
+                    var noise = (state / 4294967296) - 0.5;
+                    x[i] = i;
+                    y[i] = Math.sin(i / 45 + index * 0.17) * wobble + drift + noise * 10;
+
+                    if (text) {
+                        text[i] = y[i].toFixed(1);
+                    }
+
+                    if (errorY) {
+                        errorY[i] = 0.6 + (i % 5) * 0.15;
+                    }
+                }
+
+                var traceModeParts = ['lines'];
+                if (renderOptions.showMarkers) {
+                    traceModeParts.push('markers');
+                }
+                if (renderOptions.showLabels) {
+                    traceModeParts.push('text');
+                }
+
+                var traceMode = traceModeParts.join('+');
+                var trace = {
+                    type: modeConfig.traceType,
+                    mode: traceMode,
+                    name: 'sample' + (index + 1),
+                    x: x,
+                    y: y,
+                    line: {
+                        width: lineWidth,
+                        shape: modeConfig.curve.shape,
+                        color: seriesColor.line
+                    },
+                    hovertemplate: 'sample' + (index + 1) + '<br>x=%{x}<br>y=%{y:.3f}<extra></extra>'
+                };
+
+                if (renderOptions.showMarkers) {
+                    trace.marker = {
+                        size: modeConfig.traceType === 'scattergl' ? 4 : 5,
+                        color: seriesColor.marker
+                    };
+                }
+
+                if (renderOptions.showLabels) {
+                    trace.text = text;
+                    trace.textposition = 'top center';
+                    trace.textfont = {
+                        size: 9,
+                        color: '#16313f'
+                    };
+                }
+
+                if (renderOptions.showErrorBars) {
+                    trace.error_y = {
+                        type: 'data',
+                        array: errorY,
+                        visible: true,
+                        thickness: isScatterGl ? 2 : 1,
+                        width: isScatterGl ? 6 : 2,
+                        color: seriesColor.error
+                    };
+                }
+
+                return trace;
+            }
+
+            function getMainTraceCount(modeConfig) {
+                if (modeConfig.traceType === 'scattergl') {
+                    var subplot = chart._fullLayout && chart._fullLayout._plots && chart._fullLayout._plots.xy;
+                    var scene = subplot && subplot._scene;
+                    return scene && typeof scene.count === 'number' ? scene.count : 0;
+                }
+
+                var subplot = chart.querySelector('.xy .scatterlayer');
+                return subplot ? subplot.querySelectorAll('.trace').length : 0;
+            }
+
+            function getNavigatorTraceCount(modeConfig) {
+                if (!modeConfig.showRangeSlider) {
+                    return 0;
+                }
+
+                if (modeConfig.traceType === 'scattergl') {
+                    var rangeScenes = chart._fullLayout && chart._fullLayout._rangePlotScenes;
+                    var rangeScene = rangeScenes && rangeScenes.xy;
+                    return rangeScene && typeof rangeScene.count === 'number' ? rangeScene.count : 0;
+                }
+
+                return chart.querySelectorAll('.rangeslider-rangeplot .scatterlayer .trace').length;
+            }
+
+            function average(values) {
+                if (!values.length) return 0;
+                var total = 0;
+                for (var i = 0; i < values.length; i++) total += values[i];
+                return total / values.length;
+            }
+
+            function updateSummary(modeConfig) {
+                var first10 = addDurations.slice(0, 10);
+                var last10 = addDurations.slice(-10);
+                addedSeriesEl.textContent = String(addDurations.length);
+                plotTraceCountEl.textContent = String(getMainTraceCount(modeConfig));
+                navTraceCountEl.textContent = modeConfig.navigatorCountLabel !== null ?
+                    modeConfig.navigatorCountLabel :
+                    String(getNavigatorTraceCount(modeConfig));
+                plotTraceNoteEl.textContent = modeConfig.plotTraceNote;
+                navTraceNoteEl.textContent = modeConfig.navTraceNote;
+                lastAddMsEl.textContent = addDurations.length ? addDurations[addDurations.length - 1].toFixed(2) + ' ms' : '0 ms';
+                firstAvgMsEl.textContent = first10.length ? average(first10).toFixed(2) + ' ms' : '0 ms';
+                lastAvgMsEl.textContent = last10.length ? average(last10).toFixed(2) + ' ms' : '0 ms';
+            }
+
+            function setRunningState(isRunning) {
+                startBtn.disabled = isRunning;
+                modeSelect.disabled = isRunning;
+                curveModeSelect.disabled = isRunning;
+                seriesCountInput.disabled = isRunning;
+                pointCountInput.disabled = isRunning;
+                pauseMsInput.disabled = isRunning;
+                lineWidthInput.disabled = isRunning;
+                showMarkersInput.disabled = isRunning;
+                showLabelsInput.disabled = isRunning;
+                showErrorBarsInput.disabled = isRunning;
+            }
+
+            function resetLogAndStats(modeConfig) {
+                addDurations = [];
+                logEl.textContent = '';
+                updateSummary(modeConfig);
+            }
+
+            function createLayout(modeConfig) {
+                return {
+                    title: {
+                        text: modeConfig.title
+                    },
+                    paper_bgcolor: '#ffffff',
+                    plot_bgcolor: '#ffffff',
+                    margin: { t: 72, r: 24, b: 56, l: 64 },
+                    showlegend: false,
+                    xaxis: {
+                        title: { text: 'Point Index' },
+                        rangeslider: { visible: modeConfig.showRangeSlider },
+                        zeroline: false
+                    },
+                    yaxis: {
+                        title: { text: 'Value' },
+                        zeroline: false
+                    }
+                };
+            }
+
+            function makeScatterGlWarmupTrace(modeConfig, pointCount) {
+                var lastPoint = Math.max((pointCount || 2) - 1, 1);
+
+                return {
+                    type: 'scattergl',
+                    mode: 'lines',
+                    name: '__warmup__',
+                    x: [0, lastPoint],
+                    y: [-20, 20],
+                    opacity: 0,
+                    hoverinfo: 'skip',
+                    showlegend: false,
+                    line: {
+                        width: 1,
+                        shape: modeConfig.curve.shape
+                    }
+                };
+            }
+
+            async function initializeChart(modeConfig, pointCount) {
+                await Plotly.newPlot(chart, [], createLayout(modeConfig), {
+                    responsive: true,
+                    displaylogo: false
+                });
+
+                if (modeConfig.traceType !== 'scattergl') {
+                    return;
+                }
+
+                setStatus('Prewarming WebGL...');
+                await Plotly.addTraces(chart, makeScatterGlWarmupTrace(modeConfig, pointCount));
+                await Plotly.deleteTraces(chart, [0]);
+                await nextFrame();
+            }
+
+            async function resetChart() {
+                var modeConfig = getModeConfig();
+                var pointCount = Number(pointCountInput.value) || 2500;
+                stopRequested = true;
+                setRunningState(false);
+                setStatus('Resetting chart...');
+                await initializeChart(modeConfig, pointCount);
+                resetLogAndStats(modeConfig);
+                setStatus('Idle');
+                log('Chart reset for mode=' + modeConfig.mode + ' curve=' + modeConfig.curve.label);
+            }
+
+            async function runProgressiveAdd() {
+                var modeConfig = getModeConfig();
+                var seriesCount = Number(seriesCountInput.value) || 60;
+                var pointCount = Number(pointCountInput.value) || 2500;
+                var pauseMs = Number(pauseMsInput.value) || 0;
+                var lineWidth = Number(lineWidthInput.value) || 1;
+                var renderOptions = getRenderOptions();
+
+                stopRequested = false;
+                resetLogAndStats(modeConfig);
+                setRunningState(true);
+                setStatus('Creating empty chart...');
+
+                await initializeChart(modeConfig, pointCount);
+
+                log('Starting progressive add: mode=' + modeConfig.mode +
+                    ' curve=' + modeConfig.curve.label +
+                    ' markers=' + renderOptions.showMarkers +
+                    ' labels=' + renderOptions.showLabels +
+                    ' errorBars=' + renderOptions.showErrorBars +
+                    ' ' + seriesCount + ' series x ' + pointCount + ' points');
+
+                var totalStart = performance.now();
+
+                for (var i = 0; i < seriesCount; i++) {
+                    if (stopRequested) {
+                        log('Stopped after ' + i + ' series');
+                        setStatus('Stopped');
+                        break;
+                    }
+
+                    var trace = makeTrace(i, pointCount, lineWidth, modeConfig, renderOptions);
+                    setStatus('Adding series ' + (i + 1) + ' / ' + seriesCount + '...');
+
+                    var t0 = performance.now();
+                    await Plotly.addTraces(chart, trace);
+                    await nextFrame();
+                    var dt = performance.now() - t0;
+
+                    addDurations.push(dt);
+                    updateSummary(modeConfig);
+
+                    var plotTraceCount = getMainTraceCount(modeConfig);
+                    var navTraceCount = getNavigatorTraceCount(modeConfig);
+                    var expectedNavTraceCount = modeConfig.expectsNavigatorTraces ? (i + 1) : 0;
+                    var mismatch = plotTraceCount !== (i + 1) || navTraceCount !== expectedNavTraceCount;
+                    var mismatchNote = mismatch ? '  MISMATCH main=' + plotTraceCount + ' nav=' + navTraceCount : '';
+
+                    log('[add] series=' + trace.name +
+                        ' type=' + modeConfig.traceType +
+                        ' curve=' + modeConfig.curve.label +
+                        ' points=' + pointCount +
+                        ' plotly=' + dt.toFixed(2) + 'ms' +
+                        ' main=' + plotTraceCount +
+                        ' nav=' + navTraceCount +
+                        mismatchNote);
+
+                    if (pauseMs > 0) {
+                        await wait(pauseMs);
+                    }
+                }
+
+                var totalMs = performance.now() - totalStart;
+                updateSummary(modeConfig);
+
+                if (!stopRequested) {
+                    setStatus('Completed in ' + totalMs.toFixed(2) + ' ms');
+                    log('[summary] total=' + totalMs.toFixed(2) + 'ms' +
+                        ' first10avg=' + average(addDurations.slice(0, 10)).toFixed(2) + 'ms' +
+                        ' last10avg=' + average(addDurations.slice(-10)).toFixed(2) + 'ms');
+                }
+
+                setRunningState(false);
+            }
+
+            startBtn.addEventListener('click', function () {
+                runProgressiveAdd().catch(function (error) {
+                    console.error(error);
+                    log('[error] ' + (error && error.stack ? error.stack : error));
+                    setStatus('Failed');
+                    setRunningState(false);
+                });
+            });
+
+            resetBtn.addEventListener('click', function () {
+                resetChart().catch(function (error) {
+                    console.error(error);
+                    log('[error] ' + (error && error.stack ? error.stack : error));
+                    setStatus('Reset failed');
+                });
+            });
+
+            stopBtn.addEventListener('click', function () {
+                stopRequested = true;
+                setStatus('Stopping after current add...');
+            });
+
+            modeSelect.addEventListener('change', function () {
+                syncCurveModeControl();
+            });
+
+            window.addEventListener('load', function () {
+                syncCurveModeControl();
+                resetChart().catch(function (error) {
+                    console.error(error);
+                    log('[error] ' + (error && error.stack ? error.stack : error));
+                    setStatus('Init failed');
+                });
+            });
+        })();
+    </script>
+</body>
+
+</html>

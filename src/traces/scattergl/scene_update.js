@@ -9,6 +9,8 @@ module.exports = function sceneUpdate(gd, subplot) {
     var resetOpts = {
         // number of traces in subplot, since scene:subplot -> 1:1
         count: 0,
+        // previous count before an incremental append starts
+        _incrementalStartCount: null,
         // whether scene requires init hook in plot call (dirty plot call)
         dirty: true,
         // last used options
@@ -22,6 +24,8 @@ module.exports = function sceneUpdate(gd, subplot) {
         textOptions: [],
         textSelectedOptions: [],
         textUnselectedOptions: [],
+        linePositionSources: [],
+        refresh: null,
         // selection batches
         selectBatch: [],
         unselectBatch: []
@@ -37,7 +41,7 @@ module.exports = function sceneUpdate(gd, subplot) {
         select2d: false
     };
 
-    if(!subplot._scene) {
+    if (!subplot._scene) {
         scene = subplot._scene = {};
 
         scene.init = function init() {
@@ -50,13 +54,13 @@ module.exports = function sceneUpdate(gd, subplot) {
         scene.update = function update(opt) {
             var opts = Lib.repeat(opt, scene.count);
 
-            if(scene.fill2d) scene.fill2d.update(opts);
-            if(scene.scatter2d) scene.scatter2d.update(opts);
-            if(scene.line2d) scene.line2d.update(opts);
-            if(scene.error2d) scene.error2d.update(opts.concat(opts));
-            if(scene.select2d) scene.select2d.update(opts);
-            if(scene.glText) {
-                for(var i = 0; i < scene.count; i++) {
+            if (scene.fill2d) scene.fill2d.update(opts);
+            if (scene.scatter2d) scene.scatter2d.update(opts);
+            if (scene.line2d) scene.line2d.update(opts);
+            if (scene.error2d) scene.error2d.update(opts.concat(opts));
+            if (scene.select2d) scene.select2d.update(opts);
+            if (scene.glText) {
+                for (var i = 0; i < scene.count; i++) {
                     scene.glText[i].update(opt);
                 }
             }
@@ -74,32 +78,36 @@ module.exports = function sceneUpdate(gd, subplot) {
             var selectBatch = scene.selectBatch;
             var unselectBatch = scene.unselectBatch;
 
-            for(var i = 0; i < count; i++) {
-                if(fill2d && scene.fillOrder[i]) {
+            if (scene.refresh) {
+                scene.refresh();
+            }
+
+            for (var i = 0; i < count; i++) {
+                if (fill2d && scene.fillOrder[i]) {
                     fill2d.draw(scene.fillOrder[i]);
                 }
-                if(line2d && scene.lineOptions[i]) {
+                if (line2d && scene.lineOptions[i]) {
                     line2d.draw(i);
                 }
-                if(error2d) {
-                    if(scene.errorXOptions[i]) error2d.draw(i);
-                    if(scene.errorYOptions[i]) error2d.draw(i + count);
+                if (error2d) {
+                    if (scene.errorXOptions[i]) error2d.draw(i);
+                    if (scene.errorYOptions[i]) error2d.draw(i + count);
                 }
-                if(scatter2d && scene.markerOptions[i]) {
-                    if(unselectBatch[i].length) {
+                if (scatter2d && scene.markerOptions[i]) {
+                    if (unselectBatch[i].length) {
                         var arg = Lib.repeat([], scene.count);
                         arg[i] = unselectBatch[i];
                         scatter2d.draw(arg);
-                    } else if(!selectBatch[i].length) {
+                    } else if (!selectBatch[i].length) {
                         scatter2d.draw(i);
                     }
                 }
-                if(glText[i] && scene.textOptions[i]) {
+                if (glText[i] && scene.textOptions[i]) {
                     glText[i].render();
                 }
             }
 
-            if(select2d) {
+            if (select2d) {
                 select2d.draw(selectBatch);
             }
 
@@ -108,14 +116,14 @@ module.exports = function sceneUpdate(gd, subplot) {
 
         // remove scene resources
         scene.destroy = function destroy() {
-            if(scene.fill2d && scene.fill2d.destroy) scene.fill2d.destroy();
-            if(scene.scatter2d && scene.scatter2d.destroy) scene.scatter2d.destroy();
-            if(scene.error2d && scene.error2d.destroy) scene.error2d.destroy();
-            if(scene.line2d && scene.line2d.destroy) scene.line2d.destroy();
-            if(scene.select2d && scene.select2d.destroy) scene.select2d.destroy();
-            if(scene.glText) {
-                scene.glText.forEach(function(text) {
-                    if(text.destroy) text.destroy();
+            if (scene.fill2d && scene.fill2d.destroy) scene.fill2d.destroy();
+            if (scene.scatter2d && scene.scatter2d.destroy) scene.scatter2d.destroy();
+            if (scene.error2d && scene.error2d.destroy) scene.error2d.destroy();
+            if (scene.line2d && scene.line2d.destroy) scene.line2d.destroy();
+            if (scene.select2d && scene.select2d.destroy) scene.select2d.destroy();
+            if (scene.glText) {
+                scene.glText.forEach(function (text) {
+                    if (text.destroy) text.destroy();
                 });
             }
 
@@ -139,8 +147,14 @@ module.exports = function sceneUpdate(gd, subplot) {
         };
     }
 
+    // In incremental scattergl append mode we preserve the existing scene
+    // arrays and append new trace options into them during calc.
+    if (!scene.dirty && (gd._scatterGlIncrementalAppend || gd._rangeSliderScatterGlIncrementalAppend)) {
+        scene._incrementalStartCount = scene.count;
+        scene.dirty = true;
+    }
     // in case if we have scene from the last calc - reset data
-    if(!scene.dirty) {
+    else if (!scene.dirty) {
         Lib.extendFlat(scene, resetOpts);
     }
 

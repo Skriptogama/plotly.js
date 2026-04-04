@@ -1020,6 +1020,198 @@ function prependTraces(gd, update, indices, maxPoints) {
  * @param {Number[]|Number} [newIndices=[gd.data.length]] Locations to add traces
  *
  */
+
+/**
+ * Snapshot the current [min, max] range of every visible axis so we can
+ * detect whether adding a new trace requires a full axis rescale.
+ */
+function _snapshotAxisRanges(gd) {
+    var snapshot = {};
+    var axList = Axes.list(gd, '', true);
+    for (var i = 0; i < axList.length; i++) {
+        var ax = axList[i];
+        snapshot[ax._id] = ax.range ? ax.range.slice() : null;
+    }
+    return snapshot;
+}
+
+/**
+ * Return true when any axis range has grown beyond its previous extent after
+ * new traces were computed.  A small floating-point epsilon is used to avoid
+ * false positives from rounding.
+ */
+function _axisRangesExpanded(gd, prevSnapshot) {
+    var axList = Axes.list(gd, '', true);
+    for (var i = 0; i < axList.length; i++) {
+        var ax = axList[i];
+        var prev = prevSnapshot[ax._id];
+        if (!prev || !ax.range) return true;
+        var span = Math.abs(ax.range[1] - ax.range[0]) || 1;
+        var eps = span * 1e-9;
+        if (ax.range[0] < prev[0] - eps || ax.range[1] > prev[1] + eps) return true;
+    }
+    return false;
+}
+
+function _canIncrementallyDrawScatter(fullLayout) {
+    var modules = fullLayout._modules || [];
+
+    return !fullLayout._has('regl') &&
+        modules.length === 1 &&
+        modules[0].name === 'scatter';
+}
+
+function _canIncrementallyCalcScatterGl(fullLayout) {
+    var modules = fullLayout._modules || [];
+
+    return fullLayout._has('regl') &&
+        modules.length === 1 &&
+        modules[0].name === 'scattergl';
+}
+
+/**
+ * Draw only the traces listed in newTraceIndices without touching axes,
+ * margins, or any other already-rendered element.
+ *
+ * Called from _addTracesIncremental to draw all traces in-place after a
+ * new trace has been added to calcdata.
+ *
+ * IMPORTANT: we must pass undefined (= all traces) to each plot module so that
+ * the D3 data-join inside each module (keyed by trace uid) treats all existing
+ * g.trace elements as "update" (no-op) and only the new trace as "enter".
+ * Passing only newTraceIndices would place every existing element in the D3
+ * "exit" selection, causing them to be removed — clearing the plot.
+ */
+function _drawNewTracesOnly(gd, newTraceIndices) {
+    var fullLayout = gd._fullLayout;
+    var basePlotModules = fullLayout._basePlotModules;
+    var replotOpts = newTraceIndices ? { partialUpdate: true } : undefined;
+
+    for (var i = 0; i < basePlotModules.length; i++) {
+        if (basePlotModules[i].plot) {
+            basePlotModules[i].plot(gd, newTraceIndices, null, null, replotOpts);
+        }
+    }
+    Plots.style(gd);
+    return Plots.previousPromises(gd) || Promise.resolve();
+}
+
+/**
+ * Incremental add-traces path.
+ *
+ * Instead of wiping calcdata and re-running the entire pipeline for all n
+ * traces on every single add (O(n²) total), this function:
+ *   1. Runs supplyDefaults to register the new traces in _fullData.
+ *   2. Snapshots current axis ranges.
+ *   3. Calls doCalcdata with just the new trace indices (now truly incremental
+ *      thanks to the fixed whitelist logic in doCalcdata).
+ *   4. Re-runs autorange to discover whether the new data changes the scale.
+ *   5a. Scale unchanged → draw all traces in-place; only the new one enters.
+ *   5b. Scale changed   → redraw axis ticks + all trace paths in-place (no clear).
+ *
+ * @param {Object} gd           Graph div (already has new traces in gd.data)
+ * @param {number[]} newIndices  Indices of the newly-appended traces
+ * @returns {Promise}
+ */
+function _addTracesIncremental(gd, newIndices) {
+    helpers.cleanData(gd.data);
+    helpers.cleanLayout(gd.layout);
+
+    var prevFullData = gd._fullData || [];
+
+    // supplyDefaults must run for all traces so that the new ones get their
+    // _fullData entries and axis assignments before we touch calcdata.
+    Plots.supplyDefaults(gd);
+
+    // When the trace count grows, supplyDefaults rebuilds _fullData and does
+    // not automatically relink private fields from the existing traces. In the
+    // incremental add path we still need the old _extremes for untouched traces
+    // so autorange can merge previous and new data correctly.
+    for (var i = 0; i < prevFullData.length; i++) {
+        if (newIndices.indexOf(i) === -1 && gd._fullData[i] && prevFullData[i]) {
+            Lib.relinkPrivateKeys(gd._fullData[i], prevFullData[i]);
+        }
+    }
+
+    var fullLayout = gd._fullLayout;
+    var canIncrementallyDrawScatter = _canIncrementallyDrawScatter(fullLayout);
+    var canIncrementallyCalcScatterGl = _canIncrementallyCalcScatterGl(fullLayout);
+
+    // Make sure the plot framework exists. For regl-backed traces, the first
+    // append on an otherwise empty chart also needs the WebGL canvas scaffold.
+    if (!fullLayout._paper || (fullLayout._has('regl') && !fullLayout._glcanvas)) {
+        return exports._doPlot(gd).then(function () {
+            gd.emit('plotly_redraw');
+            return gd;
+        });
+    }
+
+    // Snapshot ranges BEFORE we compute new extremes.
+    var prevRanges = _snapshotAxisRanges(gd);
+
+    // Pure scattergl charts can append into the existing regl scene arrays,
+    // so only the new traces need calc work. Other regl charts still fall back
+    // to a full doCalcdata until their scene accumulation path is incremental.
+    var calcIndices = canIncrementallyCalcScatterGl ? newIndices : (fullLayout._has('regl') ? undefined : newIndices);
+    if (canIncrementallyCalcScatterGl) gd._scatterGlIncrementalAppend = true;
+    try {
+        Plots.doCalcdata(gd, calcIndices);
+    } finally {
+        delete gd._scatterGlIncrementalAppend;
+    }
+
+    // Re-link trace references (the normal _doPlot does this too).
+    for (var i = 0; i < gd.calcdata.length; i++) {
+        if (gd.calcdata[i] && gd.calcdata[i][0]) {
+            gd.calcdata[i][0].trace = gd._fullData[i];
+        }
+    }
+
+    // Recompute autorange using the merged extremes (existing + new traces).
+    subroutines.doAutoRangeAndConstraints(gd);
+
+    if (_axisRangesExpanded(gd, prevRanges)) {
+        // The scale has grown — redraw axis ticks for the new range, then
+        // reposition all trace paths at the new scale.  Calcdata is intact so
+        // there is no need to run the full _doPlot pipeline (which would clear
+        // the SVG and rebuild from scratch, causing a visible blank flash).
+        var drawRangeSlider = Registry.getComponentMethod('rangeslider', 'draw');
+        var axisP = subroutines.doTicksRelayout(gd);
+        return Promise.resolve(axisP)
+            .then(function () { return subroutines.drawData(gd); })
+            .then(function () {
+                return canIncrementallyCalcScatterGl ?
+                    drawRangeSlider(gd, { newTraceIndices: newIndices, partialUpdate: true }) :
+                    drawRangeSlider(gd);
+            })
+            .then(function () {
+                gd.emit('plotly_redraw');
+                return gd;
+            });
+    }
+
+    // Scale unchanged → use a true append-only redraw for pure scatter charts.
+    // Regl-backed charts still need subroutines.drawData so their canvases are
+    // cleared and redrawReglTraces() flushes the updated scene buffers.
+    var canIncrementallyDrawRangeSlider = canIncrementallyDrawScatter || canIncrementallyCalcScatterGl;
+
+    var drawPromise = canIncrementallyDrawScatter ?
+        _drawNewTracesOnly(gd, newIndices) :
+        subroutines.drawData(gd);
+
+    return Promise.resolve(drawPromise)
+        .then(function () {
+            var drawRangeSlider = Registry.getComponentMethod('rangeslider', 'draw');
+            return canIncrementallyDrawRangeSlider ?
+                drawRangeSlider(gd, { newTraceIndices: newIndices, partialUpdate: true }) :
+                drawRangeSlider(gd);
+        })
+        .then(function () {
+            gd.emit('plotly_redraw');
+            return gd;
+        });
+}
+
 function addTraces(gd, traces, newIndices) {
     gd = Lib.getGraphDiv(gd);
 
@@ -1056,9 +1248,20 @@ function addTraces(gd, traces, newIndices) {
         currentIndices.push(-traces.length + i);
     }
 
-    // if the user didn't define newIndices, they just want the traces appended
-    // i.e., we can simply redraw and be done
+    // if the user didn't define newIndices, they just want the traces appended.
+    // Use the incremental codepath when gd is a fully-initialised plot div so
+    // we only compute and draw the new series instead of re-running everything.
     if (typeof newIndices === 'undefined') {
+        if (Lib.isPlotDiv(gd)) {
+            // Resolve the new trace indices (currentIndices are negative offsets).
+            var appendedIndices = [];
+            for (i = 0; i < traces.length; i++) {
+                appendedIndices.push(gd.data.length - traces.length + i);
+            }
+            promise = _addTracesIncremental(gd, appendedIndices);
+            Queue.add(gd, undoFunc, undoArgs, redoFunc, redoArgs);
+            return promise;
+        }
         promise = exports.redraw(gd);
         Queue.add(gd, undoFunc, undoArgs, redoFunc, redoArgs);
         return promise;
@@ -2703,63 +2906,67 @@ function react(gd, data, layout, config) {
             // fill in redraw sequence
             var seq = [];
 
-            if (frames) {
-                gd._transitionData = {};
-                Plots.createTransitionData(gd);
-                seq.push(addFrames);
-            }
+            // fill in redraw sequence
+            if (false) { /* incremental react path reserved for future use */ } else {
 
-            // Transition pathway,
-            // only used when 'transition' is set by user and
-            // when at least one animatable attribute has changed,
-            // N.B. config changed aren't animatable
-            if (newFullLayout.transition && (restyleFlags.anim || relayoutFlags.anim)) {
-                if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
-
-                Plots.doCalcdata(gd);
-                subroutines.doAutoRangeAndConstraints(gd);
-
-                seq.push(function () {
-                    return Plots.transitionFromReact(gd, restyleFlags, relayoutFlags, oldFullLayout);
-                });
-            } else if (restyleFlags.fullReplot || relayoutFlags.layoutReplot) {
-                gd._fullLayout._skipDefaults = true;
-                seq.push(exports._doPlot);
-            } else {
-                for (var componentType in relayoutFlags.arrays) {
-                    var indices = relayoutFlags.arrays[componentType];
-                    if (indices.length) {
-                        var drawOne = Registry.getComponentMethod(componentType, 'drawOne');
-                        if (drawOne !== Lib.noop) {
-                            for (var i = 0; i < indices.length; i++) {
-                                drawOne(gd, indices[i]);
-                            }
-                        } else {
-                            var draw = Registry.getComponentMethod(componentType, 'draw');
-                            if (draw === Lib.noop) {
-                                throw new Error('cannot draw components: ' + componentType);
-                            }
-                            draw(gd);
-                        }
-                    }
+                if (frames) {
+                    gd._transitionData = {};
+                    Plots.createTransitionData(gd);
+                    seq.push(addFrames);
                 }
 
-                seq.push(Plots.previousPromises);
-                if (restyleFlags.style) seq.push(subroutines.doTraceStyle);
-                if (restyleFlags.colorbars || relayoutFlags.colorbars) seq.push(subroutines.doColorBars);
-                if (relayoutFlags.legend) seq.push(subroutines.doLegend);
-                if (relayoutFlags.layoutstyle) seq.push(subroutines.layoutStyles);
-                if (relayoutFlags.axrange) addAxRangeSequence(seq);
-                if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
-                if (relayoutFlags.modebar) seq.push(subroutines.doModeBar);
-                if (relayoutFlags.camera) seq.push(subroutines.doCamera);
-                seq.push(emitAfterPlot);
-            }
+                // Transition pathway,
+                // only used when 'transition' is set by user and
+                // when at least one animatable attribute has changed,
+                // N.B. config changed aren't animatable
+                if (newFullLayout.transition && (restyleFlags.anim || relayoutFlags.anim)) {
+                    if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
 
-            seq.push(Plots.rehover, Plots.redrag, Plots.reselect);
+                    Plots.doCalcdata(gd);
+                    subroutines.doAutoRangeAndConstraints(gd);
 
-            plotDone = Lib.syncOrAsync(seq, gd);
-            if (!plotDone || !plotDone.then) plotDone = Promise.resolve(gd);
+                    seq.push(function () {
+                        return Plots.transitionFromReact(gd, restyleFlags, relayoutFlags, oldFullLayout);
+                    });
+                } else if (restyleFlags.fullReplot || relayoutFlags.layoutReplot) {
+                    gd._fullLayout._skipDefaults = true;
+                    seq.push(exports._doPlot);
+                } else {
+                    for (var componentType in relayoutFlags.arrays) {
+                        var indices = relayoutFlags.arrays[componentType];
+                        if (indices.length) {
+                            var drawOne = Registry.getComponentMethod(componentType, 'drawOne');
+                            if (drawOne !== Lib.noop) {
+                                for (var i = 0; i < indices.length; i++) {
+                                    drawOne(gd, indices[i]);
+                                }
+                            } else {
+                                var draw = Registry.getComponentMethod(componentType, 'draw');
+                                if (draw === Lib.noop) {
+                                    throw new Error('cannot draw components: ' + componentType);
+                                }
+                                draw(gd);
+                            }
+                        }
+                    }
+
+                    seq.push(Plots.previousPromises);
+                    if (restyleFlags.style) seq.push(subroutines.doTraceStyle);
+                    if (restyleFlags.colorbars || relayoutFlags.colorbars) seq.push(subroutines.doColorBars);
+                    if (relayoutFlags.legend) seq.push(subroutines.doLegend);
+                    if (relayoutFlags.layoutstyle) seq.push(subroutines.layoutStyles);
+                    if (relayoutFlags.axrange) addAxRangeSequence(seq);
+                    if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
+                    if (relayoutFlags.modebar) seq.push(subroutines.doModeBar);
+                    if (relayoutFlags.camera) seq.push(subroutines.doCamera);
+                    seq.push(emitAfterPlot);
+                }
+
+                seq.push(Plots.rehover, Plots.redrag, Plots.reselect);
+
+                plotDone = Lib.syncOrAsync(seq, gd);
+                if (!plotDone || !plotDone.then) plotDone = Promise.resolve(gd);
+            } // end else (not incremental)
         }
     }
 
@@ -2774,6 +2981,20 @@ function diffData(gd, oldFullData, newFullData, immutable, transition, newDataRe
     var sameTraceLength = oldFullData.length === newFullData.length;
 
     if (!transition && !sameTraceLength) {
+        // When traces were only appended (existing traces unchanged) we can use
+        // the incremental path instead of a full replot.  Signal this by
+        // attaching the indices of the new traces to the flags object.
+        if (!sameTraceLength && newFullData.length > oldFullData.length) {
+            var newIndices = [];
+            for (var n = oldFullData.length; n < newFullData.length; n++) {
+                newIndices.push(n);
+            }
+            return {
+                fullReplot: false,
+                calc: false,
+                _newTraceIndices: newIndices
+            };
+        }
         return {
             fullReplot: true,
             calc: true

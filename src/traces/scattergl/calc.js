@@ -118,6 +118,11 @@ module.exports = function calc(gd, trace) {
     scene.textOptions.push(opts.text);
     scene.textSelectedOptions.push(opts.textSel);
     scene.textUnselectedOptions.push(opts.textUnsel);
+    scene.linePositionSources.push(opts.line ? {
+        positions: positions,
+        trace: trace,
+        viewportKey: null
+    } : null);
     scene.selectBatch.push([]);
     scene.unselectBatch.push([]);
 
@@ -164,20 +169,22 @@ function sceneOptions(gd, subplot, trace, positions, x, y) {
     }
 
     if(opts.text) {
+        var baseTextPosition = convert.textPosition(gd, trace, opts.text, opts.marker);
+
         Lib.extendFlat(
             opts.text,
             {positions: positions},
-            convert.textPosition(gd, trace, opts.text, opts.marker)
+            baseTextPosition
         );
         Lib.extendFlat(
             opts.textSel,
             {positions: positions},
-            convert.textPosition(gd, trace, opts.text, opts.markerSel)
+            convert.textPosition(gd, trace, opts.text, opts.markerSel, baseTextPosition)
         );
         Lib.extendFlat(
             opts.textUnsel,
             {positions: positions},
-            convert.textPosition(gd, trace, opts.text, opts.markerUnsel)
+            convert.textPosition(gd, trace, opts.text, opts.markerUnsel, baseTextPosition)
         );
     }
 

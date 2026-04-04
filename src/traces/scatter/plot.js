@@ -13,23 +13,23 @@ var linePoints = require('./line_points');
 var linkTraces = require('./link_traces');
 var polygonTester = require('../../lib/polygon').tester;
 
-module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transitionOpts, makeOnCompleteCallback) {
+module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transitionOpts, makeOnCompleteCallback, replotOpts) {
     var join, onComplete;
 
     // If transition config is provided, then it is only a partial replot and traces not
     // updated are removed.
-    var isFullReplot = !transitionOpts;
+    var isFullReplot = !transitionOpts && !(replotOpts && replotOpts.partialUpdate);
     var hasTransition = !!transitionOpts && transitionOpts.duration > 0;
 
     // Link traces so the z-order of fill layers is correct
     var cdscatterSorted = linkTraces(gd, plotinfo, cdscatter);
 
     join = scatterLayer.selectAll('g.trace')
-        .data(cdscatterSorted, function(d) { return d[0].trace.uid; });
+        .data(cdscatterSorted, function (d) { return d[0].trace.uid; });
 
     // Append new traces:
     join.enter().append('g')
-        .attr('class', function(d) {
+        .attr('class', function (d) {
             return 'trace scatter trace' + d[0].trace.uid;
         })
         .style('stroke-miterlimit', 2);
@@ -37,8 +37,8 @@ module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transition
 
     createFills(gd, join, plotinfo);
 
-    if(hasTransition) {
-        if(makeOnCompleteCallback) {
+    if (hasTransition) {
+        if (makeOnCompleteCallback) {
             // If it was passed a callback to register completion, make a callback. If
             // this is created, then it must be executed on completion, otherwise the
             // pos-transition redraw will not execute:
@@ -48,27 +48,27 @@ module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transition
         var transition = d3.transition()
             .duration(transitionOpts.duration)
             .ease(transitionOpts.easing)
-            .each('end', function() {
+            .each('end', function () {
                 onComplete && onComplete();
             })
-            .each('interrupt', function() {
+            .each('interrupt', function () {
                 onComplete && onComplete();
             });
 
-        transition.each(function() {
+        transition.each(function () {
             // Must run the selection again since otherwise enters/updates get grouped together
             // and these get executed out of order. Except we need them in order!
-            scatterLayer.selectAll('g.trace').each(function(d, i) {
+            scatterLayer.selectAll('g.trace').each(function (d, i) {
                 plotOne(gd, i, plotinfo, d, cdscatterSorted, this, transitionOpts);
             });
         });
     } else {
-        join.each(function(d, i) {
+        join.each(function (d, i) {
             plotOne(gd, i, plotinfo, d, cdscatterSorted, this, transitionOpts);
         });
     }
 
-    if(isFullReplot) {
+    if (isFullReplot) {
         join.exit().remove();
     }
 
@@ -77,7 +77,7 @@ module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transition
 };
 
 function createFills(gd, traceJoin, plotinfo) {
-    traceJoin.each(function(d) {
+    traceJoin.each(function (d) {
         var fills = ensureSingle(d3.select(this), 'g', 'fills');
         Drawing.setClipUrl(fills, plotinfo.layerClipId, gd);
 
@@ -92,8 +92,8 @@ function createFills(gd, traceJoin, plotinfo) {
         trace._nextFill = null;
 
         var fillData = [];
-        if(trace._ownfill) fillData.push('_ownFill');
-        if(trace._nexttrace) fillData.push('_nextFill');
+        if (trace._ownfill) fillData.push('_ownFill');
+        if (trace._nexttrace) fillData.push('_nextFill');
 
         var fillJoin = fills.selectAll('g').data(fillData, identity);
 
@@ -101,7 +101,7 @@ function createFills(gd, traceJoin, plotinfo) {
 
         fillJoin.exit().remove();
 
-        fillJoin.order().each(function(d) {
+        fillJoin.order().each(function (d) {
             // make a path element inside the fill group, just so
             // we can give it its own data later on and the group can
             // keep its simple '_*Fill' data
@@ -140,20 +140,20 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
     // error bars are at the bottom
     Registry.getComponentMethod('errorbars', 'plot')(gd, errorBarGroup, plotinfo, transitionOpts);
 
-    if(trace.visible !== true) return;
+    if (trace.visible !== true) return;
 
     transition(tr).style('opacity', trace.opacity);
 
     // BUILD LINES AND FILLS
     var ownFillEl3, tonext;
     var ownFillDir = trace.fill.charAt(trace.fill.length - 1);
-    if(ownFillDir !== 'x' && ownFillDir !== 'y') ownFillDir = '';
+    if (ownFillDir !== 'x' && ownFillDir !== 'y') ownFillDir = '';
 
     var fillAxisIndex, fillAxisZero;
-    if(ownFillDir === 'y') {
+    if (ownFillDir === 'y') {
         fillAxisIndex = 1;
         fillAxisZero = ya.c2p(0, true);
-    } else if(ownFillDir === 'x') {
+    } else if (ownFillDir === 'x') {
         fillAxisIndex = 0;
         fillAxisZero = xa.c2p(0, true);
     }
@@ -167,7 +167,7 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
     var prevFillsegments = null;
     var prevFillElement = null;
 
-    if(prevtrace) {
+    if (prevtrace) {
         prevRevpath = prevtrace._prevRevpath || '';
         tonext = prevtrace._nextFill;
         prevPolygons = prevtrace._ownPolygons;
@@ -201,21 +201,21 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
 
     ownFillEl3 = trace._ownFill;
 
-    if(subTypes.hasLines(trace) || trace.fill !== 'none') {
-        if(tonext) {
+    if (subTypes.hasLines(trace) || trace.fill !== 'none') {
+        if (tonext) {
             // This tells .style which trace to use for fill information:
             tonext.datum(cdscatter);
         }
 
-        if(['hv', 'vh', 'hvh', 'vhv'].indexOf(line.shape) !== -1) {
+        if (['hv', 'vh', 'hvh', 'vhv'].indexOf(line.shape) !== -1) {
             pathfn = Drawing.steps(line.shape);
             revpathbase = Drawing.steps(
                 line.shape.split('').reverse().join('')
             );
-        } else if(line.shape === 'spline') {
-            pathfn = revpathbase = function(pts) {
+        } else if (line.shape === 'spline') {
+            pathfn = revpathbase = function (pts) {
                 var pLast = pts[pts.length - 1];
-                if(pts.length > 1 && pts[0][0] === pLast[0] && pts[0][1] === pLast[1]) {
+                if (pts.length > 1 && pts[0][0] === pLast[0] && pts[0][1] === pLast[1]) {
                     // identical start and end points: treat it as a
                     // closed curve so we don't get a kink
                     return Drawing.smoothclosed(pts.slice(1), line.smoothing);
@@ -223,13 +223,39 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
                     return Drawing.smoothopen(pts, line.smoothing);
                 }
             };
+        } else if (line.shape === 'cardinal') {
+            pathfn = revpathbase = function (pts) {
+                var pLast = pts[pts.length - 1];
+                if (pts.length > 1 && pts[0][0] === pLast[0] && pts[0][1] === pLast[1]) {
+                    return Drawing.cardinalclosed(pts.slice(1), line.tension);
+                } else {
+                    return Drawing.cardinalopen(pts, line.tension);
+                }
+            };
+        } else if (line.shape === 'catmull-rom') {
+            pathfn = revpathbase = function (pts) {
+                var pLast = pts[pts.length - 1];
+                if (pts.length > 1 && pts[0][0] === pLast[0] && pts[0][1] === pLast[1]) {
+                    return Drawing.catmullromclosed(pts.slice(1), line.alpha);
+                } else {
+                    return Drawing.catmullromopen(pts, line.alpha);
+                }
+            };
+        } else if (line.shape === 'monotone') {
+            pathfn = revpathbase = function (pts) {
+                return Drawing.monotoneopen(pts);
+            };
+        } else if (line.shape === 'natural') {
+            pathfn = revpathbase = function (pts) {
+                return Drawing.naturalopen(pts);
+            };
         } else {
-            pathfn = revpathbase = function(pts) {
+            pathfn = revpathbase = function (pts) {
                 return 'M' + pts.join('L');
             };
         }
 
-        revpathfn = function(pts) {
+        revpathfn = function (pts) {
             // note: this is destructive (reverses pts in place) so can't use pts after this
             return revpathbase(pts.reverse());
         };
@@ -254,10 +280,10 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
         // need to redraw when you change hoveron...
         fillsegments = new Array(segments.length);
         var fillsegmentCount = 0;
-        for(i = 0; i < segments.length; i++) {
+        for (i = 0; i < segments.length; i++) {
             var curpoints;
             var pts = segments[i];
-            if(!curpoints || !ownFillDir) {
+            if (!curpoints || !ownFillDir) {
                 curpoints = pts.slice();
                 fillsegments[fillsegmentCount] = curpoints;
                 fillsegmentCount++;
@@ -272,21 +298,21 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
         trace._fillsegments = fillsegments.slice(0, fillsegmentCount);
         fillsegments = trace._fillsegments;
 
-        if(segments.length) {
+        if (segments.length) {
             pt0 = segments[0][0].slice();
             lastSegment = segments[segments.length - 1];
             pt1 = lastSegment[lastSegment.length - 1].slice();
         }
 
-        makeUpdate = function(isEnter) {
-            return function(pts) {
+        makeUpdate = function (isEnter) {
+            return function (pts) {
                 thispath = pathfn(pts);
                 thisrevpath = revpathfn(pts); // side-effect: reverses input
                 // calculate SVG path over all segments for fills
-                if(!fullpath) {
+                if (!fullpath) {
                     fullpath = thispath;
                     revpath = thisrevpath;
-                } else if(ownFillDir) {
+                } else if (ownFillDir) {
                     // for fills with fill direction: ignore gaps
                     fullpath += 'L' + thispath.slice(1);
                     revpath = thisrevpath + ('L' + revpath.slice(1));
@@ -296,17 +322,17 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
                 }
 
                 // actual lines get drawn here, with gaps between segments if requested
-                if(subTypes.hasLines(trace)) {
+                if (subTypes.hasLines(trace)) {
                     var el = d3.select(this);
 
                     // This makes the coloring work correctly:
                     el.datum(cdscatter);
 
-                    if(isEnter) {
+                    if (isEnter) {
                         transition(el.style('opacity', 0)
                             .attr('d', thispath)
                             .call(Drawing.lineGroupStyle))
-                                .style('opacity', 1);
+                            .style('opacity', 1);
                     } else {
                         var sel = transition(el);
                         sel.attr('d', thispath);
@@ -338,21 +364,21 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
     }
 
     // helper functions to create polygons for hoveron fill detection
-    var makeSelfPolygons = function() {
+    var makeSelfPolygons = function () {
         var polygons = new Array(fillsegments.length);
-        for(i = 0; i < fillsegments.length; i++) {
+        for (i = 0; i < fillsegments.length; i++) {
             polygons[i] = polygonTester(fillsegments[i]);
         }
         return polygons;
     };
 
-    var makePolygonsToPrevious = function(prevFillsegments) {
+    var makePolygonsToPrevious = function (prevFillsegments) {
         var polygons, i;
-        if(!prevFillsegments || prevFillsegments.length === 0) {
+        if (!prevFillsegments || prevFillsegments.length === 0) {
             // if there are no fill segments of a previous trace, stretch the
             // polygon to the relevant axis
             polygons = new Array(fillsegments.length);
-            for(i = 0; i < fillsegments.length; i++) {
+            for (i = 0; i < fillsegments.length; i++) {
                 var pt0 = fillsegments[i][0].slice();
                 var pt1 = fillsegments[i][fillsegments[i].length - 1].slice();
 
@@ -368,14 +394,14 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
             // of the previous and then fill from the new trace to the last
             // segment of the previous.
             polygons = new Array(prevFillsegments.length - 1 + fillsegments.length);
-            for(i = 0; i < prevFillsegments.length - 1; i++) {
+            for (i = 0; i < prevFillsegments.length - 1; i++) {
                 polygons[i] = polygonTester(prevFillsegments[i]);
             }
 
             var reversedPrevFillsegment = prevFillsegments[prevFillsegments.length - 1].slice();
             reversedPrevFillsegment.reverse();
 
-            for(i = 0; i < fillsegments.length; i++) {
+            for (i = 0; i < fillsegments.length; i++) {
                 polygons[prevFillsegments.length - 1 + i] = polygonTester(fillsegments[i].concat(reversedPrevFillsegment));
             }
         }
@@ -383,11 +409,11 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
     };
 
     // draw fills and create hover detection polygons
-    if(segments.length) {
-        if(ownFillEl3) {
+    if (segments.length) {
+        if (ownFillEl3) {
             ownFillEl3.datum(cdscatter);
-            if(pt0 && pt1) { // TODO(2023-12-10): this is always true if segments is not empty (?)
-                if(ownFillDir) {
+            if (pt0 && pt1) { // TODO(2023-12-10): this is always true if segments is not empty (?)
+                if (ownFillDir) {
                     pt0[fillAxisIndex] = pt1[fillAxisIndex] = fillAxisZero;
 
                     // fill to zero: full trace path, plus extension of
@@ -411,10 +437,10 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
             }
             trace._polygons = thisPolygons;
             trace._fillElement = ownFillEl3;
-        } else if(tonext) {
-            if(trace.fill.slice(0, 6) === 'tonext' && fullpath && prevRevpath) {
+        } else if (tonext) {
+            if (trace.fill.slice(0, 6) === 'tonext' && fullpath && prevRevpath) {
                 // fill to next: full trace path, plus the previous path reversed
-                if(trace.fill === 'tonext') {
+                if (trace.fill === 'tonext') {
                     // tonext: for use by concentric shapes, like manually constructed
                     // contours, we just add the two paths closed on themselves.
                     // This makes strange results if one path is *not* entirely
@@ -422,7 +448,7 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
                     transition(tonext).attr('d', fullpath + 'Z' + prevRevpath + 'Z')
                         .call(Drawing.singleFillStyle, gd);
 
-                                            // and simply emit hover polygons for each segment
+                    // and simply emit hover polygons for each segment
                     thisPolygons = makeSelfPolygons();
 
                     // we add the polygons of the previous trace which causes hover
@@ -451,23 +477,23 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
         }
         trace._prevRevpath = revpath;
     } else {
-        if(ownFillEl3) clearFill(ownFillEl3);
-        else if(tonext) clearFill(tonext);
+        if (ownFillEl3) clearFill(ownFillEl3);
+        else if (tonext) clearFill(tonext);
         trace._prevRevpath = null;
     }
     trace._ownPolygons = thisPolygons;
 
 
     function visFilter(d) {
-        return d.filter(function(v) { return !v.gap && v.vis; });
+        return d.filter(function (v) { return !v.gap && v.vis; });
     }
 
     function visFilterWithGaps(d) {
-        return d.filter(function(v) { return v.vis; });
+        return d.filter(function (v) { return v.vis; });
     }
 
     function gapFilter(d) {
-        return d.filter(function(v) { return !v.gap; });
+        return d.filter(function (v) { return !v.gap; });
     }
 
     function keyFunc(d) {
@@ -476,7 +502,7 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
 
     // Returns a function if the trace is keyed, otherwise returns undefined
     function getKeyFunc(trace) {
-        if(trace.ids) {
+        if (trace.ids) {
             return keyFunc;
         }
     }
@@ -490,13 +516,13 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
 
         var trace = cdscatter[0].trace;
         var showMarkers = subTypes.hasMarkers(trace);
-        var showText = subTypes.hasText(trace);
+        var showText = subTypes.hasText(trace) && !plotinfo.isRangePlot;
 
         var keyFunc = getKeyFunc(trace);
         var markerFilter = hideFilter;
         var textFilter = hideFilter;
 
-        if(showMarkers || showText) {
+        if (showMarkers || showText) {
             var showFilter = identity;
             // if we're stacking, "infer zero" gap mode gets markers in the
             // gap points - because we've inferred a zero there - but other
@@ -505,14 +531,14 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
             var stackGroup = trace.stackgroup;
             var isInferZero = stackGroup && (
                 gd._fullLayout._scatterStackOpts[xa._id + ya._id][stackGroup].stackgaps === 'infer zero');
-            if(trace.marker.maxdisplayed || trace._needsCull) {
+            if (trace.marker.maxdisplayed || trace._needsCull) {
                 showFilter = isInferZero ? visFilterWithGaps : visFilter;
-            } else if(stackGroup && !isInferZero) {
+            } else if (stackGroup && !isInferZero) {
                 showFilter = gapFilter;
             }
 
-            if(showMarkers) markerFilter = showFilter;
-            if(showText) textFilter = showFilter;
+            if (showMarkers) markerFilter = showFilter;
+            if (showText) textFilter = showFilter;
         }
 
         // marker points
@@ -524,7 +550,7 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
         var enter = join.enter().append('path')
             .classed('point', true);
 
-        if(hasTransition) {
+        if (hasTransition) {
             enter
                 .call(Drawing.pointStyle, trace, gd)
                 .call(Drawing.translatePoints, xa, ya)
@@ -536,23 +562,23 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
         join.order();
 
         var styleFns;
-        if(showMarkers) {
+        if (showMarkers) {
             styleFns = Drawing.makePointStyleFns(trace);
         }
 
-        join.each(function(d) {
+        join.each(function (d) {
             var el = d3.select(this);
             var sel = transition(el);
             hasNode = Drawing.translatePoint(d, sel, xa, ya);
 
-            if(hasNode) {
+            if (hasNode) {
                 Drawing.singlePointStyle(d, sel, trace, styleFns, gd);
 
-                if(plotinfo.layerClipId) {
+                if (plotinfo.layerClipId) {
                     Drawing.hideOutsideRangePoint(d, sel, xa, ya, trace.xcalendar, trace.ycalendar);
                 }
 
-                if(trace.customdata) {
+                if (trace.customdata) {
                     el.classed('plotly-customdata', d.data !== null && d.data !== undefined);
                 }
             } else {
@@ -560,7 +586,7 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
             }
         });
 
-        if(hasTransition) {
+        if (hasTransition) {
             join.exit().transition()
                 .style('opacity', 0)
                 .remove();
@@ -578,13 +604,13 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
 
         join.order();
 
-        join.each(function(d) {
+        join.each(function (d) {
             var g = d3.select(this);
             var sel = transition(g.select('text'));
             hasNode = Drawing.translatePoint(d, sel, xa, ya);
 
-            if(hasNode) {
-                if(plotinfo.layerClipId) {
+            if (hasNode) {
+                if (plotinfo.layerClipId) {
                     Drawing.hideOutsideRangePoint(d, g, xa, ya, trace.xcalendar, trace.ycalendar);
                 }
             } else {
@@ -594,14 +620,14 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
 
         join.selectAll('text')
             .call(Drawing.textPointStyle, trace, gd)
-            .each(function(d) {
+            .each(function (d) {
                 // This just *has* to be totally custom because of SVG text positioning :(
                 // It's obviously copied from translatePoint; we just can't use that
                 var x = xa.c2p(d.x);
                 var y = ya.c2p(d.y);
 
-                d3.select(this).selectAll('tspan.line').each(function() {
-                    transition(d3.select(this)).attr({x: x, y: y});
+                d3.select(this).selectAll('tspan.line').each(function () {
+                    transition(d3.select(this)).attr({ x: x, y: y });
                 });
             });
 
@@ -627,23 +653,23 @@ function selectMarkers(gd, idx, plotinfo, cdscatter, cdscatterAll) {
     var yr = d3.extent(Lib.simpleMap(ya.range, ya.r2c));
 
     var trace = cdscatter[0].trace;
-    if(!subTypes.hasMarkers(trace)) return;
+    if (!subTypes.hasMarkers(trace)) return;
     // if marker.maxdisplayed is used, select a maximum of
     // mnum markers to show, from the set that are in the viewport
     var mnum = trace.marker.maxdisplayed;
 
     // TODO: remove some as we get away from the viewport?
-    if(mnum === 0) return;
+    if (mnum === 0) return;
 
-    var cd = cdscatter.filter(function(v) {
+    var cd = cdscatter.filter(function (v) {
         return v.x >= xr[0] && v.x <= xr[1] && v.y >= yr[0] && v.y <= yr[1];
     });
     var inc = Math.ceil(cd.length / mnum);
     var tnum = 0;
-    cdscatterAll.forEach(function(cdj, j) {
+    cdscatterAll.forEach(function (cdj, j) {
         var tracei = cdj[0].trace;
-        if(subTypes.hasMarkers(tracei) &&
-                tracei.marker.maxdisplayed > 0 && j < idx) {
+        if (subTypes.hasMarkers(tracei) &&
+            tracei.marker.maxdisplayed > 0 && j < idx) {
             tnum++;
         }
     });
@@ -656,8 +682,8 @@ function selectMarkers(gd, idx, plotinfo, cdscatter, cdscatterAll) {
 
     // for error bars: save in cd which markers to show
     // so we don't have to repeat this
-    cdscatter.forEach(function(v) { delete v.vis; });
-    cd.forEach(function(v, i) {
-        if(Math.round((i + i0) % inc) === 0) v.vis = true;
+    cdscatter.forEach(function (v) { delete v.vis; });
+    cd.forEach(function (v, i) {
+        if (Math.round((i + i0) % inc) === 0) v.vis = true;
     });
 }

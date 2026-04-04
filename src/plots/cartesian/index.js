@@ -15,7 +15,7 @@ var xmlnsNamespaces = require('../../constants/xmlns_namespaces');
 var ensureSingle = Lib.ensureSingle;
 
 function ensureSingleAndAddDatum(parent, nodeType, className) {
-    return Lib.ensureSingle(parent, nodeType, className, function(s) {
+    return Lib.ensureSingle(parent, nodeType, className, function (s) {
         s.datum(className);
     });
 }
@@ -40,7 +40,7 @@ exports.supplyLayoutDefaults = require('./layout_defaults');
 
 exports.transitionAxes = require('./transition_axes');
 
-exports.finalizeSubplots = function(layoutIn, layoutOut) {
+exports.finalizeSubplots = function (layoutIn, layoutOut) {
     var subplots = layoutOut._subplots;
     var xList = subplots.xaxis;
     var yList = subplots.yaxis;
@@ -50,22 +50,22 @@ exports.finalizeSubplots = function(layoutIn, layoutOut) {
     var allY = {};
     var i, xi, yi;
 
-    for(i = 0; i < spAll.length; i++) {
+    for (i = 0; i < spAll.length; i++) {
         var parts = spAll[i].split('y');
         allX[parts[0]] = 1;
         allY['y' + parts[1]] = 1;
     }
 
     // check for x axes with no subplot, and make one from the anchor of that x axis
-    for(i = 0; i < xList.length; i++) {
+    for (i = 0; i < xList.length; i++) {
         xi = xList[i];
-        if(!allX[xi]) {
+        if (!allX[xi]) {
             yi = (layoutIn[axisIds.id2name(xi)] || {}).anchor;
-            if(!constants.idRegex.y.test(yi)) yi = 'y';
+            if (!constants.idRegex.y.test(yi)) yi = 'y';
             spSVG.push(xi + yi);
             spAll.push(xi + yi);
 
-            if(!allY[yi]) {
+            if (!allY[yi]) {
                 allY[yi] = 1;
                 Lib.pushUnique(yList, yi);
             }
@@ -73,15 +73,15 @@ exports.finalizeSubplots = function(layoutIn, layoutOut) {
     }
 
     // same for y axes with no subplot
-    for(i = 0; i < yList.length; i++) {
+    for (i = 0; i < yList.length; i++) {
         yi = yList[i];
-        if(!allY[yi]) {
+        if (!allY[yi]) {
             xi = (layoutIn[axisIds.id2name(yi)] || {}).anchor;
-            if(!constants.idRegex.x.test(xi)) xi = 'x';
+            if (!constants.idRegex.x.test(xi)) xi = 'x';
             spSVG.push(xi + yi);
             spAll.push(xi + yi);
 
-            if(!allX[xi]) {
+            if (!allX[xi]) {
                 allX[xi] = 1;
                 Lib.pushUnique(xList, xi);
             }
@@ -91,17 +91,17 @@ exports.finalizeSubplots = function(layoutIn, layoutOut) {
     // finally, if we've gotten here we're supposed to show cartesian...
     // so if there are NO subplots at all, make one from the first
     // x & y axes in the input layout
-    if(!spAll.length) {
+    if (!spAll.length) {
         xi = '';
         yi = '';
-        for(var ki in layoutIn) {
-            if(constants.attrRegex.test(ki)) {
+        for (var ki in layoutIn) {
+            if (constants.attrRegex.test(ki)) {
                 var axLetter = ki.charAt(0);
-                if(axLetter === 'x') {
-                    if(!xi || (+ki.slice(5) < +xi.slice(5))) {
+                if (axLetter === 'x') {
+                    if (!xi || (+ki.slice(5) < +xi.slice(5))) {
                         xi = ki;
                     }
-                } else if(!yi || (+ki.slice(5) < +yi.slice(5))) {
+                } else if (!yi || (+ki.slice(5) < +yi.slice(5))) {
                     yi = ki;
                 }
             }
@@ -126,7 +126,7 @@ exports.finalizeSubplots = function(layoutIn, layoutOut) {
  * @param {function} (optional) makeOnCompleteCallback
  *  transition make callback function from Plots.transition
  */
-exports.plot = function(gd, traces, transitionOpts, makeOnCompleteCallback) {
+exports.plot = function (gd, traces, transitionOpts, makeOnCompleteCallback, replotOpts) {
     var fullLayout = gd._fullLayout;
     var subplots = fullLayout._subplots.cartesian;
     var calcdata = gd.calcdata;
@@ -136,26 +136,26 @@ exports.plot = function(gd, traces, transitionOpts, makeOnCompleteCallback) {
     // then it's a complete replot so we create a new list and add all trace indices
     // which are in calcdata.
 
-    if(!Array.isArray(traces)) {
+    if (!Array.isArray(traces)) {
         // If traces is not provided, then it's a complete replot and missing
         // traces are removed
         traces = [];
-        for(i = 0; i < calcdata.length; i++) traces.push(i);
+        for (i = 0; i < calcdata.length; i++) traces.push(i);
     }
 
     var zindices = fullLayout._zindices;
     // Plot each zorder group in ascending order
-    for(var z = 0; z < zindices.length; z++) {
+    for (var z = 0; z < zindices.length; z++) {
         var zorder = zindices[z];
 
         // For each subplot
-        for(i = 0; i < subplots.length; i++) {
+        for (i = 0; i < subplots.length; i++) {
             var subplot = subplots[i];
             var subplotInfo = fullLayout._plots[subplot];
 
-            if(z > 0) {
+            if (z > 0) {
                 var idWithZ = subplotInfo.id;
-                if(idWithZ.indexOf(zindexSeparator) !== -1) continue;
+                if (idWithZ.indexOf(zindexSeparator) !== -1) continue;
                 idWithZ += zindexSeparator + (z + 1);
                 subplotInfo = Lib.extendFlat({}, subplotInfo, {
                     id: idWithZ,
@@ -168,25 +168,25 @@ exports.plot = function(gd, traces, transitionOpts, makeOnCompleteCallback) {
             var pcd;
 
             // For each trace
-            for(var j = 0; j < calcdata.length; j++) {
+            for (var j = 0; j < calcdata.length; j++) {
                 var cd = calcdata[j];
                 var trace = cd[0].trace;
 
-                if(zorder !== (trace.zorder || 0)) continue;
+                if (zorder !== (trace.zorder || 0)) continue;
 
                 // Skip trace if whitelist provided and it's not whitelisted:
                 // if (Array.isArray(traces) && traces.indexOf(i) === -1) continue;
-                if(trace.xaxis + trace.yaxis === subplot) {
+                if (trace.xaxis + trace.yaxis === subplot) {
                     // XXX: Should trace carpet dependencies. Only replot all carpet plots if the carpet
                     // axis has actually changed:
                     //
                     // If this trace is specifically requested, add it to the list:
-                    if(traces.indexOf(trace.index) !== -1 || trace.carpet) {
+                    if (traces.indexOf(trace.index) !== -1 || trace.carpet) {
                         // Okay, so example: traces 0, 1, and 2 have fill = tonext. You animate
                         // traces 0 and 2. Trace 1 also needs to be updated, otherwise its fill
                         // is outdated. So this retroactively adds the previous trace if the
                         // traces are interdependent.
-                        if(
+                        if (
                             pcd &&
                             pcd[0].trace.xaxis + pcd[0].trace.yaxis === subplot &&
                             ['tonextx', 'tonexty', 'tonext'].indexOf(trace.fill) !== -1 &&
@@ -203,13 +203,17 @@ exports.plot = function(gd, traces, transitionOpts, makeOnCompleteCallback) {
                     pcd = cd;
                 }
             }
+            if (replotOpts && replotOpts.partialUpdate && !cdSubplot.length) {
+                continue;
+            }
+
             // Plot the traces for this subplot
-            plotOne(gd, subplotInfo, cdSubplot, transitionOpts, makeOnCompleteCallback);
+            plotOne(gd, subplotInfo, cdSubplot, transitionOpts, makeOnCompleteCallback, replotOpts);
         }
     }
 };
 
-function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback) {
+function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback, replotOpts) {
     var traceLayerClasses = constants.traceLayerClasses;
     var fullLayout = gd._fullLayout;
     var zindices = fullLayout._zindices;
@@ -221,15 +225,15 @@ function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback
     var zoomScaleQueryParts = [];
 
     // Plot each zorder group in ascending order
-    for(var z = 0; z < zindices.length; z++) {
+    for (var z = 0; z < zindices.length; z++) {
         var zorder = zindices[z];
         // For each "module" (trace type)
-        for(var i = 0; i < modules.length; i++) {
+        for (var i = 0; i < modules.length; i++) {
             _module = modules[i];
             var name = _module.name;
             var categories = Registry.modules[name].categories;
 
-            if(categories.svg) {
+            if (categories.svg) {
                 var classBaseName = (_module.layerName || name + 'layer');
                 var className = classBaseName + (z ? Number(z) + 1 : '');
                 var plotMethod = _module.plot;
@@ -241,7 +245,7 @@ function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback
                 // so that if two modules share the same plotter we don't double-plot
                 cdSubplot = cdModuleAndOthers[1];
 
-                if(cdModule.length) {
+                if (cdModule.length) {
                     layerData.push({
                         i: traceLayerClasses.indexOf(classBaseName),
                         zindex: z,
@@ -251,14 +255,14 @@ function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback
                     });
                 }
 
-                if(categories.zoomScale) {
+                if (categories.zoomScale) {
                     zoomScaleQueryParts.push('.' + className);
                 }
             }
         }
     }
     // Sort the layers primarily by zindex, then by i
-    layerData.sort(function(a, b) {
+    layerData.sort(function (a, b) {
         return (
             (a.zindex || 0) - (b.zindex || 0) ||
             (a.i - b.i)
@@ -266,10 +270,10 @@ function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback
     });
 
     var layers = plotinfo.plot.selectAll('g.mlayer')
-        .data(layerData, function(d) { return d.className; });
+        .data(layerData, function (d) { return d.className; });
 
     layers.enter().append('g')
-        .attr('class', function(d) { return d.className; })
+        .attr('class', function (d) { return d.className; })
         .classed('mlayer', true)
         .classed('rangeplot', plotinfo.isRangePlot);
 
@@ -277,37 +281,37 @@ function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback
 
     layers.order();
 
-    layers.each(function(d) {
+    layers.each(function (d) {
         var sel = d3.select(this);
         var className = d.className;
 
         d.plotMethod(
             gd, plotinfo, d.cdModule, sel,
-            transitionOpts, makeOnCompleteCallback
+            transitionOpts, makeOnCompleteCallback, replotOpts
         );
 
         // layers that allow `cliponaxis: false`
-        if(constants.clipOnAxisFalseQuery.indexOf('.' + className) === -1) {
+        if (constants.clipOnAxisFalseQuery.indexOf('.' + className) === -1) {
             Drawing.setClipUrl(sel, plotinfo.layerClipId, gd);
         }
     });
 
     // call Scattergl.plot separately
-    if(fullLayout._has('scattergl')) {
+    if (fullLayout._has('scattergl')) {
         _module = Registry.getModule('scattergl');
         cdModule = getModuleCalcData(cdSubplot, _module)[0];
         _module.plot(gd, plotinfo, cdModule);
     }
 
     // stash "hot" selections for faster interaction on drag and scroll
-    if(!gd._context.staticPlot) {
-        if(plotinfo._hasClipOnAxisFalse) {
+    if (!gd._context.staticPlot) {
+        if (plotinfo._hasClipOnAxisFalse) {
             plotinfo.clipOnAxisFalseTraces = plotinfo.plot
                 .selectAll(constants.clipOnAxisFalseQuery.join(','))
                 .selectAll('.trace');
         }
 
-        if(zoomScaleQueryParts.length) {
+        if (zoomScaleQueryParts.length) {
             var traces = plotinfo.plot
                 .selectAll(zoomScaleQueryParts.join(','))
                 .selectAll('.trace');
@@ -318,7 +322,7 @@ function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback
     }
 }
 
-exports.clean = function(newFullData, newFullLayout, oldFullData, oldFullLayout) {
+exports.clean = function (newFullData, newFullLayout, oldFullData, oldFullLayout) {
     var oldPlots = oldFullLayout._plots || {};
     var newPlots = newFullLayout._plots || {};
     var oldSubplotList = oldFullLayout._subplots || {};
@@ -328,30 +332,30 @@ exports.clean = function(newFullData, newFullLayout, oldFullData, oldFullLayout)
     // when going from a large splom graph to something else,
     // we need to clear <g subplot> so that the new cartesian subplot
     // can have the correct layer ordering
-    if(oldFullLayout._hasOnlyLargeSploms && !newFullLayout._hasOnlyLargeSploms) {
-        for(k in oldPlots) {
+    if (oldFullLayout._hasOnlyLargeSploms && !newFullLayout._hasOnlyLargeSploms) {
+        for (k in oldPlots) {
             plotinfo = oldPlots[k];
-            if(plotinfo.plotgroup) plotinfo.plotgroup.remove();
+            if (plotinfo.plotgroup) plotinfo.plotgroup.remove();
         }
     }
 
     var hadGl = (oldFullLayout._has && oldFullLayout._has('gl'));
     var hasGl = (newFullLayout._has && newFullLayout._has('gl'));
 
-    if(hadGl && !hasGl) {
-        for(k in oldPlots) {
+    if (hadGl && !hasGl) {
+        for (k in oldPlots) {
             plotinfo = oldPlots[k];
-            if(plotinfo._scene) plotinfo._scene.destroy();
+            if (plotinfo._scene) plotinfo._scene.destroy();
         }
     }
 
     // delete any titles we don't need anymore
     // check if axis list has changed, and if so clear old titles
-    if(oldSubplotList.xaxis && oldSubplotList.yaxis) {
-        var oldAxIDs = axisIds.listIds({_fullLayout: oldFullLayout});
-        for(i = 0; i < oldAxIDs.length; i++) {
+    if (oldSubplotList.xaxis && oldSubplotList.yaxis) {
+        var oldAxIDs = axisIds.listIds({ _fullLayout: oldFullLayout });
+        for (i = 0; i < oldAxIDs.length; i++) {
             var oldAxId = oldAxIDs[i];
-            if(!newFullLayout[axisIds.id2name(oldAxId)]) {
+            if (!newFullLayout[axisIds.id2name(oldAxId)]) {
                 oldFullLayout._infolayer.selectAll('.g-' + oldAxId + 'title').remove();
             }
         }
@@ -360,23 +364,23 @@ exports.clean = function(newFullData, newFullLayout, oldFullData, oldFullLayout)
     var hadCartesian = (oldFullLayout._has && oldFullLayout._has('cartesian'));
     var hasCartesian = (newFullLayout._has && newFullLayout._has('cartesian'));
 
-    if(hadCartesian && !hasCartesian) {
+    if (hadCartesian && !hasCartesian) {
         // if we've gotten rid of all cartesian traces, remove all the subplot svg items
 
         purgeSubplotLayers(oldFullLayout._cartesianlayer.selectAll('.subplot'), oldFullLayout);
         oldFullLayout._defs.selectAll('.axesclip').remove();
         delete oldFullLayout._axisConstraintGroups;
         delete oldFullLayout._axisMatchGroups;
-    } else if(oldSubplotList.cartesian) {
+    } else if (oldSubplotList.cartesian) {
         // otherwise look for subplots we need to remove
 
-        for(i = 0; i < oldSubplotList.cartesian.length; i++) {
+        for (i = 0; i < oldSubplotList.cartesian.length; i++) {
             var oldSubplotId = oldSubplotList.cartesian[i];
 
             // skip zindex layes in this process
-            if(oldSubplotId.indexOf(zindexSeparator) !== -1) continue;
+            if (oldSubplotId.indexOf(zindexSeparator) !== -1) continue;
 
-            if(!newPlots[oldSubplotId]) {
+            if (!newPlots[oldSubplotId]) {
                 var selector = '.' + oldSubplotId + ',.' + oldSubplotId + '-x,.' + oldSubplotId + '-y';
                 oldFullLayout._cartesianlayer.selectAll(selector).remove();
                 removeSubplotExtras(oldSubplotId, oldFullLayout);
@@ -385,19 +389,19 @@ exports.clean = function(newFullData, newFullLayout, oldFullData, oldFullLayout)
     }
 };
 
-exports.drawFramework = function(gd) {
+exports.drawFramework = function (gd) {
     var fullLayout = gd._fullLayout;
     var calcdata = gd.calcdata;
     var i;
 
     // Separate traces by zorder and plot each zorder group separately
     var traceZorderGroups = {};
-    for(i = 0; i < calcdata.length; i++) {
+    for (i = 0; i < calcdata.length; i++) {
         var cdi = calcdata[i][0];
         var trace = cdi.trace;
 
         var zi = trace.zorder || 0;
-        if(!traceZorderGroups[zi]) traceZorderGroups[zi] = [];
+        if (!traceZorderGroups[zi]) traceZorderGroups[zi] = [];
         traceZorderGroups[zi].push(cdi);
     }
 
@@ -406,7 +410,7 @@ exports.drawFramework = function(gd) {
         .map(Number)
         .sort(Lib.sorterAsc);
 
-    if(!zindices.length) zindices = [0];
+    if (!zindices.length) zindices = [0];
 
     fullLayout._zindices = zindices;
 
@@ -414,13 +418,13 @@ exports.drawFramework = function(gd) {
 
     var len = initialSubplotData.length;
     var subplotData = [];
-    for(i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
         subplotData[i] = initialSubplotData[i].slice();
     }
 
-    for(var z = 1; z < zindices.length; z++) {
+    for (var z = 1; z < zindices.length; z++) {
         var newSubplotData = [];
-        for(i = 0; i < len; i++) {
+        for (i = 0; i < len; i++) {
             newSubplotData[i] = initialSubplotData[i].slice();
             newSubplotData[i][0] += zindexSeparator + (z + 1);
         }
@@ -432,14 +436,14 @@ exports.drawFramework = function(gd) {
 
 
     subplotLayers.enter().append('g')
-        .attr('class', function(d) { return 'subplot ' + d[0]; });
+        .attr('class', function (d) { return 'subplot ' + d[0]; });
 
     subplotLayers.order();
 
     subplotLayers.exit()
         .call(purgeSubplotLayers, fullLayout);
 
-    subplotLayers.each(function(d) {
+    subplotLayers.each(function (d) {
         var id = d[0];
         var posZ = id.indexOf(zindexSeparator);
         var hasZ = posZ !== -1;
@@ -448,21 +452,21 @@ exports.drawFramework = function(gd) {
             id;
 
         var plotinfo = fullLayout._plots[id];
-        if(!plotinfo) {
+        if (!plotinfo) {
             plotinfo = Lib.extendFlat({}, fullLayout._plots[idWithoutZ]);
 
-            if(plotinfo) {
+            if (plotinfo) {
                 plotinfo.id = id;
                 fullLayout._plots[id] = plotinfo;
                 fullLayout._subplots.cartesian.push(id);
             }
         }
 
-        if(plotinfo) {
+        if (plotinfo) {
             plotinfo.plotgroup = d3.select(this);
             makeSubplotLayer(gd, plotinfo);
 
-            if(!hasZ) {
+            if (!hasZ) {
                 // make separate drag layers for each subplot,
                 // but append them to paper rather than the plot groups,
                 // so they end up on top of the rest
@@ -472,9 +476,9 @@ exports.drawFramework = function(gd) {
     });
 };
 
-exports.rangePlot = function(gd, plotinfo, cdSubplot) {
+exports.rangePlot = function (gd, plotinfo, cdSubplot, replotOpts) {
     makeSubplotLayer(gd, plotinfo);
-    plotOne(gd, plotinfo, cdSubplot);
+    plotOne(gd, plotinfo, cdSubplot, null, null, replotOpts);
     Plots.style(gd);
 };
 
@@ -490,7 +494,7 @@ function makeSubplotData(gd) {
     var regulars = [];
     var overlays = [];
 
-    for(i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
         id = ids[i];
         plotinfo = fullLayout._plots[id];
         xa = plotinfo.xaxis;
@@ -502,7 +506,7 @@ function makeSubplotData(gd) {
         var mainplotinfo = fullLayout._plots[mainplot];
         plotinfo.overlays = [];
 
-        if(mainplot !== id && mainplotinfo) {
+        if (mainplot !== id && mainplotinfo) {
             plotinfo.mainplot = mainplot;
             plotinfo.mainplotinfo = mainplotinfo;
             overlays.push(id);
@@ -514,7 +518,7 @@ function makeSubplotData(gd) {
     }
 
     // fill in list of overlaying subplots in 'main plot'
-    for(i = 0; i < overlays.length; i++) {
+    for (i = 0; i < overlays.length; i++) {
         id = overlays[i];
         plotinfo = fullLayout._plots[id];
         plotinfo.mainplotinfo.overlays.push(plotinfo);
@@ -524,7 +528,7 @@ function makeSubplotData(gd) {
     var subplotIds = regulars.concat(overlays);
     var subplotData = [];
 
-    for(i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
         id = subplotIds[i];
         plotinfo = fullLayout._plots[id];
         xa = plotinfo.xaxis;
@@ -532,14 +536,14 @@ function makeSubplotData(gd) {
 
         var d = [];
 
-        for(var z = 1; z <= numZ; z++) {
+        for (var z = 1; z <= numZ; z++) {
             var zStr = '';
-            if(z > 1) zStr += zindexSeparator + z;
+            if (z > 1) zStr += zindexSeparator + z;
 
             // use info about axis layer and overlaying pattern
             // to clean what need to be cleaned up in exit selection
             d.push(id + zStr);
-            for(j = 0; j < plotinfo.overlays.length; j++) {
+            for (j = 0; j < plotinfo.overlays.length; j++) {
                 d.push(plotinfo.overlays[j].id + zStr);
             }
         }
@@ -571,8 +575,8 @@ function makeSubplotLayer(gd, plotinfo) {
     var hasMultipleZ = fullLayout._zindices.length > 1;
     var mainplotinfo = plotinfo.mainplotinfo;
 
-    if(!plotinfo.mainplot || hasMultipleZ) {
-        if(hasOnlyLargeSploms) {
+    if (!plotinfo.mainplot || hasMultipleZ) {
+        if (hasOnlyLargeSploms) {
             // TODO could do even better
             // - we don't need plot (but we would have to mock it in lsInner
             //   and other places
@@ -583,12 +587,12 @@ function makeSubplotLayer(gd, plotinfo) {
             plotinfo.xaxislayer = ensureSingle(plotgroup, 'g', 'xaxislayer-above');
             plotinfo.yaxislayer = ensureSingle(plotgroup, 'g', 'yaxislayer-above');
         } else {
-            if(!hasZ) {
+            if (!hasZ) {
                 var backLayer = ensureSingle(plotgroup, 'g', 'layer-subplot');
                 plotinfo.shapelayer = ensureSingle(backLayer, 'g', 'shapelayer');
                 plotinfo.imagelayer = ensureSingle(backLayer, 'g', 'imagelayer');
 
-                if(mainplotinfo && hasMultipleZ) {
+                if (mainplotinfo && hasMultipleZ) {
                     plotinfo.minorGridlayer = mainplotinfo.minorGridlayer;
                     plotinfo.gridlayer = mainplotinfo.gridlayer;
                     plotinfo.zerolinelayer = mainplotinfo.zerolinelayer;
@@ -614,13 +618,13 @@ function makeSubplotLayer(gd, plotinfo) {
             plotinfo.overplot = ensureSingle(plotgroup, 'g', 'overplot');
             plotinfo.plot = ensureSingle(plotinfo.overplot, 'g', id);
 
-            if(mainplotinfo && hasMultipleZ) {
+            if (mainplotinfo && hasMultipleZ) {
                 plotinfo.zerolinelayerAbove = mainplotinfo.zerolinelayerAbove;
             } else {
                 plotinfo.zerolinelayerAbove = ensureSingle(plotgroup, 'g', 'zerolinelayer-above');
             }
 
-            if(!hasZ) {
+            if (!hasZ) {
                 plotinfo.xlines = ensureSingle(plotgroup, 'path', 'xlines-above');
                 plotinfo.ylines = ensureSingle(plotgroup, 'path', 'ylines-above');
                 plotinfo.overlinesAbove = ensureSingle(plotgroup, 'g', 'overlines-above');
@@ -670,20 +674,20 @@ function makeSubplotLayer(gd, plotinfo) {
         plotinfo.yaxislayer = mainplotgroup.select('.overaxes-' + yLayer).select('.' + yId);
     }
 
-    if(!hasZ) {
+    if (!hasZ) {
         // common attributes for all subplots, overlays or not
 
-        if(!hasOnlyLargeSploms) {
+        if (!hasOnlyLargeSploms) {
             ensureSingleAndAddDatum(plotinfo.minorGridlayer, 'g', plotinfo.xaxis._id);
             ensureSingleAndAddDatum(plotinfo.minorGridlayer, 'g', plotinfo.yaxis._id);
             plotinfo.minorGridlayer.selectAll('g')
-                .map(function(d) { return d[0]; })
+                .map(function (d) { return d[0]; })
                 .sort(axisIds.idSort);
 
             ensureSingleAndAddDatum(plotinfo.gridlayer, 'g', plotinfo.xaxis._id);
             ensureSingleAndAddDatum(plotinfo.gridlayer, 'g', plotinfo.yaxis._id);
             plotinfo.gridlayer.selectAll('g')
-                .map(function(d) { return d[0]; })
+                .map(function (d) { return d[0]; })
                 .sort(axisIds.idSort);
         }
 
@@ -698,11 +702,11 @@ function makeSubplotLayer(gd, plotinfo) {
 }
 
 function purgeSubplotLayers(layers, fullLayout) {
-    if(!layers) return;
+    if (!layers) return;
 
     var overlayIdsToRemove = {};
 
-    layers.each(function(d) {
+    layers.each(function (d) {
         var id = d[0];
         var plotgroup = d3.select(this);
 
@@ -716,14 +720,14 @@ function purgeSubplotLayers(layers, fullLayout) {
 
     // must remove overlaid subplot trace layers 'manually'
 
-    for(var k in fullLayout._plots) {
+    for (var k in fullLayout._plots) {
         var subplotInfo = fullLayout._plots[k];
         var overlays = subplotInfo.overlays || [];
 
-        for(var j = 0; j < overlays.length; j++) {
+        for (var j = 0; j < overlays.length; j++) {
             var overlayInfo = overlays[j];
 
-            if(overlayIdsToRemove[overlayInfo.id]) {
+            if (overlayIdsToRemove[overlayInfo.id]) {
                 overlayInfo.plot.selectAll('.trace').remove();
             }
         }
@@ -735,10 +739,10 @@ function removeSubplotExtras(subplotId, fullLayout) {
     fullLayout._defs.select('#clip' + fullLayout._uid + subplotId + 'plot').remove();
 }
 
-exports.toSVG = function(gd) {
+exports.toSVG = function (gd) {
     var imageRoot = gd._fullLayout._glimages;
     var root = d3.select(gd).selectAll('.svg-container');
-    var canvases = root.filter(function(d, i) {return i === root.size() - 1;})
+    var canvases = root.filter(function (d, i) { return i === root.size() - 1; })
         .selectAll('.gl-canvas-context, .gl-canvas-focus');
 
     function canvasToImage() {

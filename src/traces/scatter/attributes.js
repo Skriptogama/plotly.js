@@ -286,12 +286,16 @@ module.exports = {
         },
         shape: {
             valType: 'enumerated',
-            values: ['linear', 'spline', 'hv', 'vh', 'hvh', 'vhv'],
+            values: ['linear', 'spline', 'hv', 'vh', 'hvh', 'vhv', 'cardinal', 'catmull-rom', 'monotone', 'natural'],
             dflt: 'linear',
             editType: 'plot',
             description: [
                 'Determines the line shape.',
                 'With *spline* the lines are drawn using spline interpolation.',
+                'With *cardinal* the lines are drawn using cardinal spline interpolation.',
+                'With *catmull-rom* the lines are drawn using centripetal Catmull-Rom interpolation.',
+                'With *monotone* the lines are drawn using monotone cubic interpolation.',
+                'With *natural* the lines are drawn using natural cubic spline interpolation.',
                 'The other available values correspond to step-wise line shapes.'
             ].join(' ')
         },
@@ -305,6 +309,29 @@ module.exports = {
                 'Has an effect only if `shape` is set to *spline*',
                 'Sets the amount of smoothing.',
                 '*0* corresponds to no smoothing (equivalent to a *linear* shape).'
+            ].join(' ')
+        },
+        tension: {
+            valType: 'number',
+            min: 0,
+            max: 1,
+            dflt: 0.5,
+            editType: 'plot',
+            description: [
+                'Has an effect only if `shape` is set to *cardinal*.',
+                'Sets the tension of the cardinal spline.',
+                '*0* corresponds to maximum curvature, *1* corresponds to a straight line.'
+            ].join(' ')
+        },
+        alpha: {
+            valType: 'number',
+            min: 0,
+            max: 1,
+            dflt: 0.5,
+            editType: 'plot',
+            description: [
+                'Has an effect only if `shape` is set to *catmull-rom*.',
+                'Controls the parameterization: *0* is uniform, *0.5* is centripetal (default), *1* is chordal.'
             ].join(' ')
         },
         dash: extendFlat({}, dash, { editType: 'style' }),

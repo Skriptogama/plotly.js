@@ -11,6 +11,7 @@ var handleXYDefaults = require('../scatter/xy_defaults');
 var handlePeriodDefaults = require('../scatter/period_defaults');
 var handleMarkerDefaults = require('../scatter/marker_defaults');
 var handleLineDefaults = require('../scatter/line_defaults');
+var handleLineShapeDefaults = require('../scatter/line_shape_defaults');
 var handleFillColorDefaults = require('../scatter/fillcolor_defaults');
 var handleTextDefaults = require('../scatter/text_defaults');
 
@@ -52,7 +53,7 @@ module.exports = function supplyDefaults(traceIn, traceOut, defaultColor, layout
     if (subTypes.hasLines(traceOut)) {
         coerce('connectgaps');
         handleLineDefaults(traceIn, traceOut, defaultColor, layout, coerce);
-        coerce('line.shape');
+        handleLineShapeDefaults(traceIn, traceOut, coerce);
     }
 
     if (subTypes.hasText(traceOut)) {

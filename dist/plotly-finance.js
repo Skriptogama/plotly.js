@@ -18703,9 +18703,11 @@ var Plotly = (() => {
         coerce("autotypenumbers");
         var font = Lib.coerceFont(coerce, "font");
         var fontSize = font.size;
-        Lib.coerceFont(coerce, "title.font", font, { overrideDflt: {
-          size: Math.round(fontSize * 1.4)
-        } });
+        Lib.coerceFont(coerce, "title.font", font, {
+          overrideDflt: {
+            size: Math.round(fontSize * 1.4)
+          }
+        });
         coerce("title.text", layoutOut._dfltTitle.plot);
         coerce("title.xref");
         var titleYref = coerce("title.yref");
@@ -19719,8 +19721,9 @@ var Plotly = (() => {
         var fullData = gd._fullData;
         var fullLayout = gd._fullLayout;
         var trace, _module, i, j;
-        var calcdata = new Array(fullData.length);
+        var isIncremental = Array.isArray(traces) && traces.length > 0;
         var oldCalcdata = (gd.calcdata || []).slice();
+        var calcdata = isIncremental ? oldCalcdata.concat(new Array(Math.max(0, fullData.length - oldCalcdata.length))) : new Array(fullData.length);
         gd.calcdata = calcdata;
         fullLayout._numBoxes = 0;
         fullLayout._numViolins = 0;
@@ -19733,15 +19736,11 @@ var Plotly = (() => {
         fullLayout._iciclecolormap = {};
         fullLayout._funnelareacolormap = {};
         for (i = 0; i < fullData.length; i++) {
-          if (Array.isArray(traces) && traces.indexOf(i) === -1) {
-            calcdata[i] = oldCalcdata[i];
-            continue;
-          }
-        }
-        for (i = 0; i < fullData.length; i++) {
           trace = fullData[i];
           trace._arrayAttrs = PlotSchema.findArrayAttributes(trace);
-          trace._extremes = {};
+          if (!isIncremental || traces.indexOf(i) !== -1) {
+            trace._extremes = {};
+          }
         }
         var polarIds = fullLayout._subplots.polar || [];
         for (i = 0; i < polarIds.length; i++) {
@@ -19759,6 +19758,7 @@ var Plotly = (() => {
         }
         var hasCalcTransform = false;
         function transformCalci(i2) {
+          if (isIncremental && traces.indexOf(i2) === -1) return;
           trace = fullData[i2];
           _module = trace._module;
           if (trace.visible === true && trace.transforms) {
@@ -19780,6 +19780,7 @@ var Plotly = (() => {
           }
         }
         function calci(i2, isContainer) {
+          if (isIncremental && traces.indexOf(i2) === -1) return;
           trace = fullData[i2];
           _module = trace._module;
           if (!!_module.isContainer !== isContainer) return;
@@ -19804,7 +19805,9 @@ var Plotly = (() => {
           cd[0].trace = trace;
           calcdata[i2] = cd;
         }
-        setupAxisCategories(axList, fullData, fullLayout);
+        if (!isIncremental) {
+          setupAxisCategories(axList, fullData, fullLayout);
+        }
         for (i = 0; i < fullData.length; i++) calci(i, true);
         for (i = 0; i < fullData.length; i++) transformCalci(i);
         if (hasCalcTransform) setupAxisCategories(axList, fullData, fullLayout);
@@ -24673,6 +24676,167 @@ var Plotly = (() => {
         path += "C" + tangents[pLast][1] + " " + tangents[0][0] + " " + pts[0] + "Z";
         return path;
       };
+      drawing.cardinalopen = function(pts, tension) {
+        var n = pts.length;
+        if (n < 3) return "M" + pts.join("L");
+        var k = (1 - tension) / 6;
+        var i;
+        var path = "M" + pts[0] + "C" + pts[0] + " " + [
+          pts[1][0] + k * (pts[0][0] - pts[2][0]),
+          pts[1][1] + k * (pts[0][1] - pts[2][1])
+        ] + " " + pts[1];
+        for (i = 1; i < n - 2; i++) {
+          path += "C" + [
+            pts[i][0] + k * (pts[i + 1][0] - pts[i - 1][0]),
+            pts[i][1] + k * (pts[i + 1][1] - pts[i - 1][1])
+          ] + " " + [
+            pts[i + 1][0] + k * (pts[i][0] - pts[i + 2][0]),
+            pts[i + 1][1] + k * (pts[i][1] - pts[i + 2][1])
+          ] + " " + pts[i + 1];
+        }
+        path += "C" + [
+          pts[n - 2][0] + k * (pts[n - 1][0] - pts[n - 3][0]),
+          pts[n - 2][1] + k * (pts[n - 1][1] - pts[n - 3][1])
+        ] + " " + pts[n - 1] + " " + pts[n - 1];
+        return path;
+      };
+      drawing.cardinalclosed = function(pts, tension) {
+        var n = pts.length;
+        if (n < 3) return "M" + pts.join("L") + "Z";
+        var k = (1 - tension) / 6;
+        var i, prev, curr, next, next2;
+        var path = "M" + pts[0];
+        for (i = 0; i < n - 1; i++) {
+          prev = pts[(i - 1 + n) % n];
+          curr = pts[i];
+          next = pts[i + 1];
+          next2 = pts[(i + 2) % n];
+          path += "C" + [curr[0] + k * (next[0] - prev[0]), curr[1] + k * (next[1] - prev[1])] + " " + [next[0] + k * (curr[0] - next2[0]), next[1] + k * (curr[1] - next2[1])] + " " + next;
+        }
+        var last = pts[n - 1];
+        var first = pts[0];
+        path += "C" + [last[0] + k * (first[0] - pts[n - 2][0]), last[1] + k * (first[1] - pts[n - 2][1])] + " " + [first[0] + k * (last[0] - pts[1][0]), first[1] + k * (last[1] - pts[1][1])] + " " + first + "Z";
+        return path;
+      };
+      function makeCatmullRomTangent(prevpt, thispt, nextpt, alpha) {
+        var d1x = prevpt[0] - thispt[0];
+        var d1y = prevpt[1] - thispt[1];
+        var d2x = nextpt[0] - thispt[0];
+        var d2y = nextpt[1] - thispt[1];
+        var d1a = Math.pow(d1x * d1x + d1y * d1y, alpha / 2);
+        var d2a = Math.pow(d2x * d2x + d2y * d2y, alpha / 2);
+        var numx = d2a * d2a * d1x - d1a * d1a * d2x;
+        var numy = d2a * d2a * d1y - d1a * d1a * d2y;
+        var denom1 = 3 * d2a * (d1a + d2a);
+        var denom2 = 3 * d1a * (d1a + d2a);
+        return [
+          [thispt[0] + (denom1 ? numx / denom1 : 0), thispt[1] + (denom1 ? numy / denom1 : 0)],
+          [thispt[0] - (denom2 ? numx / denom2 : 0), thispt[1] - (denom2 ? numy / denom2 : 0)]
+        ];
+      }
+      drawing.catmullromopen = function(pts, alpha) {
+        if (pts.length < 3) return "M" + pts.join("L");
+        var tangents = [];
+        var i;
+        for (i = 1; i < pts.length - 1; i++) {
+          tangents.push(makeCatmullRomTangent(pts[i - 1], pts[i], pts[i + 1], alpha));
+        }
+        var path = "M" + pts[0];
+        path += "Q" + tangents[0][0] + " " + pts[1];
+        for (i = 2; i < pts.length - 1; i++) {
+          path += "C" + tangents[i - 2][1] + " " + tangents[i - 1][0] + " " + pts[i];
+        }
+        path += "Q" + tangents[pts.length - 3][1] + " " + pts[pts.length - 1];
+        return path;
+      };
+      drawing.catmullromclosed = function(pts, alpha) {
+        if (pts.length < 3) return "M" + pts.join("L") + "Z";
+        var pLast = pts.length - 1;
+        var tangents = [makeCatmullRomTangent(pts[pLast], pts[0], pts[1], alpha)];
+        var i;
+        for (i = 1; i < pLast; i++) {
+          tangents.push(makeCatmullRomTangent(pts[i - 1], pts[i], pts[i + 1], alpha));
+        }
+        tangents.push(makeCatmullRomTangent(pts[pLast - 1], pts[pLast], pts[0], alpha));
+        var path = "M" + pts[0];
+        for (i = 1; i <= pLast; i++) {
+          path += "C" + tangents[i - 1][1] + " " + tangents[i][0] + " " + pts[i];
+        }
+        path += "C" + tangents[pLast][1] + " " + tangents[0][0] + " " + pts[0] + "Z";
+        return path;
+      };
+      drawing.monotoneopen = function(pts) {
+        var n = pts.length;
+        if (n < 2) return "M" + pts[0];
+        if (n === 2) return "M" + pts[0] + "L" + pts[1];
+        var h = new Array(n - 1);
+        var s = new Array(n - 1);
+        var i;
+        for (i = 0; i < n - 1; i++) {
+          h[i] = pts[i + 1][0] - pts[i][0];
+          s[i] = h[i] ? (pts[i + 1][1] - pts[i][1]) / h[i] : 0;
+        }
+        var t = new Array(n);
+        for (i = 1; i < n - 1; i++) {
+          var p = (s[i - 1] * h[i] + s[i] * h[i - 1]) / (h[i - 1] + h[i]);
+          var sSign = (s[i - 1] < 0 ? -1 : 1) + (s[i] < 0 ? -1 : 1);
+          t[i] = sSign * Math.min(Math.abs(s[i - 1]), Math.abs(s[i]), 0.5 * Math.abs(p)) || 0;
+        }
+        t[0] = h[0] ? (3 * s[0] - t[1]) / 2 : t[1];
+        t[n - 1] = h[n - 2] ? (3 * s[n - 2] - t[n - 2]) / 2 : t[n - 2];
+        var path = "M" + pts[0];
+        for (i = 0; i < n - 1; i++) {
+          var dx = (pts[i + 1][0] - pts[i][0]) / 3;
+          path += "C" + [pts[i][0] + dx, pts[i][1] + dx * t[i]] + " " + [pts[i + 1][0] - dx, pts[i + 1][1] - dx * t[i + 1]] + " " + pts[i + 1];
+        }
+        return path;
+      };
+      function naturalControlPoints(x) {
+        var n = x.length - 1;
+        var a = new Array(n);
+        var b = new Array(n);
+        var r = new Array(n);
+        var i, m;
+        a[0] = 0;
+        b[0] = 2;
+        r[0] = x[0] + 2 * x[1];
+        for (i = 1; i < n - 1; i++) {
+          a[i] = 1;
+          b[i] = 4;
+          r[i] = 4 * x[i] + 2 * x[i + 1];
+        }
+        a[n - 1] = 2;
+        b[n - 1] = 7;
+        r[n - 1] = 8 * x[n - 1] + x[n];
+        for (i = 1; i < n; i++) {
+          m = a[i] / b[i - 1];
+          b[i] -= m;
+          r[i] -= m * r[i - 1];
+        }
+        a[n - 1] = r[n - 1] / b[n - 1];
+        for (i = n - 2; i >= 0; i--) a[i] = (r[i] - a[i + 1]) / b[i];
+        b[n - 1] = (x[n] + a[n - 1]) / 2;
+        for (i = 0; i < n - 1; i++) b[i] = 2 * x[i + 1] - a[i + 1];
+        return [a, b];
+      }
+      drawing.naturalopen = function(pts) {
+        var n = pts.length;
+        if (n < 2) return "M" + pts[0];
+        if (n === 2) return "M" + pts[0] + "L" + pts[1];
+        var xa = pts.map(function(p) {
+          return p[0];
+        });
+        var ya = pts.map(function(p) {
+          return p[1];
+        });
+        var px = naturalControlPoints(xa);
+        var py = naturalControlPoints(ya);
+        var path = "M" + pts[0];
+        for (var i = 0; i < n - 1; i++) {
+          path += "C" + [px[0][i], py[0][i]] + " " + [px[1][i], py[1][i]] + " " + pts[i + 1];
+        }
+        return path;
+      };
       var lastDrawnX;
       var lastDrawnY;
       function roundEnd(pt, isY, isLastPoint) {
@@ -26426,10 +26590,13 @@ var Plotly = (() => {
           ax._r = ax.range.slice();
           ax._rl = Lib.simpleMap(ax._r, ax.r2l);
           var axIn = ax._input;
-          var edits = {};
-          edits[ax._attr + ".range"] = ax.range;
-          edits[ax._attr + ".autorange"] = ax.autorange;
-          Registry.call("_storeDirectGUIEdit", gd.layout, gd._fullLayout._preGUI, edits);
+          var isCategoryAx = ax.type === "category" || ax.type === "multicategory";
+          if (!isCategoryAx) {
+            var edits = {};
+            edits[ax._attr + ".range"] = ax.range;
+            edits[ax._attr + ".autorange"] = ax.autorange;
+            Registry.call("_storeDirectGUIEdit", gd.layout, gd._fullLayout._preGUI, edits);
+          }
           axIn.range = ax.range.slice();
           axIn.autorange = ax.autorange;
         }
@@ -42513,7 +42680,7 @@ var Plotly = (() => {
           },
           shape: {
             valType: "enumerated",
-            values: ["linear", "spline", "hv", "vh", "hvh", "vhv"],
+            values: ["linear", "spline", "hv", "vh", "hvh", "vhv", "cardinal", "catmull-rom", "monotone", "natural"],
             dflt: "linear",
             editType: "plot"
           },
@@ -42522,6 +42689,20 @@ var Plotly = (() => {
             min: 0,
             max: 1.3,
             dflt: 1,
+            editType: "plot"
+          },
+          tension: {
+            valType: "number",
+            min: 0,
+            max: 1,
+            dflt: 0.5,
+            editType: "plot"
+          },
+          alpha: {
+            valType: "number",
+            min: 0,
+            max: 1,
+            dflt: 0.5,
             editType: "plot"
           },
           dash: extendFlat({}, dash, { editType: "style" }),
@@ -45286,6 +45467,102 @@ var Plotly = (() => {
         Queue.add(gd, exports.extendTraces, undoArgs, prependTraces, arguments);
         return promise;
       }
+      function _snapshotAxisRanges(gd) {
+        var snapshot = {};
+        var axList = Axes.list(gd, "", true);
+        for (var i = 0; i < axList.length; i++) {
+          var ax = axList[i];
+          snapshot[ax._id] = ax.range ? ax.range.slice() : null;
+        }
+        return snapshot;
+      }
+      function _axisRangesExpanded(gd, prevSnapshot) {
+        var axList = Axes.list(gd, "", true);
+        for (var i = 0; i < axList.length; i++) {
+          var ax = axList[i];
+          var prev = prevSnapshot[ax._id];
+          if (!prev || !ax.range) return true;
+          var span = Math.abs(ax.range[1] - ax.range[0]) || 1;
+          var eps = span * 1e-9;
+          if (ax.range[0] < prev[0] - eps || ax.range[1] > prev[1] + eps) return true;
+        }
+        return false;
+      }
+      function _canIncrementallyDrawScatter(fullLayout) {
+        var modules = fullLayout._modules || [];
+        return !fullLayout._has("regl") && modules.length === 1 && modules[0].name === "scatter";
+      }
+      function _canIncrementallyCalcScatterGl(fullLayout) {
+        var modules = fullLayout._modules || [];
+        return fullLayout._has("regl") && modules.length === 1 && modules[0].name === "scattergl";
+      }
+      function _drawNewTracesOnly(gd, newTraceIndices) {
+        var fullLayout = gd._fullLayout;
+        var basePlotModules = fullLayout._basePlotModules;
+        var replotOpts = newTraceIndices ? { partialUpdate: true } : void 0;
+        for (var i = 0; i < basePlotModules.length; i++) {
+          if (basePlotModules[i].plot) {
+            basePlotModules[i].plot(gd, newTraceIndices, null, null, replotOpts);
+          }
+        }
+        Plots.style(gd);
+        return Plots.previousPromises(gd) || Promise.resolve();
+      }
+      function _addTracesIncremental(gd, newIndices) {
+        helpers.cleanData(gd.data);
+        helpers.cleanLayout(gd.layout);
+        var prevFullData = gd._fullData || [];
+        Plots.supplyDefaults(gd);
+        for (var i = 0; i < prevFullData.length; i++) {
+          if (newIndices.indexOf(i) === -1 && gd._fullData[i] && prevFullData[i]) {
+            Lib.relinkPrivateKeys(gd._fullData[i], prevFullData[i]);
+          }
+        }
+        var fullLayout = gd._fullLayout;
+        var canIncrementallyDrawScatter = _canIncrementallyDrawScatter(fullLayout);
+        var canIncrementallyCalcScatterGl = _canIncrementallyCalcScatterGl(fullLayout);
+        if (!fullLayout._paper || fullLayout._has("regl") && !fullLayout._glcanvas) {
+          return exports._doPlot(gd).then(function() {
+            gd.emit("plotly_redraw");
+            return gd;
+          });
+        }
+        var prevRanges = _snapshotAxisRanges(gd);
+        var calcIndices = canIncrementallyCalcScatterGl ? newIndices : fullLayout._has("regl") ? void 0 : newIndices;
+        if (canIncrementallyCalcScatterGl) gd._scatterGlIncrementalAppend = true;
+        try {
+          Plots.doCalcdata(gd, calcIndices);
+        } finally {
+          delete gd._scatterGlIncrementalAppend;
+        }
+        for (var i = 0; i < gd.calcdata.length; i++) {
+          if (gd.calcdata[i] && gd.calcdata[i][0]) {
+            gd.calcdata[i][0].trace = gd._fullData[i];
+          }
+        }
+        subroutines.doAutoRangeAndConstraints(gd);
+        if (_axisRangesExpanded(gd, prevRanges)) {
+          var drawRangeSlider = Registry.getComponentMethod("rangeslider", "draw");
+          var axisP = subroutines.doTicksRelayout(gd);
+          return Promise.resolve(axisP).then(function() {
+            return subroutines.drawData(gd);
+          }).then(function() {
+            return canIncrementallyCalcScatterGl ? drawRangeSlider(gd, { newTraceIndices: newIndices, partialUpdate: true }) : drawRangeSlider(gd);
+          }).then(function() {
+            gd.emit("plotly_redraw");
+            return gd;
+          });
+        }
+        var canIncrementallyDrawRangeSlider = canIncrementallyDrawScatter || canIncrementallyCalcScatterGl;
+        var drawPromise = canIncrementallyDrawScatter ? _drawNewTracesOnly(gd, newIndices) : subroutines.drawData(gd);
+        return Promise.resolve(drawPromise).then(function() {
+          var drawRangeSlider2 = Registry.getComponentMethod("rangeslider", "draw");
+          return canIncrementallyDrawRangeSlider ? drawRangeSlider2(gd, { newTraceIndices: newIndices, partialUpdate: true }) : drawRangeSlider2(gd);
+        }).then(function() {
+          gd.emit("plotly_redraw");
+          return gd;
+        });
+      }
       function addTraces(gd, traces, newIndices) {
         gd = Lib.getGraphDiv(gd);
         var currentIndices = [];
@@ -45310,6 +45587,15 @@ var Plotly = (() => {
           currentIndices.push(-traces.length + i);
         }
         if (typeof newIndices === "undefined") {
+          if (Lib.isPlotDiv(gd)) {
+            var appendedIndices = [];
+            for (i = 0; i < traces.length; i++) {
+              appendedIndices.push(gd.data.length - traces.length + i);
+            }
+            promise = _addTracesIncremental(gd, appendedIndices);
+            Queue.add(gd, undoFunc, undoArgs, redoFunc, redoArgs);
+            return promise;
+          }
           promise = exports.redraw(gd);
           Queue.add(gd, undoFunc, undoArgs, redoFunc, redoArgs);
           return promise;
@@ -46320,53 +46606,56 @@ var Plotly = (() => {
               Plots.supplyDefaultsUpdateCalc(gd.calcdata, newFullData);
             }
             var seq = [];
-            if (frames) {
-              gd._transitionData = {};
-              Plots.createTransitionData(gd);
-              seq.push(addFrames2);
-            }
-            if (newFullLayout.transition && (restyleFlags.anim || relayoutFlags.anim)) {
-              if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
-              Plots.doCalcdata(gd);
-              subroutines.doAutoRangeAndConstraints(gd);
-              seq.push(function() {
-                return Plots.transitionFromReact(gd, restyleFlags, relayoutFlags, oldFullLayout);
-              });
-            } else if (restyleFlags.fullReplot || relayoutFlags.layoutReplot) {
-              gd._fullLayout._skipDefaults = true;
-              seq.push(exports._doPlot);
+            if (false) {
             } else {
-              for (var componentType in relayoutFlags.arrays) {
-                var indices = relayoutFlags.arrays[componentType];
-                if (indices.length) {
-                  var drawOne = Registry.getComponentMethod(componentType, "drawOne");
-                  if (drawOne !== Lib.noop) {
-                    for (var i = 0; i < indices.length; i++) {
-                      drawOne(gd, indices[i]);
+              if (frames) {
+                gd._transitionData = {};
+                Plots.createTransitionData(gd);
+                seq.push(addFrames2);
+              }
+              if (newFullLayout.transition && (restyleFlags.anim || relayoutFlags.anim)) {
+                if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
+                Plots.doCalcdata(gd);
+                subroutines.doAutoRangeAndConstraints(gd);
+                seq.push(function() {
+                  return Plots.transitionFromReact(gd, restyleFlags, relayoutFlags, oldFullLayout);
+                });
+              } else if (restyleFlags.fullReplot || relayoutFlags.layoutReplot) {
+                gd._fullLayout._skipDefaults = true;
+                seq.push(exports._doPlot);
+              } else {
+                for (var componentType in relayoutFlags.arrays) {
+                  var indices = relayoutFlags.arrays[componentType];
+                  if (indices.length) {
+                    var drawOne = Registry.getComponentMethod(componentType, "drawOne");
+                    if (drawOne !== Lib.noop) {
+                      for (var i = 0; i < indices.length; i++) {
+                        drawOne(gd, indices[i]);
+                      }
+                    } else {
+                      var draw = Registry.getComponentMethod(componentType, "draw");
+                      if (draw === Lib.noop) {
+                        throw new Error("cannot draw components: " + componentType);
+                      }
+                      draw(gd);
                     }
-                  } else {
-                    var draw = Registry.getComponentMethod(componentType, "draw");
-                    if (draw === Lib.noop) {
-                      throw new Error("cannot draw components: " + componentType);
-                    }
-                    draw(gd);
                   }
                 }
+                seq.push(Plots.previousPromises);
+                if (restyleFlags.style) seq.push(subroutines.doTraceStyle);
+                if (restyleFlags.colorbars || relayoutFlags.colorbars) seq.push(subroutines.doColorBars);
+                if (relayoutFlags.legend) seq.push(subroutines.doLegend);
+                if (relayoutFlags.layoutstyle) seq.push(subroutines.layoutStyles);
+                if (relayoutFlags.axrange) addAxRangeSequence(seq);
+                if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
+                if (relayoutFlags.modebar) seq.push(subroutines.doModeBar);
+                if (relayoutFlags.camera) seq.push(subroutines.doCamera);
+                seq.push(emitAfterPlot);
               }
-              seq.push(Plots.previousPromises);
-              if (restyleFlags.style) seq.push(subroutines.doTraceStyle);
-              if (restyleFlags.colorbars || relayoutFlags.colorbars) seq.push(subroutines.doColorBars);
-              if (relayoutFlags.legend) seq.push(subroutines.doLegend);
-              if (relayoutFlags.layoutstyle) seq.push(subroutines.layoutStyles);
-              if (relayoutFlags.axrange) addAxRangeSequence(seq);
-              if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
-              if (relayoutFlags.modebar) seq.push(subroutines.doModeBar);
-              if (relayoutFlags.camera) seq.push(subroutines.doCamera);
-              seq.push(emitAfterPlot);
+              seq.push(Plots.rehover, Plots.redrag, Plots.reselect);
+              plotDone = Lib.syncOrAsync(seq, gd);
+              if (!plotDone || !plotDone.then) plotDone = Promise.resolve(gd);
             }
-            seq.push(Plots.rehover, Plots.redrag, Plots.reselect);
-            plotDone = Lib.syncOrAsync(seq, gd);
-            if (!plotDone || !plotDone.then) plotDone = Promise.resolve(gd);
           }
         }
         return plotDone.then(() => {
@@ -46377,6 +46666,17 @@ var Plotly = (() => {
       function diffData(gd, oldFullData, newFullData, immutable, transition, newDataRevision) {
         var sameTraceLength = oldFullData.length === newFullData.length;
         if (!transition && !sameTraceLength) {
+          if (!sameTraceLength && newFullData.length > oldFullData.length) {
+            var newIndices = [];
+            for (var n = oldFullData.length; n < newFullData.length; n++) {
+              newIndices.push(n);
+            }
+            return {
+              fullReplot: false,
+              calc: false,
+              _newTraceIndices: newIndices
+            };
+          }
           return {
             fullReplot: true,
             calc: true
@@ -48419,6 +48719,8 @@ var Plotly = (() => {
       module.exports = function handleLineShapeDefaults(traceIn, traceOut, coerce) {
         var shape = coerce("line.shape");
         if (shape === "spline") coerce("line.smoothing");
+        if (shape === "cardinal") coerce("line.tension");
+        if (shape === "catmull-rom") coerce("line.alpha");
       };
     }
   });
@@ -50116,7 +50418,7 @@ var Plotly = (() => {
           };
         }
         var getEdgeIntersections;
-        if (shape === "linear" || shape === "spline") {
+        if (shape === "linear" || shape === "spline" || shape === "cardinal" || shape === "catmull-rom" || shape === "monotone" || shape === "natural") {
           getEdgeIntersections = getLinearEdgeIntersections;
         } else if (shape === "hv" || shape === "vh") {
           getEdgeIntersections = getHVEdgeIntersections;
@@ -50384,9 +50686,9 @@ var Plotly = (() => {
       var linePoints = require_line_points();
       var linkTraces = require_link_traces();
       var polygonTester = require_polygon().tester;
-      module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transitionOpts, makeOnCompleteCallback) {
+      module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transitionOpts, makeOnCompleteCallback, replotOpts) {
         var join, onComplete;
-        var isFullReplot = !transitionOpts;
+        var isFullReplot = !transitionOpts && !(replotOpts && replotOpts.partialUpdate);
         var hasTransition = !!transitionOpts && transitionOpts.duration > 0;
         var cdscatterSorted = linkTraces(gd, plotinfo, cdscatter);
         join = scatterLayer.selectAll("g.trace").data(cdscatterSorted, function(d) {
@@ -50512,6 +50814,32 @@ var Plotly = (() => {
               } else {
                 return Drawing.smoothopen(pts2, line.smoothing);
               }
+            };
+          } else if (line.shape === "cardinal") {
+            pathfn = revpathbase = function(pts2) {
+              var pLast = pts2[pts2.length - 1];
+              if (pts2.length > 1 && pts2[0][0] === pLast[0] && pts2[0][1] === pLast[1]) {
+                return Drawing.cardinalclosed(pts2.slice(1), line.tension);
+              } else {
+                return Drawing.cardinalopen(pts2, line.tension);
+              }
+            };
+          } else if (line.shape === "catmull-rom") {
+            pathfn = revpathbase = function(pts2) {
+              var pLast = pts2[pts2.length - 1];
+              if (pts2.length > 1 && pts2[0][0] === pLast[0] && pts2[0][1] === pLast[1]) {
+                return Drawing.catmullromclosed(pts2.slice(1), line.alpha);
+              } else {
+                return Drawing.catmullromopen(pts2, line.alpha);
+              }
+            };
+          } else if (line.shape === "monotone") {
+            pathfn = revpathbase = function(pts2) {
+              return Drawing.monotoneopen(pts2);
+            };
+          } else if (line.shape === "natural") {
+            pathfn = revpathbase = function(pts2) {
+              return Drawing.naturalopen(pts2);
             };
           } else {
             pathfn = revpathbase = function(pts2) {
@@ -50690,7 +51018,7 @@ var Plotly = (() => {
           var join, selection, hasNode;
           var trace2 = cdscatter2[0].trace;
           var showMarkers = subTypes.hasMarkers(trace2);
-          var showText = subTypes.hasText(trace2);
+          var showText = subTypes.hasText(trace2) && !plotinfo.isRangePlot;
           var keyFunc2 = getKeyFunc(trace2);
           var markerFilter = hideFilter;
           var textFilter = hideFilter;
@@ -52233,7 +52561,7 @@ var Plotly = (() => {
           spSVG.push(xi + yi);
         }
       };
-      exports.plot = function(gd, traces, transitionOpts, makeOnCompleteCallback) {
+      exports.plot = function(gd, traces, transitionOpts, makeOnCompleteCallback, replotOpts) {
         var fullLayout = gd._fullLayout;
         var subplots = fullLayout._subplots.cartesian;
         var calcdata = gd.calcdata;
@@ -52273,11 +52601,14 @@ var Plotly = (() => {
                 pcd = cd;
               }
             }
-            plotOne(gd, subplotInfo, cdSubplot, transitionOpts, makeOnCompleteCallback);
+            if (replotOpts && replotOpts.partialUpdate && !cdSubplot.length) {
+              continue;
+            }
+            plotOne(gd, subplotInfo, cdSubplot, transitionOpts, makeOnCompleteCallback, replotOpts);
           }
         }
       };
-      function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback) {
+      function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback, replotOpts) {
         var traceLayerClasses = constants.traceLayerClasses;
         var fullLayout = gd._fullLayout;
         var zindices = fullLayout._zindices;
@@ -52333,7 +52664,8 @@ var Plotly = (() => {
             d.cdModule,
             sel,
             transitionOpts,
-            makeOnCompleteCallback
+            makeOnCompleteCallback,
+            replotOpts
           );
           if (constants.clipOnAxisFalseQuery.indexOf("." + className2) === -1) {
             Drawing.setClipUrl(sel, plotinfo.layerClipId, gd);
@@ -52461,9 +52793,9 @@ var Plotly = (() => {
           }
         });
       };
-      exports.rangePlot = function(gd, plotinfo, cdSubplot) {
+      exports.rangePlot = function(gd, plotinfo, cdSubplot, replotOpts) {
         makeSubplotLayer(gd, plotinfo);
-        plotOne(gd, plotinfo, cdSubplot);
+        plotOne(gd, plotinfo, cdSubplot, null, null, replotOpts);
         Plots.style(gd);
       };
       function makeSubplotData(gd) {
@@ -57106,7 +57438,7 @@ var Plotly = (() => {
       var setCursor = require_setcursor();
       var constants = require_constants12();
       var helpers = require_helpers11();
-      module.exports = function(gd) {
+      module.exports = function(gd, drawOpts) {
         var fullLayout = gd._fullLayout;
         var rangeSliderData = fullLayout._rangeSliderData;
         for (var i = 0; i < rangeSliderData.length; i++) {
@@ -57176,6 +57508,8 @@ var Plotly = (() => {
               );
             }
           }
+          opts2._x = x;
+          opts2._y = y;
           rangeSlider.attr("transform", strTranslate(x, y));
           opts2._rl = Lib.simpleMap(opts2.range, axisOpts.r2l);
           var rl0 = opts2._rl[0];
@@ -57250,7 +57584,7 @@ var Plotly = (() => {
               };
             }
           }
-          rangeSlider.call(drawBg, gd, axisOpts, opts2).call(addClipPath, gd, axisOpts, opts2).call(drawRangePlot, gd, axisOpts, opts2).call(drawMasks, gd, axisOpts, opts2, oppAxisRangeOpts).call(drawSlideBox, gd, axisOpts, opts2).call(drawGrabbers, gd, axisOpts, opts2);
+          rangeSlider.call(drawBg, gd, axisOpts, opts2).call(addClipPath, gd, axisOpts, opts2).call(drawRangePlot, gd, axisOpts, opts2, drawOpts).call(drawMasks, gd, axisOpts, opts2, oppAxisRangeOpts).call(drawSlideBox, gd, axisOpts, opts2).call(drawGrabbers, gd, axisOpts, opts2);
           setupDragElement(rangeSlider, gd, axisOpts, opts2);
           setPixelRange(rangeSlider, gd, axisOpts, opts2, oppAxisOpts, oppAxisRangeOpts);
           if (!isVertical && resolvedSide === "bottom") {
@@ -57494,7 +57828,7 @@ var Plotly = (() => {
           height: opts._height
         });
       }
-      function drawRangePlot(rangeSlider, gd, axisOpts, opts) {
+      function drawRangePlot(rangeSlider, gd, axisOpts, opts, drawOpts) {
         var calcData = gd.calcdata;
         var isVertical = opts._isVertical;
         var rangePlots = rangeSlider.selectAll("g." + constants.rangePlotClassName).data(axisOpts._subplotsWith, Lib.identity);
@@ -57586,21 +57920,66 @@ var Plotly = (() => {
             plotgroup,
             xaxis: xa,
             yaxis: ya,
-            isRangePlot: true
+            isRangePlot: true,
+            rangeSliderOpts: opts
           };
           if (isMainPlot) mainplotinfo = plotinfo;
           else {
             plotinfo.mainplot = "xy";
             plotinfo.mainplotinfo = mainplotinfo;
           }
-          Cartesian.rangePlot(gd, plotinfo, filterRangePlotCalcData(calcData, id));
+          var rangeCalcData = filterRangePlotCalcData(calcData, id, drawOpts && drawOpts.newTraceIndices);
+          var hasScatterGl = false;
+          for (var j = 0; j < rangeCalcData.length; j++) {
+            var trace = rangeCalcData[j] && rangeCalcData[j][0] && rangeCalcData[j][0].trace;
+            if (trace && trace.type === "scattergl") {
+              hasScatterGl = true;
+              break;
+            }
+          }
+          var glForeignObject = plotgroup.selectAll("foreignObject.rangeslider-gl-plot").data(hasScatterGl ? [0] : []);
+          glForeignObject.exit().remove();
+          glForeignObject.enter().append("foreignObject").attr("class", "rangeslider-gl-plot").style("pointer-events", "none");
+          glForeignObject.attr("x", 0).attr("y", 0).attr("width", opts._width).attr("height", opts._height);
+          glForeignObject.each(function() {
+            var canvas = this.firstChild;
+            if (!canvas) {
+              canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
+              canvas.className = "rangeslider-gl-canvas";
+              canvas.style.display = "block";
+              canvas.style.width = "100%";
+              canvas.style.height = "100%";
+              canvas.style.pointerEvents = "none";
+              this.appendChild(canvas);
+            }
+            var plotGlPixelRatio = gd._context.plotGlPixelRatio || window.devicePixelRatio || 1;
+            canvas.width = Math.round(opts._width * plotGlPixelRatio);
+            canvas.height = Math.round(opts._height * plotGlPixelRatio);
+            canvas.style.width = opts._width + "px";
+            canvas.style.height = opts._height + "px";
+            plotinfo.rangeSliderCanvas = canvas;
+          });
+          if (drawOpts && drawOpts.partialUpdate && !rangeCalcData.length) {
+            return;
+          }
+          if (drawOpts && drawOpts.partialUpdate && hasScatterGl) {
+            gd._rangeSliderScatterGlIncrementalAppend = true;
+          }
+          try {
+            Cartesian.rangePlot(gd, plotinfo, rangeCalcData, drawOpts);
+          } finally {
+            delete gd._rangeSliderScatterGlIncrementalAppend;
+          }
         });
       }
-      function filterRangePlotCalcData(calcData, subplotId) {
+      function filterRangePlotCalcData(calcData, subplotId, traceIndices) {
         var out = [];
         for (var i = 0; i < calcData.length; i++) {
           var calcTrace = calcData[i];
           var trace = calcTrace[0].trace;
+          if (traceIndices && traceIndices.indexOf(trace.index) === -1) {
+            continue;
+          }
           if (trace.xaxis + trace.yaxis === subplotId) {
             out.push(calcTrace);
           }

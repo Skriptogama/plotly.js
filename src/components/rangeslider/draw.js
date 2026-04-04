@@ -20,7 +20,7 @@ var setCursor = require('../../lib/setcursor');
 var constants = require('./constants');
 var helpers = require('./helpers');
 
-module.exports = function (gd) {
+module.exports = function (gd, drawOpts) {
     var fullLayout = gd._fullLayout;
     var rangeSliderData = fullLayout._rangeSliderData;
     for (var i = 0; i < rangeSliderData.length; i++) {
@@ -151,6 +151,9 @@ module.exports = function (gd) {
             }
         }
 
+        opts._x = x;
+        opts._y = y;
+
         rangeSlider.attr('transform', strTranslate(x, y));
 
         // update data <--> pixel coordinate conversion methods
@@ -254,7 +257,7 @@ module.exports = function (gd) {
         rangeSlider
             .call(drawBg, gd, axisOpts, opts)
             .call(addClipPath, gd, axisOpts, opts)
-            .call(drawRangePlot, gd, axisOpts, opts)
+            .call(drawRangePlot, gd, axisOpts, opts, drawOpts)
             .call(drawMasks, gd, axisOpts, opts, oppAxisRangeOpts)
             .call(drawSlideBox, gd, axisOpts, opts)
             .call(drawGrabbers, gd, axisOpts, opts);
@@ -598,7 +601,7 @@ function addClipPath(rangeSlider, gd, axisOpts, opts) {
     });
 }
 
-function drawRangePlot(rangeSlider, gd, axisOpts, opts) {
+function drawRangePlot(rangeSlider, gd, axisOpts, opts, drawOpts) {
     var calcData = gd.calcdata;
     var isVertical = opts._isVertical;
 
@@ -715,7 +718,8 @@ function drawRangePlot(rangeSlider, gd, axisOpts, opts) {
             plotgroup: plotgroup,
             xaxis: xa,
             yaxis: ya,
-            isRangePlot: true
+            isRangePlot: true,
+            rangeSliderOpts: opts
         };
 
         if (isMainPlot) mainplotinfo = plotinfo;
@@ -724,16 +728,80 @@ function drawRangePlot(rangeSlider, gd, axisOpts, opts) {
             plotinfo.mainplotinfo = mainplotinfo;
         }
 
-        Cartesian.rangePlot(gd, plotinfo, filterRangePlotCalcData(calcData, id));
+        var rangeCalcData = filterRangePlotCalcData(calcData, id, drawOpts && drawOpts.newTraceIndices);
+        var hasScatterGl = false;
+
+        for (var j = 0; j < rangeCalcData.length; j++) {
+            var trace = rangeCalcData[j] && rangeCalcData[j][0] && rangeCalcData[j][0].trace;
+            if (trace && trace.type === 'scattergl') {
+                hasScatterGl = true;
+                break;
+            }
+        }
+
+        var glForeignObject = plotgroup.selectAll('foreignObject.rangeslider-gl-plot')
+            .data(hasScatterGl ? [0] : []);
+
+        glForeignObject.exit().remove();
+
+        glForeignObject.enter()
+            .append('foreignObject')
+            .attr('class', 'rangeslider-gl-plot')
+            .style('pointer-events', 'none');
+
+        glForeignObject
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('width', opts._width)
+            .attr('height', opts._height);
+
+        glForeignObject.each(function () {
+            var canvas = this.firstChild;
+
+            if (!canvas) {
+                canvas = document.createElementNS('http://www.w3.org/1999/xhtml', 'canvas');
+                canvas.className = 'rangeslider-gl-canvas';
+                canvas.style.display = 'block';
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                canvas.style.pointerEvents = 'none';
+                this.appendChild(canvas);
+            }
+
+            var plotGlPixelRatio = gd._context.plotGlPixelRatio || window.devicePixelRatio || 1;
+            canvas.width = Math.round(opts._width * plotGlPixelRatio);
+            canvas.height = Math.round(opts._height * plotGlPixelRatio);
+            canvas.style.width = opts._width + 'px';
+            canvas.style.height = opts._height + 'px';
+            plotinfo.rangeSliderCanvas = canvas;
+        });
+
+        if (drawOpts && drawOpts.partialUpdate && !rangeCalcData.length) {
+            return;
+        }
+
+        if (drawOpts && drawOpts.partialUpdate && hasScatterGl) {
+            gd._rangeSliderScatterGlIncrementalAppend = true;
+        }
+
+        try {
+            Cartesian.rangePlot(gd, plotinfo, rangeCalcData, drawOpts);
+        } finally {
+            delete gd._rangeSliderScatterGlIncrementalAppend;
+        }
     });
 }
 
-function filterRangePlotCalcData(calcData, subplotId) {
+function filterRangePlotCalcData(calcData, subplotId, traceIndices) {
     var out = [];
 
     for (var i = 0; i < calcData.length; i++) {
         var calcTrace = calcData[i];
         var trace = calcTrace[0].trace;
+
+        if (traceIndices && traceIndices.indexOf(trace.index) === -1) {
+            continue;
+        }
 
         if (trace.xaxis + trace.yaxis === subplotId) {
             out.push(calcTrace);

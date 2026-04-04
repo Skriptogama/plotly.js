@@ -18713,9 +18713,11 @@ var Plotly = (() => {
         coerce("autotypenumbers");
         var font = Lib.coerceFont(coerce, "font");
         var fontSize = font.size;
-        Lib.coerceFont(coerce, "title.font", font, { overrideDflt: {
-          size: Math.round(fontSize * 1.4)
-        } });
+        Lib.coerceFont(coerce, "title.font", font, {
+          overrideDflt: {
+            size: Math.round(fontSize * 1.4)
+          }
+        });
         coerce("title.text", layoutOut._dfltTitle.plot);
         coerce("title.xref");
         var titleYref = coerce("title.yref");
@@ -19729,8 +19731,9 @@ var Plotly = (() => {
         var fullData = gd._fullData;
         var fullLayout = gd._fullLayout;
         var trace, _module, i, j;
-        var calcdata = new Array(fullData.length);
+        var isIncremental = Array.isArray(traces) && traces.length > 0;
         var oldCalcdata = (gd.calcdata || []).slice();
+        var calcdata = isIncremental ? oldCalcdata.concat(new Array(Math.max(0, fullData.length - oldCalcdata.length))) : new Array(fullData.length);
         gd.calcdata = calcdata;
         fullLayout._numBoxes = 0;
         fullLayout._numViolins = 0;
@@ -19743,15 +19746,11 @@ var Plotly = (() => {
         fullLayout._iciclecolormap = {};
         fullLayout._funnelareacolormap = {};
         for (i = 0; i < fullData.length; i++) {
-          if (Array.isArray(traces) && traces.indexOf(i) === -1) {
-            calcdata[i] = oldCalcdata[i];
-            continue;
-          }
-        }
-        for (i = 0; i < fullData.length; i++) {
           trace = fullData[i];
           trace._arrayAttrs = PlotSchema.findArrayAttributes(trace);
-          trace._extremes = {};
+          if (!isIncremental || traces.indexOf(i) !== -1) {
+            trace._extremes = {};
+          }
         }
         var polarIds = fullLayout._subplots.polar || [];
         for (i = 0; i < polarIds.length; i++) {
@@ -19769,6 +19768,7 @@ var Plotly = (() => {
         }
         var hasCalcTransform = false;
         function transformCalci(i2) {
+          if (isIncremental && traces.indexOf(i2) === -1) return;
           trace = fullData[i2];
           _module = trace._module;
           if (trace.visible === true && trace.transforms) {
@@ -19790,6 +19790,7 @@ var Plotly = (() => {
           }
         }
         function calci(i2, isContainer) {
+          if (isIncremental && traces.indexOf(i2) === -1) return;
           trace = fullData[i2];
           _module = trace._module;
           if (!!_module.isContainer !== isContainer) return;
@@ -19814,7 +19815,9 @@ var Plotly = (() => {
           cd[0].trace = trace;
           calcdata[i2] = cd;
         }
-        setupAxisCategories(axList, fullData, fullLayout);
+        if (!isIncremental) {
+          setupAxisCategories(axList, fullData, fullLayout);
+        }
         for (i = 0; i < fullData.length; i++) calci(i, true);
         for (i = 0; i < fullData.length; i++) transformCalci(i);
         if (hasCalcTransform) setupAxisCategories(axList, fullData, fullLayout);
@@ -24683,6 +24686,167 @@ var Plotly = (() => {
         path += "C" + tangents[pLast][1] + " " + tangents[0][0] + " " + pts[0] + "Z";
         return path;
       };
+      drawing.cardinalopen = function(pts, tension) {
+        var n = pts.length;
+        if (n < 3) return "M" + pts.join("L");
+        var k = (1 - tension) / 6;
+        var i;
+        var path = "M" + pts[0] + "C" + pts[0] + " " + [
+          pts[1][0] + k * (pts[0][0] - pts[2][0]),
+          pts[1][1] + k * (pts[0][1] - pts[2][1])
+        ] + " " + pts[1];
+        for (i = 1; i < n - 2; i++) {
+          path += "C" + [
+            pts[i][0] + k * (pts[i + 1][0] - pts[i - 1][0]),
+            pts[i][1] + k * (pts[i + 1][1] - pts[i - 1][1])
+          ] + " " + [
+            pts[i + 1][0] + k * (pts[i][0] - pts[i + 2][0]),
+            pts[i + 1][1] + k * (pts[i][1] - pts[i + 2][1])
+          ] + " " + pts[i + 1];
+        }
+        path += "C" + [
+          pts[n - 2][0] + k * (pts[n - 1][0] - pts[n - 3][0]),
+          pts[n - 2][1] + k * (pts[n - 1][1] - pts[n - 3][1])
+        ] + " " + pts[n - 1] + " " + pts[n - 1];
+        return path;
+      };
+      drawing.cardinalclosed = function(pts, tension) {
+        var n = pts.length;
+        if (n < 3) return "M" + pts.join("L") + "Z";
+        var k = (1 - tension) / 6;
+        var i, prev, curr, next, next2;
+        var path = "M" + pts[0];
+        for (i = 0; i < n - 1; i++) {
+          prev = pts[(i - 1 + n) % n];
+          curr = pts[i];
+          next = pts[i + 1];
+          next2 = pts[(i + 2) % n];
+          path += "C" + [curr[0] + k * (next[0] - prev[0]), curr[1] + k * (next[1] - prev[1])] + " " + [next[0] + k * (curr[0] - next2[0]), next[1] + k * (curr[1] - next2[1])] + " " + next;
+        }
+        var last = pts[n - 1];
+        var first = pts[0];
+        path += "C" + [last[0] + k * (first[0] - pts[n - 2][0]), last[1] + k * (first[1] - pts[n - 2][1])] + " " + [first[0] + k * (last[0] - pts[1][0]), first[1] + k * (last[1] - pts[1][1])] + " " + first + "Z";
+        return path;
+      };
+      function makeCatmullRomTangent(prevpt, thispt, nextpt, alpha) {
+        var d1x = prevpt[0] - thispt[0];
+        var d1y = prevpt[1] - thispt[1];
+        var d2x = nextpt[0] - thispt[0];
+        var d2y = nextpt[1] - thispt[1];
+        var d1a = Math.pow(d1x * d1x + d1y * d1y, alpha / 2);
+        var d2a = Math.pow(d2x * d2x + d2y * d2y, alpha / 2);
+        var numx = d2a * d2a * d1x - d1a * d1a * d2x;
+        var numy = d2a * d2a * d1y - d1a * d1a * d2y;
+        var denom1 = 3 * d2a * (d1a + d2a);
+        var denom2 = 3 * d1a * (d1a + d2a);
+        return [
+          [thispt[0] + (denom1 ? numx / denom1 : 0), thispt[1] + (denom1 ? numy / denom1 : 0)],
+          [thispt[0] - (denom2 ? numx / denom2 : 0), thispt[1] - (denom2 ? numy / denom2 : 0)]
+        ];
+      }
+      drawing.catmullromopen = function(pts, alpha) {
+        if (pts.length < 3) return "M" + pts.join("L");
+        var tangents = [];
+        var i;
+        for (i = 1; i < pts.length - 1; i++) {
+          tangents.push(makeCatmullRomTangent(pts[i - 1], pts[i], pts[i + 1], alpha));
+        }
+        var path = "M" + pts[0];
+        path += "Q" + tangents[0][0] + " " + pts[1];
+        for (i = 2; i < pts.length - 1; i++) {
+          path += "C" + tangents[i - 2][1] + " " + tangents[i - 1][0] + " " + pts[i];
+        }
+        path += "Q" + tangents[pts.length - 3][1] + " " + pts[pts.length - 1];
+        return path;
+      };
+      drawing.catmullromclosed = function(pts, alpha) {
+        if (pts.length < 3) return "M" + pts.join("L") + "Z";
+        var pLast = pts.length - 1;
+        var tangents = [makeCatmullRomTangent(pts[pLast], pts[0], pts[1], alpha)];
+        var i;
+        for (i = 1; i < pLast; i++) {
+          tangents.push(makeCatmullRomTangent(pts[i - 1], pts[i], pts[i + 1], alpha));
+        }
+        tangents.push(makeCatmullRomTangent(pts[pLast - 1], pts[pLast], pts[0], alpha));
+        var path = "M" + pts[0];
+        for (i = 1; i <= pLast; i++) {
+          path += "C" + tangents[i - 1][1] + " " + tangents[i][0] + " " + pts[i];
+        }
+        path += "C" + tangents[pLast][1] + " " + tangents[0][0] + " " + pts[0] + "Z";
+        return path;
+      };
+      drawing.monotoneopen = function(pts) {
+        var n = pts.length;
+        if (n < 2) return "M" + pts[0];
+        if (n === 2) return "M" + pts[0] + "L" + pts[1];
+        var h = new Array(n - 1);
+        var s = new Array(n - 1);
+        var i;
+        for (i = 0; i < n - 1; i++) {
+          h[i] = pts[i + 1][0] - pts[i][0];
+          s[i] = h[i] ? (pts[i + 1][1] - pts[i][1]) / h[i] : 0;
+        }
+        var t = new Array(n);
+        for (i = 1; i < n - 1; i++) {
+          var p = (s[i - 1] * h[i] + s[i] * h[i - 1]) / (h[i - 1] + h[i]);
+          var sSign = (s[i - 1] < 0 ? -1 : 1) + (s[i] < 0 ? -1 : 1);
+          t[i] = sSign * Math.min(Math.abs(s[i - 1]), Math.abs(s[i]), 0.5 * Math.abs(p)) || 0;
+        }
+        t[0] = h[0] ? (3 * s[0] - t[1]) / 2 : t[1];
+        t[n - 1] = h[n - 2] ? (3 * s[n - 2] - t[n - 2]) / 2 : t[n - 2];
+        var path = "M" + pts[0];
+        for (i = 0; i < n - 1; i++) {
+          var dx = (pts[i + 1][0] - pts[i][0]) / 3;
+          path += "C" + [pts[i][0] + dx, pts[i][1] + dx * t[i]] + " " + [pts[i + 1][0] - dx, pts[i + 1][1] - dx * t[i + 1]] + " " + pts[i + 1];
+        }
+        return path;
+      };
+      function naturalControlPoints(x) {
+        var n = x.length - 1;
+        var a = new Array(n);
+        var b = new Array(n);
+        var r = new Array(n);
+        var i, m;
+        a[0] = 0;
+        b[0] = 2;
+        r[0] = x[0] + 2 * x[1];
+        for (i = 1; i < n - 1; i++) {
+          a[i] = 1;
+          b[i] = 4;
+          r[i] = 4 * x[i] + 2 * x[i + 1];
+        }
+        a[n - 1] = 2;
+        b[n - 1] = 7;
+        r[n - 1] = 8 * x[n - 1] + x[n];
+        for (i = 1; i < n; i++) {
+          m = a[i] / b[i - 1];
+          b[i] -= m;
+          r[i] -= m * r[i - 1];
+        }
+        a[n - 1] = r[n - 1] / b[n - 1];
+        for (i = n - 2; i >= 0; i--) a[i] = (r[i] - a[i + 1]) / b[i];
+        b[n - 1] = (x[n] + a[n - 1]) / 2;
+        for (i = 0; i < n - 1; i++) b[i] = 2 * x[i + 1] - a[i + 1];
+        return [a, b];
+      }
+      drawing.naturalopen = function(pts) {
+        var n = pts.length;
+        if (n < 2) return "M" + pts[0];
+        if (n === 2) return "M" + pts[0] + "L" + pts[1];
+        var xa = pts.map(function(p) {
+          return p[0];
+        });
+        var ya = pts.map(function(p) {
+          return p[1];
+        });
+        var px = naturalControlPoints(xa);
+        var py = naturalControlPoints(ya);
+        var path = "M" + pts[0];
+        for (var i = 0; i < n - 1; i++) {
+          path += "C" + [px[0][i], py[0][i]] + " " + [px[1][i], py[1][i]] + " " + pts[i + 1];
+        }
+        return path;
+      };
       var lastDrawnX;
       var lastDrawnY;
       function roundEnd(pt, isY, isLastPoint) {
@@ -26436,10 +26600,13 @@ var Plotly = (() => {
           ax._r = ax.range.slice();
           ax._rl = Lib.simpleMap(ax._r, ax.r2l);
           var axIn = ax._input;
-          var edits = {};
-          edits[ax._attr + ".range"] = ax.range;
-          edits[ax._attr + ".autorange"] = ax.autorange;
-          Registry.call("_storeDirectGUIEdit", gd.layout, gd._fullLayout._preGUI, edits);
+          var isCategoryAx = ax.type === "category" || ax.type === "multicategory";
+          if (!isCategoryAx) {
+            var edits = {};
+            edits[ax._attr + ".range"] = ax.range;
+            edits[ax._attr + ".autorange"] = ax.autorange;
+            Registry.call("_storeDirectGUIEdit", gd.layout, gd._fullLayout._preGUI, edits);
+          }
           axIn.range = ax.range.slice();
           axIn.autorange = ax.autorange;
         }
@@ -42523,7 +42690,7 @@ var Plotly = (() => {
           },
           shape: {
             valType: "enumerated",
-            values: ["linear", "spline", "hv", "vh", "hvh", "vhv"],
+            values: ["linear", "spline", "hv", "vh", "hvh", "vhv", "cardinal", "catmull-rom", "monotone", "natural"],
             dflt: "linear",
             editType: "plot"
           },
@@ -42532,6 +42699,20 @@ var Plotly = (() => {
             min: 0,
             max: 1.3,
             dflt: 1,
+            editType: "plot"
+          },
+          tension: {
+            valType: "number",
+            min: 0,
+            max: 1,
+            dflt: 0.5,
+            editType: "plot"
+          },
+          alpha: {
+            valType: "number",
+            min: 0,
+            max: 1,
+            dflt: 0.5,
             editType: "plot"
           },
           dash: extendFlat({}, dash, { editType: "style" }),
@@ -45296,6 +45477,102 @@ var Plotly = (() => {
         Queue.add(gd, exports.extendTraces, undoArgs, prependTraces, arguments);
         return promise;
       }
+      function _snapshotAxisRanges(gd) {
+        var snapshot = {};
+        var axList = Axes.list(gd, "", true);
+        for (var i = 0; i < axList.length; i++) {
+          var ax = axList[i];
+          snapshot[ax._id] = ax.range ? ax.range.slice() : null;
+        }
+        return snapshot;
+      }
+      function _axisRangesExpanded(gd, prevSnapshot) {
+        var axList = Axes.list(gd, "", true);
+        for (var i = 0; i < axList.length; i++) {
+          var ax = axList[i];
+          var prev = prevSnapshot[ax._id];
+          if (!prev || !ax.range) return true;
+          var span = Math.abs(ax.range[1] - ax.range[0]) || 1;
+          var eps = span * 1e-9;
+          if (ax.range[0] < prev[0] - eps || ax.range[1] > prev[1] + eps) return true;
+        }
+        return false;
+      }
+      function _canIncrementallyDrawScatter(fullLayout) {
+        var modules = fullLayout._modules || [];
+        return !fullLayout._has("regl") && modules.length === 1 && modules[0].name === "scatter";
+      }
+      function _canIncrementallyCalcScatterGl(fullLayout) {
+        var modules = fullLayout._modules || [];
+        return fullLayout._has("regl") && modules.length === 1 && modules[0].name === "scattergl";
+      }
+      function _drawNewTracesOnly(gd, newTraceIndices) {
+        var fullLayout = gd._fullLayout;
+        var basePlotModules = fullLayout._basePlotModules;
+        var replotOpts = newTraceIndices ? { partialUpdate: true } : void 0;
+        for (var i = 0; i < basePlotModules.length; i++) {
+          if (basePlotModules[i].plot) {
+            basePlotModules[i].plot(gd, newTraceIndices, null, null, replotOpts);
+          }
+        }
+        Plots.style(gd);
+        return Plots.previousPromises(gd) || Promise.resolve();
+      }
+      function _addTracesIncremental(gd, newIndices) {
+        helpers.cleanData(gd.data);
+        helpers.cleanLayout(gd.layout);
+        var prevFullData = gd._fullData || [];
+        Plots.supplyDefaults(gd);
+        for (var i = 0; i < prevFullData.length; i++) {
+          if (newIndices.indexOf(i) === -1 && gd._fullData[i] && prevFullData[i]) {
+            Lib.relinkPrivateKeys(gd._fullData[i], prevFullData[i]);
+          }
+        }
+        var fullLayout = gd._fullLayout;
+        var canIncrementallyDrawScatter = _canIncrementallyDrawScatter(fullLayout);
+        var canIncrementallyCalcScatterGl = _canIncrementallyCalcScatterGl(fullLayout);
+        if (!fullLayout._paper || fullLayout._has("regl") && !fullLayout._glcanvas) {
+          return exports._doPlot(gd).then(function() {
+            gd.emit("plotly_redraw");
+            return gd;
+          });
+        }
+        var prevRanges = _snapshotAxisRanges(gd);
+        var calcIndices = canIncrementallyCalcScatterGl ? newIndices : fullLayout._has("regl") ? void 0 : newIndices;
+        if (canIncrementallyCalcScatterGl) gd._scatterGlIncrementalAppend = true;
+        try {
+          Plots.doCalcdata(gd, calcIndices);
+        } finally {
+          delete gd._scatterGlIncrementalAppend;
+        }
+        for (var i = 0; i < gd.calcdata.length; i++) {
+          if (gd.calcdata[i] && gd.calcdata[i][0]) {
+            gd.calcdata[i][0].trace = gd._fullData[i];
+          }
+        }
+        subroutines.doAutoRangeAndConstraints(gd);
+        if (_axisRangesExpanded(gd, prevRanges)) {
+          var drawRangeSlider = Registry.getComponentMethod("rangeslider", "draw");
+          var axisP = subroutines.doTicksRelayout(gd);
+          return Promise.resolve(axisP).then(function() {
+            return subroutines.drawData(gd);
+          }).then(function() {
+            return canIncrementallyCalcScatterGl ? drawRangeSlider(gd, { newTraceIndices: newIndices, partialUpdate: true }) : drawRangeSlider(gd);
+          }).then(function() {
+            gd.emit("plotly_redraw");
+            return gd;
+          });
+        }
+        var canIncrementallyDrawRangeSlider = canIncrementallyDrawScatter || canIncrementallyCalcScatterGl;
+        var drawPromise = canIncrementallyDrawScatter ? _drawNewTracesOnly(gd, newIndices) : subroutines.drawData(gd);
+        return Promise.resolve(drawPromise).then(function() {
+          var drawRangeSlider2 = Registry.getComponentMethod("rangeslider", "draw");
+          return canIncrementallyDrawRangeSlider ? drawRangeSlider2(gd, { newTraceIndices: newIndices, partialUpdate: true }) : drawRangeSlider2(gd);
+        }).then(function() {
+          gd.emit("plotly_redraw");
+          return gd;
+        });
+      }
       function addTraces(gd, traces, newIndices) {
         gd = Lib.getGraphDiv(gd);
         var currentIndices = [];
@@ -45320,6 +45597,15 @@ var Plotly = (() => {
           currentIndices.push(-traces.length + i);
         }
         if (typeof newIndices === "undefined") {
+          if (Lib.isPlotDiv(gd)) {
+            var appendedIndices = [];
+            for (i = 0; i < traces.length; i++) {
+              appendedIndices.push(gd.data.length - traces.length + i);
+            }
+            promise = _addTracesIncremental(gd, appendedIndices);
+            Queue.add(gd, undoFunc, undoArgs, redoFunc, redoArgs);
+            return promise;
+          }
           promise = exports.redraw(gd);
           Queue.add(gd, undoFunc, undoArgs, redoFunc, redoArgs);
           return promise;
@@ -46330,53 +46616,56 @@ var Plotly = (() => {
               Plots.supplyDefaultsUpdateCalc(gd.calcdata, newFullData);
             }
             var seq = [];
-            if (frames) {
-              gd._transitionData = {};
-              Plots.createTransitionData(gd);
-              seq.push(addFrames2);
-            }
-            if (newFullLayout.transition && (restyleFlags.anim || relayoutFlags.anim)) {
-              if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
-              Plots.doCalcdata(gd);
-              subroutines.doAutoRangeAndConstraints(gd);
-              seq.push(function() {
-                return Plots.transitionFromReact(gd, restyleFlags, relayoutFlags, oldFullLayout);
-              });
-            } else if (restyleFlags.fullReplot || relayoutFlags.layoutReplot) {
-              gd._fullLayout._skipDefaults = true;
-              seq.push(exports._doPlot);
+            if (false) {
             } else {
-              for (var componentType in relayoutFlags.arrays) {
-                var indices = relayoutFlags.arrays[componentType];
-                if (indices.length) {
-                  var drawOne = Registry.getComponentMethod(componentType, "drawOne");
-                  if (drawOne !== Lib.noop) {
-                    for (var i = 0; i < indices.length; i++) {
-                      drawOne(gd, indices[i]);
+              if (frames) {
+                gd._transitionData = {};
+                Plots.createTransitionData(gd);
+                seq.push(addFrames2);
+              }
+              if (newFullLayout.transition && (restyleFlags.anim || relayoutFlags.anim)) {
+                if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
+                Plots.doCalcdata(gd);
+                subroutines.doAutoRangeAndConstraints(gd);
+                seq.push(function() {
+                  return Plots.transitionFromReact(gd, restyleFlags, relayoutFlags, oldFullLayout);
+                });
+              } else if (restyleFlags.fullReplot || relayoutFlags.layoutReplot) {
+                gd._fullLayout._skipDefaults = true;
+                seq.push(exports._doPlot);
+              } else {
+                for (var componentType in relayoutFlags.arrays) {
+                  var indices = relayoutFlags.arrays[componentType];
+                  if (indices.length) {
+                    var drawOne = Registry.getComponentMethod(componentType, "drawOne");
+                    if (drawOne !== Lib.noop) {
+                      for (var i = 0; i < indices.length; i++) {
+                        drawOne(gd, indices[i]);
+                      }
+                    } else {
+                      var draw = Registry.getComponentMethod(componentType, "draw");
+                      if (draw === Lib.noop) {
+                        throw new Error("cannot draw components: " + componentType);
+                      }
+                      draw(gd);
                     }
-                  } else {
-                    var draw = Registry.getComponentMethod(componentType, "draw");
-                    if (draw === Lib.noop) {
-                      throw new Error("cannot draw components: " + componentType);
-                    }
-                    draw(gd);
                   }
                 }
+                seq.push(Plots.previousPromises);
+                if (restyleFlags.style) seq.push(subroutines.doTraceStyle);
+                if (restyleFlags.colorbars || relayoutFlags.colorbars) seq.push(subroutines.doColorBars);
+                if (relayoutFlags.legend) seq.push(subroutines.doLegend);
+                if (relayoutFlags.layoutstyle) seq.push(subroutines.layoutStyles);
+                if (relayoutFlags.axrange) addAxRangeSequence(seq);
+                if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
+                if (relayoutFlags.modebar) seq.push(subroutines.doModeBar);
+                if (relayoutFlags.camera) seq.push(subroutines.doCamera);
+                seq.push(emitAfterPlot);
               }
-              seq.push(Plots.previousPromises);
-              if (restyleFlags.style) seq.push(subroutines.doTraceStyle);
-              if (restyleFlags.colorbars || relayoutFlags.colorbars) seq.push(subroutines.doColorBars);
-              if (relayoutFlags.legend) seq.push(subroutines.doLegend);
-              if (relayoutFlags.layoutstyle) seq.push(subroutines.layoutStyles);
-              if (relayoutFlags.axrange) addAxRangeSequence(seq);
-              if (relayoutFlags.ticks) seq.push(subroutines.doTicksRelayout);
-              if (relayoutFlags.modebar) seq.push(subroutines.doModeBar);
-              if (relayoutFlags.camera) seq.push(subroutines.doCamera);
-              seq.push(emitAfterPlot);
+              seq.push(Plots.rehover, Plots.redrag, Plots.reselect);
+              plotDone = Lib.syncOrAsync(seq, gd);
+              if (!plotDone || !plotDone.then) plotDone = Promise.resolve(gd);
             }
-            seq.push(Plots.rehover, Plots.redrag, Plots.reselect);
-            plotDone = Lib.syncOrAsync(seq, gd);
-            if (!plotDone || !plotDone.then) plotDone = Promise.resolve(gd);
           }
         }
         return plotDone.then(() => {
@@ -46387,6 +46676,17 @@ var Plotly = (() => {
       function diffData(gd, oldFullData, newFullData, immutable, transition, newDataRevision) {
         var sameTraceLength = oldFullData.length === newFullData.length;
         if (!transition && !sameTraceLength) {
+          if (!sameTraceLength && newFullData.length > oldFullData.length) {
+            var newIndices = [];
+            for (var n = oldFullData.length; n < newFullData.length; n++) {
+              newIndices.push(n);
+            }
+            return {
+              fullReplot: false,
+              calc: false,
+              _newTraceIndices: newIndices
+            };
+          }
           return {
             fullReplot: true,
             calc: true
@@ -48429,6 +48729,8 @@ var Plotly = (() => {
       module.exports = function handleLineShapeDefaults(traceIn, traceOut, coerce) {
         var shape = coerce("line.shape");
         if (shape === "spline") coerce("line.smoothing");
+        if (shape === "cardinal") coerce("line.tension");
+        if (shape === "catmull-rom") coerce("line.alpha");
       };
     }
   });
@@ -50126,7 +50428,7 @@ var Plotly = (() => {
           };
         }
         var getEdgeIntersections;
-        if (shape === "linear" || shape === "spline") {
+        if (shape === "linear" || shape === "spline" || shape === "cardinal" || shape === "catmull-rom" || shape === "monotone" || shape === "natural") {
           getEdgeIntersections = getLinearEdgeIntersections;
         } else if (shape === "hv" || shape === "vh") {
           getEdgeIntersections = getHVEdgeIntersections;
@@ -50394,9 +50696,9 @@ var Plotly = (() => {
       var linePoints = require_line_points();
       var linkTraces = require_link_traces();
       var polygonTester = require_polygon().tester;
-      module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transitionOpts, makeOnCompleteCallback) {
+      module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transitionOpts, makeOnCompleteCallback, replotOpts) {
         var join, onComplete;
-        var isFullReplot = !transitionOpts;
+        var isFullReplot = !transitionOpts && !(replotOpts && replotOpts.partialUpdate);
         var hasTransition = !!transitionOpts && transitionOpts.duration > 0;
         var cdscatterSorted = linkTraces(gd, plotinfo, cdscatter);
         join = scatterLayer.selectAll("g.trace").data(cdscatterSorted, function(d) {
@@ -50522,6 +50824,32 @@ var Plotly = (() => {
               } else {
                 return Drawing.smoothopen(pts2, line.smoothing);
               }
+            };
+          } else if (line.shape === "cardinal") {
+            pathfn = revpathbase = function(pts2) {
+              var pLast = pts2[pts2.length - 1];
+              if (pts2.length > 1 && pts2[0][0] === pLast[0] && pts2[0][1] === pLast[1]) {
+                return Drawing.cardinalclosed(pts2.slice(1), line.tension);
+              } else {
+                return Drawing.cardinalopen(pts2, line.tension);
+              }
+            };
+          } else if (line.shape === "catmull-rom") {
+            pathfn = revpathbase = function(pts2) {
+              var pLast = pts2[pts2.length - 1];
+              if (pts2.length > 1 && pts2[0][0] === pLast[0] && pts2[0][1] === pLast[1]) {
+                return Drawing.catmullromclosed(pts2.slice(1), line.alpha);
+              } else {
+                return Drawing.catmullromopen(pts2, line.alpha);
+              }
+            };
+          } else if (line.shape === "monotone") {
+            pathfn = revpathbase = function(pts2) {
+              return Drawing.monotoneopen(pts2);
+            };
+          } else if (line.shape === "natural") {
+            pathfn = revpathbase = function(pts2) {
+              return Drawing.naturalopen(pts2);
             };
           } else {
             pathfn = revpathbase = function(pts2) {
@@ -50700,7 +51028,7 @@ var Plotly = (() => {
           var join, selection, hasNode;
           var trace2 = cdscatter2[0].trace;
           var showMarkers = subTypes.hasMarkers(trace2);
-          var showText = subTypes.hasText(trace2);
+          var showText = subTypes.hasText(trace2) && !plotinfo.isRangePlot;
           var keyFunc2 = getKeyFunc(trace2);
           var markerFilter = hideFilter;
           var textFilter = hideFilter;
@@ -52243,7 +52571,7 @@ var Plotly = (() => {
           spSVG.push(xi + yi);
         }
       };
-      exports.plot = function(gd, traces, transitionOpts, makeOnCompleteCallback) {
+      exports.plot = function(gd, traces, transitionOpts, makeOnCompleteCallback, replotOpts) {
         var fullLayout = gd._fullLayout;
         var subplots = fullLayout._subplots.cartesian;
         var calcdata = gd.calcdata;
@@ -52283,11 +52611,14 @@ var Plotly = (() => {
                 pcd = cd;
               }
             }
-            plotOne(gd, subplotInfo, cdSubplot, transitionOpts, makeOnCompleteCallback);
+            if (replotOpts && replotOpts.partialUpdate && !cdSubplot.length) {
+              continue;
+            }
+            plotOne(gd, subplotInfo, cdSubplot, transitionOpts, makeOnCompleteCallback, replotOpts);
           }
         }
       };
-      function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback) {
+      function plotOne(gd, plotinfo, cdSubplot, transitionOpts, makeOnCompleteCallback, replotOpts) {
         var traceLayerClasses = constants.traceLayerClasses;
         var fullLayout = gd._fullLayout;
         var zindices = fullLayout._zindices;
@@ -52343,7 +52674,8 @@ var Plotly = (() => {
             d.cdModule,
             sel,
             transitionOpts,
-            makeOnCompleteCallback
+            makeOnCompleteCallback,
+            replotOpts
           );
           if (constants.clipOnAxisFalseQuery.indexOf("." + className2) === -1) {
             Drawing.setClipUrl(sel, plotinfo.layerClipId, gd);
@@ -52471,9 +52803,9 @@ var Plotly = (() => {
           }
         });
       };
-      exports.rangePlot = function(gd, plotinfo, cdSubplot) {
+      exports.rangePlot = function(gd, plotinfo, cdSubplot, replotOpts) {
         makeSubplotLayer(gd, plotinfo);
-        plotOne(gd, plotinfo, cdSubplot);
+        plotOne(gd, plotinfo, cdSubplot, null, null, replotOpts);
         Plots.style(gd);
       };
       function makeSubplotData(gd) {
@@ -57116,7 +57448,7 @@ var Plotly = (() => {
       var setCursor = require_setcursor();
       var constants = require_constants12();
       var helpers = require_helpers11();
-      module.exports = function(gd) {
+      module.exports = function(gd, drawOpts) {
         var fullLayout = gd._fullLayout;
         var rangeSliderData = fullLayout._rangeSliderData;
         for (var i = 0; i < rangeSliderData.length; i++) {
@@ -57186,6 +57518,8 @@ var Plotly = (() => {
               );
             }
           }
+          opts2._x = x;
+          opts2._y = y;
           rangeSlider.attr("transform", strTranslate(x, y));
           opts2._rl = Lib.simpleMap(opts2.range, axisOpts.r2l);
           var rl0 = opts2._rl[0];
@@ -57260,7 +57594,7 @@ var Plotly = (() => {
               };
             }
           }
-          rangeSlider.call(drawBg, gd, axisOpts, opts2).call(addClipPath, gd, axisOpts, opts2).call(drawRangePlot, gd, axisOpts, opts2).call(drawMasks, gd, axisOpts, opts2, oppAxisRangeOpts).call(drawSlideBox, gd, axisOpts, opts2).call(drawGrabbers, gd, axisOpts, opts2);
+          rangeSlider.call(drawBg, gd, axisOpts, opts2).call(addClipPath, gd, axisOpts, opts2).call(drawRangePlot, gd, axisOpts, opts2, drawOpts).call(drawMasks, gd, axisOpts, opts2, oppAxisRangeOpts).call(drawSlideBox, gd, axisOpts, opts2).call(drawGrabbers, gd, axisOpts, opts2);
           setupDragElement(rangeSlider, gd, axisOpts, opts2);
           setPixelRange(rangeSlider, gd, axisOpts, opts2, oppAxisOpts, oppAxisRangeOpts);
           if (!isVertical && resolvedSide === "bottom") {
@@ -57504,7 +57838,7 @@ var Plotly = (() => {
           height: opts._height
         });
       }
-      function drawRangePlot(rangeSlider, gd, axisOpts, opts) {
+      function drawRangePlot(rangeSlider, gd, axisOpts, opts, drawOpts) {
         var calcData = gd.calcdata;
         var isVertical = opts._isVertical;
         var rangePlots = rangeSlider.selectAll("g." + constants.rangePlotClassName).data(axisOpts._subplotsWith, Lib.identity);
@@ -57596,21 +57930,66 @@ var Plotly = (() => {
             plotgroup,
             xaxis: xa,
             yaxis: ya,
-            isRangePlot: true
+            isRangePlot: true,
+            rangeSliderOpts: opts
           };
           if (isMainPlot) mainplotinfo = plotinfo;
           else {
             plotinfo.mainplot = "xy";
             plotinfo.mainplotinfo = mainplotinfo;
           }
-          Cartesian.rangePlot(gd, plotinfo, filterRangePlotCalcData(calcData, id));
+          var rangeCalcData = filterRangePlotCalcData(calcData, id, drawOpts && drawOpts.newTraceIndices);
+          var hasScatterGl = false;
+          for (var j = 0; j < rangeCalcData.length; j++) {
+            var trace = rangeCalcData[j] && rangeCalcData[j][0] && rangeCalcData[j][0].trace;
+            if (trace && trace.type === "scattergl") {
+              hasScatterGl = true;
+              break;
+            }
+          }
+          var glForeignObject = plotgroup.selectAll("foreignObject.rangeslider-gl-plot").data(hasScatterGl ? [0] : []);
+          glForeignObject.exit().remove();
+          glForeignObject.enter().append("foreignObject").attr("class", "rangeslider-gl-plot").style("pointer-events", "none");
+          glForeignObject.attr("x", 0).attr("y", 0).attr("width", opts._width).attr("height", opts._height);
+          glForeignObject.each(function() {
+            var canvas = this.firstChild;
+            if (!canvas) {
+              canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas");
+              canvas.className = "rangeslider-gl-canvas";
+              canvas.style.display = "block";
+              canvas.style.width = "100%";
+              canvas.style.height = "100%";
+              canvas.style.pointerEvents = "none";
+              this.appendChild(canvas);
+            }
+            var plotGlPixelRatio = gd._context.plotGlPixelRatio || window.devicePixelRatio || 1;
+            canvas.width = Math.round(opts._width * plotGlPixelRatio);
+            canvas.height = Math.round(opts._height * plotGlPixelRatio);
+            canvas.style.width = opts._width + "px";
+            canvas.style.height = opts._height + "px";
+            plotinfo.rangeSliderCanvas = canvas;
+          });
+          if (drawOpts && drawOpts.partialUpdate && !rangeCalcData.length) {
+            return;
+          }
+          if (drawOpts && drawOpts.partialUpdate && hasScatterGl) {
+            gd._rangeSliderScatterGlIncrementalAppend = true;
+          }
+          try {
+            Cartesian.rangePlot(gd, plotinfo, rangeCalcData, drawOpts);
+          } finally {
+            delete gd._rangeSliderScatterGlIncrementalAppend;
+          }
         });
       }
-      function filterRangePlotCalcData(calcData, subplotId) {
+      function filterRangePlotCalcData(calcData, subplotId, traceIndices) {
         var out = [];
         for (var i = 0; i < calcData.length; i++) {
           var calcTrace = calcData[i];
           var trace = calcTrace[0].trace;
+          if (traceIndices && traceIndices.indexOf(trace.index) === -1) {
+            continue;
+          }
           if (trace.xaxis + trace.yaxis === subplotId) {
             out.push(calcTrace);
           }
@@ -60412,12 +60791,10 @@ var Plotly = (() => {
           line: {
             color: scatterLineAttrs.color,
             width: scatterLineAttrs.width,
-            shape: {
-              valType: "enumerated",
-              values: ["linear", "hv", "vh", "hvh", "vhv"],
-              dflt: "linear",
-              editType: "plot"
-            },
+            shape: scatterLineAttrs.shape,
+            smoothing: scatterLineAttrs.smoothing,
+            tension: scatterLineAttrs.tension,
+            alpha: scatterLineAttrs.alpha,
             dash: {
               valType: "enumerated",
               values: sortObjectKeys(DASHES),
@@ -60490,6 +60867,7 @@ var Plotly = (() => {
       var handlePeriodDefaults = require_period_defaults();
       var handleMarkerDefaults = require_marker_defaults();
       var handleLineDefaults = require_line_defaults();
+      var handleLineShapeDefaults = require_line_shape_defaults();
       var handleFillColorDefaults = require_fillcolor_defaults();
       var handleTextDefaults = require_text_defaults();
       module.exports = function supplyDefaults(traceIn, traceOut, defaultColor, layout) {
@@ -60523,7 +60901,7 @@ var Plotly = (() => {
         if (subTypes.hasLines(traceOut)) {
           coerce("connectgaps");
           handleLineDefaults(traceIn, traceOut, defaultColor, layout, coerce);
-          coerce("line.shape");
+          handleLineShapeDefaults(traceIn, traceOut, coerce);
         }
         if (subTypes.hasText(traceOut)) {
           coerce("texttemplate");
@@ -66898,6 +67276,7 @@ var Plotly = (() => {
       var isNumeric = require_fast_isnumeric();
       var svgSdf = require_svg_path_sdf();
       var rgba2 = require_color_normalize();
+      var parseSvgPath = require_parse_svg_path();
       var Registry = require_registry();
       var Lib = require_lib();
       var isArrayOrTypedArray = Lib.isArrayOrTypedArray;
@@ -66920,6 +67299,8 @@ var Plotly = (() => {
         top: -1
       };
       var appendArrayPointValue = require_helpers2().appendArrayPointValue;
+      var SMOOTH_LINE_TOLERANCE_PX = 0.5;
+      var MAX_BEZIER_SUBDIVISION_DEPTH = 10;
       function convertStyle(gd, trace) {
         var i;
         var opts = {
@@ -67300,13 +67681,163 @@ var Plotly = (() => {
         SYMBOL_SDF[symbol] = symbolSdf;
         return symbolSdf || null;
       }
+      function splitLinePositions(positions) {
+        var segments = [];
+        var segment = [];
+        for (var i = 0; i < positions.length; i += 2) {
+          var x = positions[i];
+          var y = positions[i + 1];
+          if (isNaN(x) || isNaN(y)) {
+            if (segment.length) {
+              segments.push(segment);
+              segment = [];
+            }
+          } else {
+            segment.push([x, y]);
+          }
+        }
+        if (segment.length) segments.push(segment);
+        return segments;
+      }
+      function distance(pt1, pt2) {
+        var dx = pt2[0] - pt1[0];
+        var dy = pt2[1] - pt1[1];
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+      function pointLineDistance(pt, start, end, toPixel) {
+        var pixelPt = toPixel(pt);
+        var pixelStart = toPixel(start);
+        var pixelEnd = toPixel(end);
+        var dx = pixelEnd[0] - pixelStart[0];
+        var dy = pixelEnd[1] - pixelStart[1];
+        var denom = Math.sqrt(dx * dx + dy * dy);
+        if (!denom) {
+          return distance(pixelPt, pixelStart);
+        }
+        return Math.abs(
+          dy * pixelPt[0] - dx * pixelPt[1] + pixelEnd[0] * pixelStart[1] - pixelEnd[1] * pixelStart[0]
+        ) / denom;
+      }
+      function midpoint(pt1, pt2) {
+        return [(pt1[0] + pt2[0]) / 2, (pt1[1] + pt2[1]) / 2];
+      }
+      function sampleQuadraticBezier(start, control, end, out, depth, toPixel) {
+        if (depth >= MAX_BEZIER_SUBDIVISION_DEPTH || pointLineDistance(control, start, end, toPixel) <= SMOOTH_LINE_TOLERANCE_PX) {
+          out.push(end);
+          return;
+        }
+        var startControl = midpoint(start, control);
+        var controlEnd = midpoint(control, end);
+        var split = midpoint(startControl, controlEnd);
+        sampleQuadraticBezier(start, startControl, split, out, depth + 1, toPixel);
+        sampleQuadraticBezier(split, controlEnd, end, out, depth + 1, toPixel);
+      }
+      function sampleCubicBezier(start, control1, control2, end, out, depth, toPixel) {
+        var flatness = Math.max(
+          pointLineDistance(control1, start, end, toPixel),
+          pointLineDistance(control2, start, end, toPixel)
+        );
+        if (depth >= MAX_BEZIER_SUBDIVISION_DEPTH || flatness <= SMOOTH_LINE_TOLERANCE_PX) {
+          out.push(end);
+          return;
+        }
+        var startControl1 = midpoint(start, control1);
+        var control1Control2 = midpoint(control1, control2);
+        var control2End = midpoint(control2, end);
+        var leftControl2 = midpoint(startControl1, control1Control2);
+        var rightControl1 = midpoint(control1Control2, control2End);
+        var split = midpoint(leftControl2, rightControl1);
+        sampleCubicBezier(start, startControl1, leftControl2, split, out, depth + 1, toPixel);
+        sampleCubicBezier(split, rightControl1, control2End, end, out, depth + 1, toPixel);
+      }
+      function samePoint(pt1, pt2) {
+        return pt1 && pt2 && pt1[0] === pt2[0] && pt1[1] === pt2[1];
+      }
+      function samplePathString(pathString, toPixel) {
+        var commands = parseSvgPath(pathString);
+        var sampled = [];
+        var currentPoint;
+        var subpathStart;
+        for (var i = 0; i < commands.length; i++) {
+          var command = commands[i];
+          var type = command[0];
+          if (type === "M") {
+            currentPoint = [command[1], command[2]];
+            subpathStart = currentPoint;
+            sampled.push(currentPoint);
+          } else if (type === "L") {
+            currentPoint = [command[1], command[2]];
+            sampled.push(currentPoint);
+          } else if (type === "Q") {
+            var quadEnd = [command[3], command[4]];
+            sampleQuadraticBezier(currentPoint, [command[1], command[2]], quadEnd, sampled, 0, toPixel);
+            currentPoint = quadEnd;
+          } else if (type === "C") {
+            var cubicEnd = [command[5], command[6]];
+            sampleCubicBezier(currentPoint, [command[1], command[2]], [command[3], command[4]], cubicEnd, sampled, 0, toPixel);
+            currentPoint = cubicEnd;
+          } else if (type === "Z" && subpathStart && !samePoint(currentPoint, subpathStart)) {
+            sampled.push(subpathStart);
+            currentPoint = subpathStart;
+          }
+        }
+        return sampled;
+      }
+      function getSmoothPath(trace, pts) {
+        var line = trace.line || {};
+        var pLast = pts[pts.length - 1];
+        var isClosed = pts.length > 1 && pts[0][0] === pLast[0] && pts[0][1] === pLast[1];
+        if (line.shape === "spline") {
+          return isClosed ? Drawing.smoothclosed(pts.slice(1), line.smoothing) : Drawing.smoothopen(pts, line.smoothing);
+        }
+        if (line.shape === "cardinal") {
+          return isClosed ? Drawing.cardinalclosed(pts.slice(1), line.tension) : Drawing.cardinalopen(pts, line.tension);
+        }
+        if (line.shape === "catmull-rom") {
+          return isClosed ? Drawing.catmullromclosed(pts.slice(1), line.alpha) : Drawing.catmullromopen(pts, line.alpha);
+        }
+        if (line.shape === "monotone") {
+          return Drawing.monotoneopen(pts);
+        }
+        return Drawing.naturalopen(pts);
+      }
+      function getLinePointPixelTransform(gd, trace) {
+        if (!gd || !trace) {
+          return function(pt) {
+            return pt;
+          };
+        }
+        var xa = trace._xA || AxisIDs.getFromId(gd, trace.xaxis, "x");
+        var ya = trace._yA || AxisIDs.getFromId(gd, trace.yaxis, "y");
+        var xToPixel = xa.type === "log" ? xa.l2p.bind(xa) : xa.c2p.bind(xa);
+        var yToPixel = ya.type === "log" ? ya.l2p.bind(ya) : ya.c2p.bind(ya);
+        return function(pt) {
+          return [xToPixel(pt[0]), yToPixel(pt[1])];
+        };
+      }
+      function convertSmoothLinePositions(gd, trace, positions) {
+        var segments = splitLinePositions(positions);
+        var linePositions = [];
+        var toPixel = getLinePointPixelTransform(gd, trace);
+        for (var i = 0; i < segments.length; i++) {
+          var pts = segments[i];
+          var sampled = pts.length < 2 ? pts : samplePathString(getSmoothPath(trace, pts), toPixel);
+          if (i) linePositions.push(NaN, NaN);
+          for (var j = 0; j < sampled.length; j++) {
+            linePositions.push(sampled[j][0], sampled[j][1]);
+          }
+        }
+        return linePositions;
+      }
       function convertLinePositions(gd, trace, positions) {
         var len = positions.length;
         var count = len / 2;
         var linePositions;
         var i;
         if (subTypes.hasLines(trace) && count) {
-          if (trace.line.shape === "hv") {
+          if (trace.line.shape === "spline" || trace.line.shape === "cardinal" || trace.line.shape === "catmull-rom" || trace.line.shape === "monotone" || trace.line.shape === "natural") {
+            linePositions = convertSmoothLinePositions(gd, trace, positions);
+          } else if (trace.line.shape === "hv") {
             linePositions = [];
             for (i = 0; i < count - 1; i++) {
               if (isNaN(positions[i * 2]) || isNaN(positions[i * 2 + 1])) {
@@ -67458,7 +67989,7 @@ var Plotly = (() => {
         convertOneAxis(y, ya);
         return out;
       }
-      function convertTextPosition(gd, trace, textOpts, markerOpts) {
+      function convertTextPosition(gd, trace, textOpts, markerOpts, fallback) {
         var count = trace._length;
         var out = {};
         var i;
@@ -67466,20 +67997,48 @@ var Plotly = (() => {
           var fontOpts = textOpts.font;
           var align = textOpts.align;
           var baseline = textOpts.baseline;
+          var hasMarkerSizes = markerOpts && isArrayOrTypedArray(markerOpts.sizes);
+          var hasFontArray = isArrayOrTypedArray(fontOpts);
+          var hasAlignArray = isArrayOrTypedArray(align) && align.length > 1;
+          var hasBaselineArray = isArrayOrTypedArray(baseline) && baseline.length > 1;
+          if (!hasMarkerSizes && !hasFontArray && !hasAlignArray && !hasBaselineArray) {
+            var uniformOffset = makeTextOffset(
+              markerOpts && markerOpts.size,
+              fontOpts.size,
+              isArrayOrTypedArray(align) ? align[0] : align,
+              isArrayOrTypedArray(baseline) ? baseline[0] : baseline
+            );
+            if (fallback && fallback.offset && sameTextOffset(fallback.offset, uniformOffset)) {
+              out.offset = fallback.offset;
+            } else {
+              out.offset = uniformOffset;
+            }
+            return out;
+          }
+          if (!hasMarkerSizes && fallback && fallback.offset) {
+            out.offset = fallback.offset;
+            return out;
+          }
           out.offset = new Array(count);
           for (i = 0; i < count; i++) {
             var ms = markerOpts.sizes ? markerOpts.sizes[i] : markerOpts.size;
             var fs = isArrayOrTypedArray(fontOpts) ? fontOpts[i].size : fontOpts.size;
             var a = isArrayOrTypedArray(align) ? align.length > 1 ? align[i] : align[0] : align;
             var b = isArrayOrTypedArray(baseline) ? baseline.length > 1 ? baseline[i] : baseline[0] : baseline;
-            var hSign = TEXTOFFSETSIGN[a];
-            var vSign = TEXTOFFSETSIGN[b];
-            var xPad = ms ? ms / 0.8 + 1 : 0;
-            var yPad = -vSign * xPad - vSign * 0.5;
-            out.offset[i] = [hSign * xPad / fs, yPad / fs];
+            out.offset[i] = makeTextOffset(ms, fs, a, b);
           }
         }
         return out;
+      }
+      function makeTextOffset(markerSize, fontSize, align, baseline) {
+        var hSign = TEXTOFFSETSIGN[align];
+        var vSign = TEXTOFFSETSIGN[baseline];
+        var xPad = markerSize ? markerSize / 0.8 + 1 : 0;
+        var yPad = -vSign * xPad - vSign * 0.5;
+        return [hSign * xPad / fontSize, yPad / fontSize];
+      }
+      function sameTextOffset(offset1, offset2) {
+        return !!offset1 && !!offset2 && offset1[0] === offset2[0] && offset1[1] === offset2[1];
       }
       module.exports = {
         style: convertStyle,
@@ -67502,6 +68061,8 @@ var Plotly = (() => {
         var resetOpts = {
           // number of traces in subplot, since scene:subplot -> 1:1
           count: 0,
+          // previous count before an incremental append starts
+          _incrementalStartCount: null,
           // whether scene requires init hook in plot call (dirty plot call)
           dirty: true,
           // last used options
@@ -67515,6 +68076,8 @@ var Plotly = (() => {
           textOptions: [],
           textSelectedOptions: [],
           textUnselectedOptions: [],
+          linePositionSources: [],
+          refresh: null,
           // selection batches
           selectBatch: [],
           unselectBatch: []
@@ -67556,6 +68119,9 @@ var Plotly = (() => {
             var select2d = scene.select2d;
             var selectBatch = scene.selectBatch;
             var unselectBatch = scene.unselectBatch;
+            if (scene.refresh) {
+              scene.refresh();
+            }
             for (var i = 0; i < count; i++) {
               if (fill2d && scene.fillOrder[i]) {
                 fill2d.draw(scene.fillOrder[i]);
@@ -67611,7 +68177,10 @@ var Plotly = (() => {
             subplot._scene = null;
           };
         }
-        if (!scene.dirty) {
+        if (!scene.dirty && (gd._scatterGlIncrementalAppend || gd._rangeSliderScatterGlIncrementalAppend)) {
+          scene._incrementalStartCount = scene.count;
+          scene.dirty = true;
+        } else if (!scene.dirty) {
           Lib.extendFlat(scene, resetOpts);
         }
         return scene;
@@ -67716,6 +68285,11 @@ var Plotly = (() => {
         scene.textOptions.push(opts.text);
         scene.textSelectedOptions.push(opts.textSel);
         scene.textUnselectedOptions.push(opts.textUnsel);
+        scene.linePositionSources.push(opts.line ? {
+          positions,
+          trace,
+          viewportKey: null
+        } : null);
         scene.selectBatch.push([]);
         scene.unselectBatch.push([]);
         stash._scene = scene;
@@ -67753,20 +68327,21 @@ var Plotly = (() => {
           }
         }
         if (opts.text) {
+          var baseTextPosition = convert.textPosition(gd, trace, opts.text, opts.marker);
           Lib.extendFlat(
             opts.text,
             { positions },
-            convert.textPosition(gd, trace, opts.text, opts.marker)
+            baseTextPosition
           );
           Lib.extendFlat(
             opts.textSel,
             { positions },
-            convert.textPosition(gd, trace, opts.text, opts.markerSel)
+            convert.textPosition(gd, trace, opts.text, opts.markerSel, baseTextPosition)
           );
           Lib.extendFlat(
             opts.textUnsel,
             { positions },
-            convert.textPosition(gd, trace, opts.text, opts.markerUnsel)
+            convert.textPosition(gd, trace, opts.text, opts.markerUnsel, baseTextPosition)
           );
         }
         return opts;
@@ -72061,7 +72636,7 @@ void main() {
           bounds: null,
           positions: [],
           errors: []
-        }, groups = [];
+        }, groups = [], pointCapacity = 0;
         colorBuffer = regl.buffer({
           usage: "dynamic",
           type: "uint8",
@@ -72258,14 +72833,93 @@ void main() {
           drawErrors(s);
           if (s.after) s.after(s);
         }
+        function countPoints(list) {
+          return list.reduce((acc, group) => acc + (group ? group.count : 0), 0);
+        }
+        function findAppendStart(options2, previousLength) {
+          if (!previousLength || options2.length < previousLength) return -1;
+          let start = -1;
+          for (let i = 0; i < options2.length; i++) {
+            if (options2[i] !== void 0) {
+              start = i;
+              break;
+            }
+          }
+          if (start < previousLength) return -1;
+          for (let i = start; i < options2.length; i++) {
+            if (options2[i] === void 0) return -1;
+          }
+          return start;
+        }
+        function ensureCapacity(minPoints) {
+          if (minPoints <= pointCapacity) return false;
+          pointCapacity = Math.max(minPoints, pointCapacity ? pointCapacity * 2 : Math.max(minPoints, 1024));
+          positionBuffer(new Float32Array(pointCapacity * 2));
+          positionFractBuffer(new Float32Array(pointCapacity * 2));
+          colorBuffer(new Uint8Array(pointCapacity * 4));
+          errorBuffer(new Float32Array(pointCapacity * 4));
+          return true;
+        }
+        function uploadAll() {
+          let len = countPoints(groups);
+          if (!len) return;
+          ensureCapacity(len);
+          let positionData = new Float64Array(len * 2);
+          let colorData = new Uint8Array(len * 4);
+          let errorData = new Float32Array(len * 4);
+          groups.forEach((group) => {
+            if (!group) return;
+            let { positions, count, offset, color, errors } = group;
+            if (!count) return;
+            colorData.set(color, offset * 4);
+            errorData.set(errors, offset * 4);
+            positionData.set(positions, offset * 2);
+          });
+          let floatData = float32(positionData);
+          positionBuffer.subdata(floatData, 0);
+          positionFractBuffer.subdata(fract32(positionData, floatData), 0);
+          colorBuffer.subdata(colorData, 0);
+          errorBuffer.subdata(errorData, 0);
+        }
+        function uploadAppended(previousPointCount) {
+          let totalPointCount = countPoints(groups);
+          if (totalPointCount <= previousPointCount) return;
+          if (ensureCapacity(totalPointCount)) {
+            uploadAll();
+            return;
+          }
+          let appendedPointCount = totalPointCount - previousPointCount;
+          let positionData = new Float64Array(appendedPointCount * 2);
+          let colorData = new Uint8Array(appendedPointCount * 4);
+          let errorData = new Float32Array(appendedPointCount * 4);
+          groups.forEach((group) => {
+            if (!group || group.offset < previousPointCount) return;
+            let { positions, count, offset, color, errors } = group;
+            if (!count) return;
+            let localOffset = offset - previousPointCount;
+            colorData.set(color, localOffset * 4);
+            errorData.set(errors, localOffset * 4);
+            positionData.set(positions, localOffset * 2);
+          });
+          let floatData = float32(positionData);
+          let byteOffset2 = previousPointCount * 2 * 4;
+          positionBuffer.subdata(floatData, byteOffset2);
+          positionFractBuffer.subdata(fract32(positionData, floatData), byteOffset2);
+          colorBuffer.subdata(colorData, previousPointCount * 4);
+          errorBuffer.subdata(errorData, previousPointCount * 4 * 4);
+        }
         function update(options2) {
           if (!options2) return;
           if (options2.length != null) {
             if (typeof options2[0] === "number") options2 = [{ positions: options2 }];
           } else if (!Array.isArray(options2)) options2 = [options2];
-          let pointCount = 0, errorCount = 0;
+          let previousGroups = groups.slice();
+          let previousPointCount = countPoints(previousGroups);
+          let appendStart = findAppendStart(options2, previousGroups.length);
+          let canAppend = appendStart >= 0;
+          let pointCount = canAppend ? previousPointCount : 0, errorCount = 0;
           error2d.groups = groups = options2.map((options3, i) => {
-            let group = groups[i];
+            let group = previousGroups[i];
             if (!options3) return group;
             else if (typeof options3 === "function") options3 = { after: options3 };
             else if (typeof options3[0] === "number") options3 = { positions: options3 };
@@ -72367,26 +73021,11 @@ void main() {
             return group;
           });
           if (pointCount || errorCount) {
-            let len = groups.reduce((acc, group, i) => {
-              return acc + (group ? group.count : 0);
-            }, 0);
-            let positionData = new Float64Array(len * 2);
-            let colorData = new Uint8Array(len * 4);
-            let errorData = new Float32Array(len * 4);
-            groups.forEach((group, i) => {
-              if (!group) return;
-              let { positions, count, offset, color, errors } = group;
-              if (!count) return;
-              colorData.set(color, offset * 4);
-              errorData.set(errors, offset * 4);
-              positionData.set(positions, offset * 2);
-            });
-            var float_data = float32(positionData);
-            positionBuffer(float_data);
-            var frac_data = fract32(positionData, float_data);
-            positionFractBuffer(frac_data);
-            colorBuffer(colorData);
-            errorBuffer(errorData);
+            if (canAppend) {
+              uploadAppended(previousPointCount);
+            } else {
+              uploadAll();
+            }
           }
         }
         function destroy() {
@@ -84449,49 +85088,6 @@ void main() {
     }
   });
 
-  // src/lib/show_no_webgl_msg.js
-  var require_show_no_webgl_msg = __commonJS({
-    "src/lib/show_no_webgl_msg.js"(exports, module) {
-      "use strict";
-      var Color = require_color();
-      var noop = function() {
-      };
-      module.exports = function showNoWebGlMsg(scene) {
-        for (var prop in scene) {
-          if (typeof scene[prop] === "function") scene[prop] = noop;
-        }
-        scene.destroy = function() {
-          scene.container.parentNode.removeChild(scene.container);
-        };
-        var div = document.createElement("div");
-        div.className = "no-webgl";
-        div.style.cursor = "pointer";
-        div.style.fontSize = "24px";
-        div.style.color = Color.defaults[0];
-        div.style.position = "absolute";
-        div.style.left = div.style.top = "0px";
-        div.style.width = div.style.height = "100%";
-        div.style["background-color"] = Color.lightLine;
-        div.style["z-index"] = 30;
-        var p = document.createElement("p");
-        p.textContent = "WebGL is not supported by your browser - visit https://get.webgl.org for more info";
-        p.style.position = "relative";
-        p.style.top = "50%";
-        p.style.left = "50%";
-        p.style.height = "30%";
-        p.style.width = "50%";
-        p.style.margin = "-15% 0 0 -25%";
-        div.appendChild(p);
-        scene.container.appendChild(div);
-        scene.container.style.background = "#FFFFFF";
-        scene.container.onclick = function() {
-          window.open("https://get.webgl.org");
-        };
-        return false;
-      };
-    }
-  });
-
   // node_modules/@plotly/regl/dist/regl.unchecked.js
   var require_regl_unchecked2 = __commonJS({
     "node_modules/@plotly/regl/dist/regl.unchecked.js"(exports, module) {
@@ -92869,6 +93465,49 @@ void main() {
     }
   });
 
+  // src/lib/show_no_webgl_msg.js
+  var require_show_no_webgl_msg = __commonJS({
+    "src/lib/show_no_webgl_msg.js"(exports, module) {
+      "use strict";
+      var Color = require_color();
+      var noop = function() {
+      };
+      module.exports = function showNoWebGlMsg(scene) {
+        for (var prop in scene) {
+          if (typeof scene[prop] === "function") scene[prop] = noop;
+        }
+        scene.destroy = function() {
+          scene.container.parentNode.removeChild(scene.container);
+        };
+        var div = document.createElement("div");
+        div.className = "no-webgl";
+        div.style.cursor = "pointer";
+        div.style.fontSize = "24px";
+        div.style.color = Color.defaults[0];
+        div.style.position = "absolute";
+        div.style.left = div.style.top = "0px";
+        div.style.width = div.style.height = "100%";
+        div.style["background-color"] = Color.lightLine;
+        div.style["z-index"] = 30;
+        var p = document.createElement("p");
+        p.textContent = "WebGL is not supported by your browser - visit https://get.webgl.org for more info";
+        p.style.position = "relative";
+        p.style.top = "50%";
+        p.style.left = "50%";
+        p.style.height = "30%";
+        p.style.width = "50%";
+        p.style.margin = "-15% 0 0 -25%";
+        div.appendChild(p);
+        scene.container.appendChild(div);
+        scene.container.style.background = "#FFFFFF";
+        scene.container.onclick = function() {
+          window.open("https://get.webgl.org");
+        };
+        return false;
+      };
+    }
+  });
+
   // src/lib/prepare_regl.js
   var require_prepare_regl = __commonJS({
     "src/lib/prepare_regl.js"(exports, module) {
@@ -92926,11 +93565,14 @@ void main() {
       var createLine = require_regl_line2d();
       var createError = require_regl_error2d();
       var Text = require_dist();
+      var createRegl = require_regl_unchecked2();
       var Lib = require_lib();
       var selectMode = require_helpers5().selectMode;
       var prepareRegl = require_prepare_regl();
       var subTypes = require_subtypes();
       var linkTraces = require_link_traces();
+      var convert = require_convert2();
+      var sceneUpdate = require_scene_update();
       var styleTextSelection = require_edit_style().styleTextSelection;
       var reglPrecompiled = {};
       function getViewport(fullLayout, xaxis, yaxis, plotGlPixelRatio) {
@@ -92950,24 +93592,218 @@ void main() {
           height - t - (1 - yaxis.domain[1]) * h
         ];
       }
+      function getRangeViewport(subplot) {
+        var canvas = subplot.rangeSliderCanvas;
+        return [0, 0, canvas.width, canvas.height];
+      }
+      function sceneOptions(gd, trace, stash) {
+        var opts = convert.style(gd, trace);
+        var positions = stash.positions;
+        if (opts.marker) {
+          opts.marker.positions = positions;
+        }
+        if (opts.line && positions && positions.length > 1) {
+          Lib.extendFlat(opts.line, convert.linePositions(gd, trace, positions));
+        }
+        if (opts.errorX || opts.errorY) {
+          var errors = convert.errorBarPositions(gd, trace, positions, stash.x, stash.y);
+          if (opts.errorX) {
+            Lib.extendFlat(opts.errorX, errors.x);
+          }
+          if (opts.errorY) {
+            Lib.extendFlat(opts.errorY, errors.y);
+          }
+        }
+        return opts;
+      }
+      function prepareRangeScene(gd, subplot, cdata) {
+        var fullLayout = gd._fullLayout;
+        var rangeScenes = fullLayout._rangePlotScenes || (fullLayout._rangePlotScenes = {});
+        var storedScene = rangeScenes[subplot.id] || null;
+        if (storedScene && storedScene._rangeSliderCanvas && storedScene._rangeSliderCanvas !== subplot.rangeSliderCanvas) {
+          if (storedScene.destroy) storedScene.destroy();
+          storedScene = null;
+        }
+        subplot._scene = storedScene;
+        var scene = sceneUpdate(gd, subplot);
+        scene._rangeSliderCanvas = subplot.rangeSliderCanvas;
+        rangeScenes[subplot.id] = scene;
+        for (var i = 0; i < cdata.length; i++) {
+          var cdscatter = cdata[i];
+          var cd0 = cdscatter && cdscatter[0];
+          var trace = cd0 && cd0.trace;
+          var stash = cd0 && cd0.t;
+          if (!trace || !stash || trace.visible !== true) continue;
+          var opts = sceneOptions(gd, trace, stash);
+          opts.text = void 0;
+          opts.textSel = void 0;
+          opts.textUnsel = void 0;
+          if (opts.fill && !scene.fill2d) scene.fill2d = true;
+          if (opts.marker && !scene.scatter2d) scene.scatter2d = true;
+          if (opts.line && !scene.line2d) scene.line2d = true;
+          if ((opts.errorX || opts.errorY) && !scene.error2d) scene.error2d = true;
+          if (opts.text && !scene.glText) scene.glText = true;
+          scene.lineOptions.push(opts.line);
+          scene.errorXOptions.push(opts.errorX);
+          scene.errorYOptions.push(opts.errorY);
+          scene.fillOptions.push(opts.fill);
+          scene.markerOptions.push(opts.marker);
+          scene.markerSelectedOptions.push(opts.markerSel);
+          scene.markerUnselectedOptions.push(opts.markerUnsel);
+          scene.textOptions.push(opts.text);
+          scene.textSelectedOptions.push(opts.textSel);
+          scene.textUnselectedOptions.push(opts.textUnsel);
+          scene.linePositionSources.push(opts.line ? {
+            positions: stash.positions,
+            trace,
+            viewportKey: hasSmoothLineShape(trace) ? makeViewportKey(gd, trace) : null
+          } : null);
+          scene.selectBatch.push([]);
+          scene.unselectBatch.push([]);
+          scene.count++;
+        }
+        return scene;
+      }
+      function prepareRangeRegl(gd, subplot) {
+        var canvas = subplot.rangeSliderCanvas;
+        if (!canvas) return null;
+        if (canvas._regl) {
+          canvas._regl.preloadCachedCode(reglPrecompiled);
+          return canvas._regl;
+        }
+        try {
+          canvas._regl = createRegl({
+            canvas,
+            attributes: {
+              antialias: true,
+              preserveDrawingBuffer: true
+            },
+            pixelRatio: gd._context.plotGlPixelRatio || window.devicePixelRatio,
+            extensions: ["ANGLE_instanced_arrays", "OES_element_index_uint"],
+            cachedCode: reglPrecompiled || {}
+          });
+        } catch (e) {
+          return null;
+        }
+        return canvas._regl;
+      }
+      function trimLinePositions(lineOptions) {
+        if (!(lineOptions && lineOptions.positions)) return lineOptions;
+        var srcPos = lineOptions.positions;
+        var firstptdef = 0;
+        while (firstptdef < srcPos.length && (isNaN(srcPos[firstptdef]) || isNaN(srcPos[firstptdef + 1]))) {
+          firstptdef += 2;
+        }
+        var lastptdef = srcPos.length - 2;
+        while (lastptdef > firstptdef && (isNaN(srcPos[lastptdef]) || isNaN(srcPos[lastptdef + 1]))) {
+          lastptdef -= 2;
+        }
+        lineOptions.positions = srcPos.slice(firstptdef, lastptdef + 2);
+        return lineOptions;
+      }
+      function hasSmoothLineShape(trace) {
+        var shape = trace && trace.line && trace.line.shape;
+        return shape === "spline" || shape === "cardinal" || shape === "catmull-rom" || shape === "monotone" || shape === "natural";
+      }
+      function makeViewportKey(gd, trace) {
+        var fullLayout = gd && gd._fullLayout;
+        var xa = trace && trace._xA;
+        var ya = trace && trace._yA;
+        if (!fullLayout || !xa || !ya) return "";
+        return [
+          fullLayout.width,
+          fullLayout.height,
+          gd._context.plotGlPixelRatio,
+          xa.domain[0],
+          xa.domain[1],
+          ya.domain[0],
+          ya.domain[1],
+          (xa._rl || xa.range)[0],
+          (xa._rl || xa.range)[1],
+          (ya._rl || ya.range)[0],
+          (ya._rl || ya.range)[1]
+        ].join("|");
+      }
+      function refreshSmoothLineBuffers(gd, scene) {
+        var sources = scene.linePositionSources;
+        var line2d = scene.line2d;
+        var updateBatch;
+        var didUpdate = false;
+        if (!line2d || !sources || !sources.length) return;
+        for (var i = 0; i < sources.length; i++) {
+          var source = sources[i];
+          if (!source) continue;
+          var trace = source.trace;
+          if (!trace || trace.visible !== true || !hasSmoothLineShape(trace)) continue;
+          var viewportKey = makeViewportKey(gd, trace);
+          if (viewportKey === source.viewportKey) continue;
+          source.viewportKey = viewportKey;
+          if (!scene.lineOptions[i]) continue;
+          scene.lineOptions[i].positions = convert.linePositions(gd, trace, source.positions).positions;
+          trimLinePositions(scene.lineOptions[i]);
+          if (!updateBatch) updateBatch = new Array(scene.count);
+          updateBatch[i] = scene.lineOptions[i];
+          didUpdate = true;
+        }
+        if (didUpdate) {
+          line2d.update(updateBatch);
+        }
+      }
+      function makeIncrementalUpdateBatch(options, startIndex, count) {
+        var batch = new Array(count);
+        var i;
+        for (i = 0; i < startIndex; i++) {
+          batch[i] = void 0;
+        }
+        for (i = startIndex; i < count; i++) {
+          batch[i] = options[i];
+        }
+        return batch;
+      }
+      function makeIncrementalErrorBatch(errorXOptions, errorYOptions, startIndex, count) {
+        var batch = new Array(count * 2);
+        var i;
+        for (i = 0; i < count; i++) {
+          if (i < startIndex) {
+            batch[i] = void 0;
+            batch[i + count] = void 0;
+          } else {
+            batch[i] = errorXOptions[i];
+            batch[i + count] = errorYOptions[i];
+          }
+        }
+        return batch;
+      }
       var exports = module.exports = function plot(gd, subplot, cdata) {
         if (!cdata.length) return;
         var fullLayout = gd._fullLayout;
-        var scene = subplot._scene;
+        var scene = subplot.isRangePlot ? prepareRangeScene(gd, subplot, cdata) : subplot._scene;
         var xaxis = subplot.xaxis;
         var yaxis = subplot.yaxis;
         var i, j;
         if (!scene) return;
-        var success = prepareRegl(gd, ["ANGLE_instanced_arrays", "OES_element_index_uint"], reglPrecompiled);
-        if (!success) {
-          scene.init();
-          return;
-        }
+        scene.refresh = function refresh() {
+          refreshSmoothLineBuffers(gd, scene);
+        };
         var count = scene.count;
-        var regl = fullLayout._glcanvas.data()[0].regl;
+        var regl;
+        if (subplot.isRangePlot) {
+          regl = prepareRangeRegl(gd, subplot);
+          if (!regl) return;
+          regl.clear({ color: [0, 0, 0, 0], depth: 1 });
+        } else {
+          var success = prepareRegl(gd, ["ANGLE_instanced_arrays", "OES_element_index_uint"], reglPrecompiled);
+          if (!success) {
+            scene.init();
+            return;
+          }
+          regl = fullLayout._glcanvas.data()[0].regl;
+        }
         linkTraces(gd, subplot, cdata);
         if (scene.dirty) {
-          if ((scene.line2d || scene.error2d) && !(scene.scatter2d || scene.fill2d || scene.glText)) {
+          var incrementalStart = scene._incrementalStartCount;
+          var canIncrementallyUpload = incrementalStart !== null && incrementalStart > 0 && incrementalStart < count && !scene.fill2d;
+          if (!subplot.isRangePlot && (scene.line2d || scene.error2d) && !(scene.scatter2d || scene.fill2d || scene.glText)) {
             regl.clear({ color: true, depth: true });
           }
           if (scene.error2d === true) {
@@ -93001,35 +93837,31 @@ void main() {
                 text.destroy();
               });
             }
-            for (i = 0; i < count; i++) {
+            var textStart = canIncrementallyUpload ? incrementalStart : 0;
+            for (i = textStart; i < count; i++) {
               scene.glText[i].update(scene.textOptions[i]);
             }
           }
           if (scene.line2d) {
-            scene.line2d.update(scene.lineOptions);
-            scene.lineOptions = scene.lineOptions.map(function(lineOptions) {
-              if (lineOptions && lineOptions.positions) {
-                var srcPos = lineOptions.positions;
-                var firstptdef = 0;
-                while (firstptdef < srcPos.length && (isNaN(srcPos[firstptdef]) || isNaN(srcPos[firstptdef + 1]))) {
-                  firstptdef += 2;
-                }
-                var lastptdef = srcPos.length - 2;
-                while (lastptdef > firstptdef && (isNaN(srcPos[lastptdef]) || isNaN(srcPos[lastptdef + 1]))) {
-                  lastptdef -= 2;
-                }
-                lineOptions.positions = srcPos.slice(firstptdef, lastptdef + 2);
+            if (canIncrementallyUpload) {
+              var lineUpdateBatch = makeIncrementalUpdateBatch(scene.lineOptions, incrementalStart, count);
+              scene.line2d.update(lineUpdateBatch);
+              for (i = incrementalStart; i < count; i++) {
+                lineUpdateBatch[i] = trimLinePositions(scene.lineOptions[i]);
               }
-              return lineOptions;
-            });
-            scene.line2d.update(scene.lineOptions);
+              scene.line2d.update(lineUpdateBatch);
+            } else {
+              scene.line2d.update(scene.lineOptions);
+              scene.lineOptions = scene.lineOptions.map(trimLinePositions);
+              scene.line2d.update(scene.lineOptions);
+            }
           }
           if (scene.error2d) {
-            var errorBatch = (scene.errorXOptions || []).concat(scene.errorYOptions || []);
+            var errorBatch = canIncrementallyUpload ? makeIncrementalErrorBatch(scene.errorXOptions || [], scene.errorYOptions || [], incrementalStart, count) : (scene.errorXOptions || []).concat(scene.errorYOptions || []);
             scene.error2d.update(errorBatch);
           }
           if (scene.scatter2d) {
-            scene.scatter2d.update(scene.markerOptions);
+            scene.scatter2d.update(canIncrementallyUpload ? makeIncrementalUpdateBatch(scene.markerOptions, incrementalStart, count) : scene.markerOptions);
           }
           scene.fillOrder = Lib.repeat(null, count);
           if (scene.fill2d) {
@@ -93136,10 +93968,11 @@ void main() {
             });
             scene.fill2d.update(scene.fillOptions);
           }
+          scene._incrementalStartCount = null;
         }
         var dragmode = fullLayout.dragmode;
-        var isSelectMode = selectMode(dragmode);
-        var clickSelectEnabled = fullLayout.clickmode.indexOf("select") > -1;
+        var isSelectMode = subplot.isRangePlot ? false : selectMode(dragmode);
+        var clickSelectEnabled = subplot.isRangePlot ? false : fullLayout.clickmode.indexOf("select") > -1;
         for (const [cd0] of cdata) {
           if (!cd0) continue;
           var trace = cd0.trace;
@@ -93201,7 +94034,7 @@ void main() {
           }
         }
         var vpRange0 = {
-          viewport: getViewport(fullLayout, xaxis, yaxis, gd._context.plotGlPixelRatio),
+          viewport: subplot.isRangePlot ? getRangeViewport(subplot) : getViewport(fullLayout, xaxis, yaxis, gd._context.plotGlPixelRatio),
           // TODO do we need those fallbacks?
           range: [
             (xaxis._rl || xaxis.range)[0],
@@ -93230,6 +94063,9 @@ void main() {
           scene.glText.forEach(function(text) {
             text.update(vpRange0);
           });
+        }
+        if (subplot.isRangePlot) {
+          scene.draw();
         }
       };
       exports.reglPrecompiled = reglPrecompiled;

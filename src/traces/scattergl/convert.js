@@ -3,6 +3,7 @@
 var isNumeric = require('fast-isnumeric');
 var svgSdf = require('svg-path-sdf');
 var rgba = require('color-normalize');
+var parseSvgPath = require('parse-svg-path');
 
 var Registry = require('../../registry');
 var Lib = require('../../lib');
@@ -30,6 +31,9 @@ var TEXTOFFSETSIGN = {
 };
 
 var appendArrayPointValue = require('../../components/fx/helpers').appendArrayPointValue;
+
+var SMOOTH_LINE_TOLERANCE_PX = 0.5;
+var MAX_BEZIER_SUBDIVISION_DEPTH = 10;
 
 function convertStyle(gd, trace) {
     var i;
@@ -130,11 +134,11 @@ function convertTextStyle(gd, trace) {
         var N = isArray ? Math.min(texttemplate.length, count) : count;
         var txt = isArray
             ? function (i) {
-                  return texttemplate[i];
-              }
+                return texttemplate[i];
+            }
             : function () {
-                  return texttemplate;
-              };
+                return texttemplate;
+            };
 
         for (i = 0; i < N; i++) {
             var d = { i: i };
@@ -497,6 +501,194 @@ function getSymbolSdf(d, trace) {
     return symbolSdf || null;
 }
 
+function splitLinePositions(positions) {
+    var segments = [];
+    var segment = [];
+
+    for (var i = 0; i < positions.length; i += 2) {
+        var x = positions[i];
+        var y = positions[i + 1];
+
+        if (isNaN(x) || isNaN(y)) {
+            if (segment.length) {
+                segments.push(segment);
+                segment = [];
+            }
+        } else {
+            segment.push([x, y]);
+        }
+    }
+
+    if (segment.length) segments.push(segment);
+
+    return segments;
+}
+
+function distance(pt1, pt2) {
+    var dx = pt2[0] - pt1[0];
+    var dy = pt2[1] - pt1[1];
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function pointLineDistance(pt, start, end, toPixel) {
+    var pixelPt = toPixel(pt);
+    var pixelStart = toPixel(start);
+    var pixelEnd = toPixel(end);
+    var dx = pixelEnd[0] - pixelStart[0];
+    var dy = pixelEnd[1] - pixelStart[1];
+    var denom = Math.sqrt(dx * dx + dy * dy);
+
+    if (!denom) {
+        return distance(pixelPt, pixelStart);
+    }
+
+    return Math.abs(
+        dy * pixelPt[0] -
+        dx * pixelPt[1] +
+        pixelEnd[0] * pixelStart[1] -
+        pixelEnd[1] * pixelStart[0]
+    ) / denom;
+}
+
+function midpoint(pt1, pt2) {
+    return [(pt1[0] + pt2[0]) / 2, (pt1[1] + pt2[1]) / 2];
+}
+
+function sampleQuadraticBezier(start, control, end, out, depth, toPixel) {
+    if (
+        depth >= MAX_BEZIER_SUBDIVISION_DEPTH ||
+        pointLineDistance(control, start, end, toPixel) <= SMOOTH_LINE_TOLERANCE_PX
+    ) {
+        out.push(end);
+        return;
+    }
+
+    var startControl = midpoint(start, control);
+    var controlEnd = midpoint(control, end);
+    var split = midpoint(startControl, controlEnd);
+
+    sampleQuadraticBezier(start, startControl, split, out, depth + 1, toPixel);
+    sampleQuadraticBezier(split, controlEnd, end, out, depth + 1, toPixel);
+}
+
+function sampleCubicBezier(start, control1, control2, end, out, depth, toPixel) {
+    var flatness = Math.max(
+        pointLineDistance(control1, start, end, toPixel),
+        pointLineDistance(control2, start, end, toPixel)
+    );
+
+    if (depth >= MAX_BEZIER_SUBDIVISION_DEPTH || flatness <= SMOOTH_LINE_TOLERANCE_PX) {
+        out.push(end);
+        return;
+    }
+
+    var startControl1 = midpoint(start, control1);
+    var control1Control2 = midpoint(control1, control2);
+    var control2End = midpoint(control2, end);
+    var leftControl2 = midpoint(startControl1, control1Control2);
+    var rightControl1 = midpoint(control1Control2, control2End);
+    var split = midpoint(leftControl2, rightControl1);
+
+    sampleCubicBezier(start, startControl1, leftControl2, split, out, depth + 1, toPixel);
+    sampleCubicBezier(split, rightControl1, control2End, end, out, depth + 1, toPixel);
+}
+
+function samePoint(pt1, pt2) {
+    return pt1 && pt2 && pt1[0] === pt2[0] && pt1[1] === pt2[1];
+}
+
+function samplePathString(pathString, toPixel) {
+    var commands = parseSvgPath(pathString);
+    var sampled = [];
+    var currentPoint;
+    var subpathStart;
+
+    for (var i = 0; i < commands.length; i++) {
+        var command = commands[i];
+        var type = command[0];
+
+        if (type === 'M') {
+            currentPoint = [command[1], command[2]];
+            subpathStart = currentPoint;
+            sampled.push(currentPoint);
+        } else if (type === 'L') {
+            currentPoint = [command[1], command[2]];
+            sampled.push(currentPoint);
+        } else if (type === 'Q') {
+            var quadEnd = [command[3], command[4]];
+            sampleQuadraticBezier(currentPoint, [command[1], command[2]], quadEnd, sampled, 0, toPixel);
+            currentPoint = quadEnd;
+        } else if (type === 'C') {
+            var cubicEnd = [command[5], command[6]];
+            sampleCubicBezier(currentPoint, [command[1], command[2]], [command[3], command[4]], cubicEnd, sampled, 0, toPixel);
+            currentPoint = cubicEnd;
+        } else if (type === 'Z' && subpathStart && !samePoint(currentPoint, subpathStart)) {
+            sampled.push(subpathStart);
+            currentPoint = subpathStart;
+        }
+    }
+
+    return sampled;
+}
+
+function getSmoothPath(trace, pts) {
+    var line = trace.line || {};
+    var pLast = pts[pts.length - 1];
+    var isClosed = pts.length > 1 && pts[0][0] === pLast[0] && pts[0][1] === pLast[1];
+
+    if (line.shape === 'spline') {
+        return isClosed ? Drawing.smoothclosed(pts.slice(1), line.smoothing) : Drawing.smoothopen(pts, line.smoothing);
+    }
+
+    if (line.shape === 'cardinal') {
+        return isClosed ? Drawing.cardinalclosed(pts.slice(1), line.tension) : Drawing.cardinalopen(pts, line.tension);
+    }
+
+    if (line.shape === 'catmull-rom') {
+        return isClosed ? Drawing.catmullromclosed(pts.slice(1), line.alpha) : Drawing.catmullromopen(pts, line.alpha);
+    }
+
+    if (line.shape === 'monotone') {
+        return Drawing.monotoneopen(pts);
+    }
+
+    return Drawing.naturalopen(pts);
+}
+
+function getLinePointPixelTransform(gd, trace) {
+    if (!gd || !trace) {
+        return function (pt) { return pt; };
+    }
+
+    var xa = trace._xA || AxisIDs.getFromId(gd, trace.xaxis, 'x');
+    var ya = trace._yA || AxisIDs.getFromId(gd, trace.yaxis, 'y');
+    var xToPixel = xa.type === 'log' ? xa.l2p.bind(xa) : xa.c2p.bind(xa);
+    var yToPixel = ya.type === 'log' ? ya.l2p.bind(ya) : ya.c2p.bind(ya);
+
+    return function (pt) {
+        return [xToPixel(pt[0]), yToPixel(pt[1])];
+    };
+}
+
+function convertSmoothLinePositions(gd, trace, positions) {
+    var segments = splitLinePositions(positions);
+    var linePositions = [];
+    var toPixel = getLinePointPixelTransform(gd, trace);
+
+    for (var i = 0; i < segments.length; i++) {
+        var pts = segments[i];
+        var sampled = pts.length < 2 ? pts : samplePathString(getSmoothPath(trace, pts), toPixel);
+
+        if (i) linePositions.push(NaN, NaN);
+
+        for (var j = 0; j < sampled.length; j++) {
+            linePositions.push(sampled[j][0], sampled[j][1]);
+        }
+    }
+
+    return linePositions;
+}
+
 function convertLinePositions(gd, trace, positions) {
     var len = positions.length;
     var count = len / 2;
@@ -504,7 +696,11 @@ function convertLinePositions(gd, trace, positions) {
     var i;
 
     if (subTypes.hasLines(trace) && count) {
-        if (trace.line.shape === 'hv') {
+        if (trace.line.shape === 'spline' || trace.line.shape === 'cardinal' ||
+            trace.line.shape === 'catmull-rom' || trace.line.shape === 'monotone' ||
+            trace.line.shape === 'natural') {
+            linePositions = convertSmoothLinePositions(gd, trace, positions);
+        } else if (trace.line.shape === 'hv') {
             linePositions = [];
             for (i = 0; i < count - 1; i++) {
                 if (isNaN(positions[i * 2]) || isNaN(positions[i * 2 + 1])) {
@@ -609,8 +805,8 @@ function convertLinePositions(gd, trace, positions) {
         hasNaN || linePositions.length > constants.TOO_MANY_POINTS
             ? 'rect'
             : subTypes.hasMarkers(trace)
-              ? 'rect'
-              : 'round';
+                ? 'rect'
+                : 'round';
 
     // fill gaps
     if (hasNaN && trace.connectgaps) {
@@ -690,7 +886,7 @@ function convertErrorBarPositions(gd, trace, positions, x, y) {
     return out;
 }
 
-function convertTextPosition(gd, trace, textOpts, markerOpts) {
+function convertTextPosition(gd, trace, textOpts, markerOpts, fallback) {
     var count = trace._length;
     var out = {};
     var i;
@@ -700,6 +896,33 @@ function convertTextPosition(gd, trace, textOpts, markerOpts) {
         var fontOpts = textOpts.font;
         var align = textOpts.align;
         var baseline = textOpts.baseline;
+        var hasMarkerSizes = markerOpts && isArrayOrTypedArray(markerOpts.sizes);
+        var hasFontArray = isArrayOrTypedArray(fontOpts);
+        var hasAlignArray = isArrayOrTypedArray(align) && align.length > 1;
+        var hasBaselineArray = isArrayOrTypedArray(baseline) && baseline.length > 1;
+
+        if (!hasMarkerSizes && !hasFontArray && !hasAlignArray && !hasBaselineArray) {
+            var uniformOffset = makeTextOffset(
+                markerOpts && markerOpts.size,
+                fontOpts.size,
+                isArrayOrTypedArray(align) ? align[0] : align,
+                isArrayOrTypedArray(baseline) ? baseline[0] : baseline
+            );
+
+            if (fallback && fallback.offset && sameTextOffset(fallback.offset, uniformOffset)) {
+                out.offset = fallback.offset;
+            } else {
+                out.offset = uniformOffset;
+            }
+
+            return out;
+        }
+
+        if (!hasMarkerSizes && fallback && fallback.offset) {
+            out.offset = fallback.offset;
+            return out;
+        }
+
         out.offset = new Array(count);
 
         for (i = 0; i < count; i++) {
@@ -709,15 +932,26 @@ function convertTextPosition(gd, trace, textOpts, markerOpts) {
             var a = isArrayOrTypedArray(align) ? (align.length > 1 ? align[i] : align[0]) : align;
             var b = isArrayOrTypedArray(baseline) ? (baseline.length > 1 ? baseline[i] : baseline[0]) : baseline;
 
-            var hSign = TEXTOFFSETSIGN[a];
-            var vSign = TEXTOFFSETSIGN[b];
-            var xPad = ms ? ms / 0.8 + 1 : 0;
-            var yPad = -vSign * xPad - vSign * 0.5;
-            out.offset[i] = [(hSign * xPad) / fs, yPad / fs];
+            out.offset[i] = makeTextOffset(ms, fs, a, b);
         }
     }
 
     return out;
+}
+
+function makeTextOffset(markerSize, fontSize, align, baseline) {
+    var hSign = TEXTOFFSETSIGN[align];
+    var vSign = TEXTOFFSETSIGN[baseline];
+    var xPad = markerSize ? markerSize / 0.8 + 1 : 0;
+    var yPad = -vSign * xPad - vSign * 0.5;
+
+    return [(hSign * xPad) / fontSize, yPad / fontSize];
+}
+
+function sameTextOffset(offset1, offset2) {
+    return !!offset1 && !!offset2 &&
+        offset1[0] === offset2[0] &&
+        offset1[1] === offset2[1];
 }
 
 module.exports = {

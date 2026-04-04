@@ -1076,8 +1076,8 @@ drawing.makePointStyleFns = function (trace) {
         out.ms2mrc = subTypes.isBubble(trace)
             ? makeBubbleSizeFn(trace)
             : function () {
-                  return (marker.size || 6) / 2;
-              };
+                return (marker.size || 6) / 2;
+            };
     }
 
     if (trace.selectedpoints) {
@@ -1386,6 +1386,183 @@ drawing.smoothclosed = function (pts, smoothness) {
         path += 'C' + tangents[i - 1][1] + ' ' + tangents[i][0] + ' ' + pts[i];
     }
     path += 'C' + tangents[pLast][1] + ' ' + tangents[0][0] + ' ' + pts[0] + 'Z';
+    return path;
+};
+
+// Cardinal spline - uniform parameterization with tension parameter.
+// Adapted from d3-shape curveCardinal. tension in [0,1]; k=(1-tension)/6.
+// Zero-tangent boundary conditions at both endpoints (clamped spline).
+drawing.cardinalopen = function (pts, tension) {
+    var n = pts.length;
+    if (n < 3) return 'M' + pts.join('L');
+    var k = (1 - tension) / 6;
+    var i;
+    // first bezier: CP1 = pts[0] (zero start tangent)
+    var path = 'M' + pts[0] + 'C' + pts[0] + ' ' +
+        [pts[1][0] + k * (pts[0][0] - pts[2][0]),
+        pts[1][1] + k * (pts[0][1] - pts[2][1])] + ' ' + pts[1];
+    for (i = 1; i < n - 2; i++) {
+        path += 'C' +
+            [pts[i][0] + k * (pts[i + 1][0] - pts[i - 1][0]),
+            pts[i][1] + k * (pts[i + 1][1] - pts[i - 1][1])] + ' ' +
+            [pts[i + 1][0] + k * (pts[i][0] - pts[i + 2][0]),
+            pts[i + 1][1] + k * (pts[i][1] - pts[i + 2][1])] + ' ' +
+            pts[i + 1];
+    }
+    // last bezier: CP2 = pts[n-1] (zero end tangent)
+    path += 'C' +
+        [pts[n - 2][0] + k * (pts[n - 1][0] - pts[n - 3][0]),
+        pts[n - 2][1] + k * (pts[n - 1][1] - pts[n - 3][1])] + ' ' +
+        pts[n - 1] + ' ' + pts[n - 1];
+    return path;
+};
+
+drawing.cardinalclosed = function (pts, tension) {
+    var n = pts.length;
+    if (n < 3) return 'M' + pts.join('L') + 'Z';
+    var k = (1 - tension) / 6;
+    var i, prev, curr, next, next2;
+    var path = 'M' + pts[0];
+    for (i = 0; i < n - 1; i++) {
+        prev = pts[(i - 1 + n) % n];
+        curr = pts[i];
+        next = pts[i + 1];
+        next2 = pts[(i + 2) % n];
+        path += 'C' +
+            [curr[0] + k * (next[0] - prev[0]), curr[1] + k * (next[1] - prev[1])] + ' ' +
+            [next[0] + k * (curr[0] - next2[0]), next[1] + k * (curr[1] - next2[1])] + ' ' +
+            next;
+    }
+    // closing segment back to pts[0]
+    var last = pts[n - 1];
+    var first = pts[0];
+    path += 'C' +
+        [last[0] + k * (first[0] - pts[n - 2][0]), last[1] + k * (first[1] - pts[n - 2][1])] + ' ' +
+        [first[0] + k * (last[0] - pts[1][0]), first[1] + k * (last[1] - pts[1][1])] + ' ' +
+        first + 'Z';
+    return path;
+};
+
+// Parameterized Catmull-Rom spline. alpha controls chord-length parameterization:
+// 0=uniform, 0.5=centripetal (default), 1=chordal.
+// Adapted from d3-shape curveCatmullRom.
+function makeCatmullRomTangent(prevpt, thispt, nextpt, alpha) {
+    var d1x = prevpt[0] - thispt[0];
+    var d1y = prevpt[1] - thispt[1];
+    var d2x = nextpt[0] - thispt[0];
+    var d2y = nextpt[1] - thispt[1];
+    var d1a = Math.pow(d1x * d1x + d1y * d1y, alpha / 2);
+    var d2a = Math.pow(d2x * d2x + d2y * d2y, alpha / 2);
+    var numx = d2a * d2a * d1x - d1a * d1a * d2x;
+    var numy = d2a * d2a * d1y - d1a * d1a * d2y;
+    var denom1 = 3 * d2a * (d1a + d2a);
+    var denom2 = 3 * d1a * (d1a + d2a);
+    return [
+        [thispt[0] + (denom1 ? numx / denom1 : 0), thispt[1] + (denom1 ? numy / denom1 : 0)],
+        [thispt[0] - (denom2 ? numx / denom2 : 0), thispt[1] - (denom2 ? numy / denom2 : 0)]
+    ];
+}
+
+drawing.catmullromopen = function (pts, alpha) {
+    if (pts.length < 3) return 'M' + pts.join('L');
+    var tangents = [];
+    var i;
+    for (i = 1; i < pts.length - 1; i++) {
+        tangents.push(makeCatmullRomTangent(pts[i - 1], pts[i], pts[i + 1], alpha));
+    }
+    var path = 'M' + pts[0];
+    path += 'Q' + tangents[0][0] + ' ' + pts[1];
+    for (i = 2; i < pts.length - 1; i++) {
+        path += 'C' + tangents[i - 2][1] + ' ' + tangents[i - 1][0] + ' ' + pts[i];
+    }
+    path += 'Q' + tangents[pts.length - 3][1] + ' ' + pts[pts.length - 1];
+    return path;
+};
+
+drawing.catmullromclosed = function (pts, alpha) {
+    if (pts.length < 3) return 'M' + pts.join('L') + 'Z';
+    var pLast = pts.length - 1;
+    var tangents = [makeCatmullRomTangent(pts[pLast], pts[0], pts[1], alpha)];
+    var i;
+    for (i = 1; i < pLast; i++) {
+        tangents.push(makeCatmullRomTangent(pts[i - 1], pts[i], pts[i + 1], alpha));
+    }
+    tangents.push(makeCatmullRomTangent(pts[pLast - 1], pts[pLast], pts[0], alpha));
+    var path = 'M' + pts[0];
+    for (i = 1; i <= pLast; i++) {
+        path += 'C' + tangents[i - 1][1] + ' ' + tangents[i][0] + ' ' + pts[i];
+    }
+    path += 'C' + tangents[pLast][1] + ' ' + tangents[0][0] + ' ' + pts[0] + 'Z';
+    return path;
+};
+
+// Monotone cubic interpolation (X-monotone, Fritsch-Carlson / Steffen 1990).
+// Adapted from d3-shape curveMonotoneX. Prevents spurious local extrema.
+drawing.monotoneopen = function (pts) {
+    var n = pts.length;
+    if (n < 2) return 'M' + pts[0];
+    if (n === 2) return 'M' + pts[0] + 'L' + pts[1];
+    var h = new Array(n - 1);
+    var s = new Array(n - 1);
+    var i;
+    for (i = 0; i < n - 1; i++) {
+        h[i] = pts[i + 1][0] - pts[i][0];
+        s[i] = h[i] ? (pts[i + 1][1] - pts[i][1]) / h[i] : 0;
+    }
+    var t = new Array(n);
+    for (i = 1; i < n - 1; i++) {
+        var p = (s[i - 1] * h[i] + s[i] * h[i - 1]) / (h[i - 1] + h[i]);
+        var sSign = (s[i - 1] < 0 ? -1 : 1) + (s[i] < 0 ? -1 : 1);
+        t[i] = sSign * Math.min(Math.abs(s[i - 1]), Math.abs(s[i]), 0.5 * Math.abs(p)) || 0;
+    }
+    // one-sided endpoint tangents (D3 slope2 formula)
+    t[0] = h[0] ? (3 * s[0] - t[1]) / 2 : t[1];
+    t[n - 1] = h[n - 2] ? (3 * s[n - 2] - t[n - 2]) / 2 : t[n - 2];
+    var path = 'M' + pts[0];
+    for (i = 0; i < n - 1; i++) {
+        var dx = (pts[i + 1][0] - pts[i][0]) / 3;
+        path += 'C' +
+            [pts[i][0] + dx, pts[i][1] + dx * t[i]] + ' ' +
+            [pts[i + 1][0] - dx, pts[i + 1][1] - dx * t[i + 1]] + ' ' +
+            pts[i + 1];
+    }
+    return path;
+};
+
+// Natural cubic spline interpolation (zero second-derivative boundary conditions).
+// Adapted from d3-shape curveNatural. Solves a tridiagonal system for control points.
+function naturalControlPoints(x) {
+    var n = x.length - 1;
+    var a = new Array(n);
+    var b = new Array(n);
+    var r = new Array(n);
+    var i, m;
+    a[0] = 0; b[0] = 2; r[0] = x[0] + 2 * x[1];
+    for (i = 1; i < n - 1; i++) { a[i] = 1; b[i] = 4; r[i] = 4 * x[i] + 2 * x[i + 1]; }
+    a[n - 1] = 2; b[n - 1] = 7; r[n - 1] = 8 * x[n - 1] + x[n];
+    for (i = 1; i < n; i++) { m = a[i] / b[i - 1]; b[i] -= m; r[i] -= m * r[i - 1]; }
+    a[n - 1] = r[n - 1] / b[n - 1];
+    for (i = n - 2; i >= 0; i--) a[i] = (r[i] - a[i + 1]) / b[i];
+    b[n - 1] = (x[n] + a[n - 1]) / 2;
+    for (i = 0; i < n - 1; i++) b[i] = 2 * x[i + 1] - a[i + 1];
+    return [a, b];
+}
+
+drawing.naturalopen = function (pts) {
+    var n = pts.length;
+    if (n < 2) return 'M' + pts[0];
+    if (n === 2) return 'M' + pts[0] + 'L' + pts[1];
+    var xa = pts.map(function (p) { return p[0]; });
+    var ya = pts.map(function (p) { return p[1]; });
+    var px = naturalControlPoints(xa);
+    var py = naturalControlPoints(ya);
+    var path = 'M' + pts[0];
+    for (var i = 0; i < n - 1; i++) {
+        path += 'C' +
+            [px[0][i], py[0][i]] + ' ' +
+            [px[1][i], py[1][i]] + ' ' +
+            pts[i + 1];
+    }
     return path;
 };
 
