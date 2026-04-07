@@ -1,5 +1,6 @@
 'use strict';
 
+var baseAttrs = require('../../plots/attributes');
 var scatterAttrs = require('../scatter/attributes');
 var axisHoverFormat = require('../../plots/cartesian/axis_format_attributes').axisHoverFormat;
 const { hovertemplateAttrs, texttemplateAttrs, templatefallbackAttrs } = require('../../plots/template_attributes');
@@ -32,6 +33,7 @@ var markerLine = extendFlat(
 
 var marker = extendFlat(
     {
+        blendmode: scatterMarkerAttrs.blendmode,
         line: markerLine,
         editType: 'calc'
     },
@@ -82,6 +84,7 @@ module.exports = {
     hovertext: scatterAttrs.hovertext,
     hovertemplate: hovertemplateAttrs({}, { keys: constants.eventDataKeys }),
     hovertemplatefallback: templatefallbackAttrs(),
+    blendmode: baseAttrs.blendmode,
 
     textposition: {
         valType: 'enumerated',

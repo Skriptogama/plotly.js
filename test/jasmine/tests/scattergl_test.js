@@ -1,5 +1,6 @@
 var Plotly = require('../../../lib/index');
 var Lib = require('../../../src/lib');
+var PointLabel = require('../../../src/components/labels/point_label');
 
 var ScatterGl = require('../../../src/traces/scattergl');
 var convert = require('../../../src/traces/scattergl/convert');
@@ -637,11 +638,48 @@ describe('end-to-end scattergl tests', function () {
 
 });
 
+describe('point label auto placement', function () {
+    it('should place labels greedily without reusing the same occupied slot', function () {
+        var state = PointLabel.createState({ left: 0, top: 0, right: 200, bottom: 200 });
+
+        PointLabel.addPointObstacle(state, 100, 100, 12);
+
+        var first = PointLabel.placePointLabel(state, {
+            x: 100,
+            y: 100,
+            text: 'alpha',
+            fontSize: 12,
+            markerPad: 12
+        });
+
+        var second = PointLabel.placePointLabel(state, {
+            x: 106,
+            y: 100,
+            text: 'beta',
+            fontSize: 12,
+            markerPad: 12
+        });
+
+        expect(first).not.toBe(false);
+        expect(second).not.toBe(false);
+        expect(second).not.toEqual(first);
+    });
+
+    it('should map resolved positions into gl text alignment data', function () {
+        var glPos = PointLabel.getGlTextPosition('top right', 12, 18);
+
+        expect(glPos.align).toBe('left');
+        expect(glPos.baseline).toBe('bottom');
+        expect(glPos.offset[0]).toBeGreaterThan(0);
+        expect(glPos.offset[1]).toBeGreaterThan(0);
+    });
+});
+
 describe('scattergl line shapes', function () {
     var supplyDefaults = ScatterGl.supplyDefaults;
 
     it('should coerce cardinal tension and catmull-rom alpha', function () {
-        var traceOut = {};
+        var traceOut = { visible: true };
 
         supplyDefaults({
             x: [0, 1, 2],
@@ -653,7 +691,7 @@ describe('scattergl line shapes', function () {
         expect(traceOut.line.shape).toBe('cardinal');
         expect(traceOut.line.tension).toBe(0.5);
 
-        traceOut = {};
+        traceOut = { visible: true };
 
         supplyDefaults({
             x: [0, 1, 2],
@@ -693,6 +731,7 @@ describe('scattergl line shapes', function () {
     it('should keep marker-text offsets scalar when they are uniform', function () {
         var trace = {
             _length: 3,
+            visible: true,
             mode: 'markers+text'
         };
         var textOpts = {
@@ -704,10 +743,52 @@ describe('scattergl line shapes', function () {
         var uniform = convert.textPosition(null, trace, textOpts, { size: 8 });
         var varying = convert.textPosition(null, trace, textOpts, { sizes: [8, 10, 12] });
 
-        expect(uniform.offset).toEqual([0, 1.1]);
+        expect(uniform.offset).toEqual([0, 1.15]);
         expect(varying.offset.length).toBe(3);
-        expect(varying.offset[0]).toEqual([0, 1.1]);
-        expect(varying.offset[2]).toEqual([0, 1.6]);
+        expect(varying.offset[0]).toEqual([0, 1.15]);
+        expect(varying.offset[2]).toEqual([0, 1.65]);
+    });
+});
+
+describe('scattergl viewport updates', function () {
+    var gd;
+
+    beforeEach(function () {
+        gd = createGraphDiv();
+    });
+
+    afterEach(function (done) {
+        Plotly.purge(gd);
+        destroyGraphDiv();
+        setTimeout(done, 500);
+    });
+
+    it('@gl should resample smooth line buffers on relayout', function (done) {
+        var before;
+
+        Plotly.newPlot(gd, [{
+            type: 'scattergl',
+            mode: 'lines',
+            x: [0, 1, 2, 3],
+            y: [0, 2, 1, 3],
+            line: { shape: 'spline', smoothing: 1.1 }
+        }], {
+            width: 400,
+            height: 300,
+            xaxis: { range: [0, 3], autorange: false },
+            yaxis: { range: [0, 3], autorange: false }
+        })
+            .then(function () {
+                before = gd._fullLayout._plots.xy._scene.lineOptions[0].positions.slice();
+                return Plotly.relayout(gd, { 'xaxis.range': [0.75, 2.25] });
+            })
+            .then(function () {
+                var after = gd._fullLayout._plots.xy._scene.lineOptions[0].positions.slice();
+
+                expect(after.length).toBeGreaterThan(8);
+                expect(after).not.toEqual(before);
+            })
+            .then(done, done.fail);
     });
 });
 

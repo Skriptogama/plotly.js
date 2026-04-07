@@ -490,7 +490,7 @@ function setPlotContext(gd, config) {
     }
 
     // make sure hover-only devices have mode bar visible
-    if (context.displayModeBar === 'hover' && !hasHover) {
+    if ((context.displayModeBar === 'hover' || context.displayModeBar === 'hover-position') && !hasHover) {
         context.displayModeBar = true;
     }
 
@@ -3485,6 +3485,10 @@ function animate(gd, frameOrGroupNameOrFrameList, animationOpts) {
                 ).then(function () {
                     if (newFrame.onComplete) {
                         newFrame.onComplete();
+                    }
+
+                    if (trans._currentFrame === newFrame && trans._frameQueue.length === 0) {
+                        nextFrame();
                     }
                 });
 

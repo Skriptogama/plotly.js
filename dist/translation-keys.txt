@@ -1,13 +1,13 @@
 Autoscale                                              // components\modebar\buttons.js:203
 Box Select                                             // components\modebar\buttons.js:111
-Click to enter Colorscale title                        // plots\plots.js:318
+Click to enter Colorscale title                        // plots\plots.js:319
 Click to enter Component A title                       // plots\ternary\ternary.js:379
 Click to enter Component B title                       // plots\ternary\ternary.js:389
 Click to enter Component C title                       // plots\ternary\ternary.js:399
-Click to enter Plot subtitle                           // plots\plots.js:315
-Click to enter Plot title                              // plots\plots.js:314
-Click to enter X axis title                            // plots\plots.js:316
-Click to enter Y axis title                            // plots\plots.js:317
+Click to enter Plot subtitle                           // plots\plots.js:316
+Click to enter Plot title                              // plots\plots.js:315
+Click to enter X axis title                            // plots\plots.js:317
+Click to enter Y axis title                            // plots\plots.js:318
 Click to enter radial axis title                       // plots\polar\polar.js:593
 Compare data on hover                                  // components\modebar\buttons.js:234
 Double-click on legend to isolate one trace            // components\legend\handle_click.js:34
@@ -24,7 +24,7 @@ Erase active shape                                     // components\modebar\but
 Lasso Select                                           // components\modebar\buttons.js:121
 Orbital rotation                                       // components\modebar\buttons.js:344
 Pan                                                    // components\modebar\buttons.js:101
-Produced with Plotly.js                                // components\modebar\modebar.js:329
+Produced with Plotly.js                                // components\modebar\modebar.js:352
 Reset                                                  // components\modebar\buttons.js:517
 Reset axes                                             // components\modebar\buttons.js:213
 Reset camera to default                                // components\modebar\buttons.js:383
@@ -55,12 +55,12 @@ mean ± σ:                                              // traces\box\calc.js:2
 mean:                                                  // traces\box\calc.js:292
 median:                                                // traces\box\calc.js:285
 min:                                                   // traces\box\calc.js:286
-new text                                               // plots\plots.js:319
+new text                                               // plots\plots.js:320
 open:                                                  // traces\ohlc\calc.js:105
 outgoing flow count:                                   // traces\sankey\plot.js:178
 q1:                                                    // traces\box\calc.js:287
 q3:                                                    // traces\box\calc.js:288
 source:                                                // traces\sankey\plot.js:174
 target:                                                // traces\sankey\plot.js:175
-trace                                                  // plots\plots.js:321
+trace                                                  // plots\plots.js:322
 upper fence:                                           // traces\box\calc.js:294

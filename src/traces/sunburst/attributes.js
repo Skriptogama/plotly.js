@@ -11,6 +11,7 @@ var extendFlat = require('../../lib/extend').extendFlat;
 var pattern = require('../../components/drawing/attributes').pattern;
 
 module.exports = {
+    blendmode: baseAttrs.blendmode,
     labels: {
         valType: 'data_array',
         editType: 'calc',
@@ -83,6 +84,7 @@ module.exports = {
 
     marker: extendFlat(
         {
+            blendmode: pieAttrs.marker.blendmode,
             colors: {
                 valType: 'data_array',
                 editType: 'calc',

@@ -10237,10 +10237,162 @@ var Plotly = (() => {
     }
   });
 
+  // src/lib/blend_mode.js
+  var require_blend_mode = __commonJS({
+    "src/lib/blend_mode.js"(exports, module) {
+      "use strict";
+      var VALUES = ["normal", "add", "multiply", "screen"];
+      var CSS_VALUES = {
+        add: "plus-lighter"
+      };
+      var GL_BLEND_CONFIGS = {
+        normal: {
+          color: [0, 0, 0, 0],
+          equation: {
+            rgb: "add",
+            alpha: "add"
+          },
+          func: {
+            srcRGB: "src alpha",
+            dstRGB: "one minus src alpha",
+            srcAlpha: "one minus dst alpha",
+            dstAlpha: "one"
+          }
+        },
+        add: {
+          color: [0, 0, 0, 0],
+          equation: {
+            rgb: "add",
+            alpha: "add"
+          },
+          func: {
+            srcRGB: "one",
+            dstRGB: "one",
+            srcAlpha: "one",
+            dstAlpha: "one"
+          }
+        },
+        multiply: {
+          color: [0, 0, 0, 0],
+          equation: {
+            rgb: "add",
+            alpha: "add"
+          },
+          func: {
+            srcRGB: "dst color",
+            dstRGB: "zero",
+            srcAlpha: "one",
+            dstAlpha: "one minus src alpha"
+          }
+        },
+        screen: {
+          color: [0, 0, 0, 0],
+          equation: {
+            rgb: "add",
+            alpha: "add"
+          },
+          func: {
+            srcRGB: "one",
+            dstRGB: "one minus src color",
+            srcAlpha: "one",
+            dstAlpha: "one minus src alpha"
+          }
+        }
+      };
+      function attr(opts) {
+        opts = opts || {};
+        var out = {
+          valType: "enumerated",
+          values: VALUES,
+          dflt: "normal",
+          editType: opts.editType || "style",
+          description: opts.description || "Sets how colors for this object blend with content drawn underneath."
+        };
+        if (opts.arrayOk) {
+          out.arrayOk = true;
+        }
+        return out;
+      }
+      function resolve(value, index, fallback) {
+        var resolved = value;
+        if (Array.isArray(resolved)) {
+          resolved = resolved[index];
+        }
+        if (resolved === void 0 || resolved === null) {
+          resolved = fallback;
+        }
+        return resolved || "normal";
+      }
+      function cssValue(value, index, fallback) {
+        var mode = resolve(value, index, fallback);
+        return CSS_VALUES[mode] || mode;
+      }
+      function styleValue(value, index, fallback) {
+        var mode = cssValue(value, index, fallback);
+        return mode === "normal" ? null : mode;
+      }
+      function applyStyle(selection, value, fallback) {
+        selection.style("mix-blend-mode", function(d, i) {
+          return styleValue(typeof value === "function" ? value.call(this, d, i) : value, i, fallback);
+        });
+      }
+      function applySingleStyle(selection, value, index, fallback) {
+        selection.style("mix-blend-mode", styleValue(value, index || 0, fallback));
+      }
+      function getTrace(datum) {
+        if (datum && datum.trace) {
+          return datum.trace;
+        }
+        if (Array.isArray(datum) && datum[0] && datum[0].trace) {
+          return datum[0].trace;
+        }
+        return null;
+      }
+      function getTraceBlendMode(trace) {
+        if (!trace) {
+          return "normal";
+        }
+        return trace.blendmode || (trace._input || {}).blendmode || "normal";
+      }
+      function getContainerBlendMode(trace, container, containerPath) {
+        var containerInput = trace && trace._input;
+        var parts;
+        var i;
+        if (container && container.blendmode !== void 0) {
+          return container.blendmode;
+        }
+        if (!containerInput || !containerPath) {
+          return getTraceBlendMode(trace);
+        }
+        parts = containerPath.split(".");
+        for (i = 0; i < parts.length && containerInput; i++) {
+          containerInput = containerInput[parts[i]];
+        }
+        return containerInput && containerInput.blendmode !== void 0 ? containerInput.blendmode : getTraceBlendMode(trace);
+      }
+      function getGLBlend(value, index, fallback) {
+        return GL_BLEND_CONFIGS[resolve(value, index, fallback)] || GL_BLEND_CONFIGS.normal;
+      }
+      module.exports = {
+        attr,
+        applyStyle,
+        applySingleStyle,
+        cssValue,
+        getContainerBlendMode,
+        getGLBlend,
+        getTrace,
+        getTraceBlendMode,
+        resolve,
+        values: VALUES
+      };
+    }
+  });
+
   // src/plots/font_attributes.js
   var require_font_attributes = __commonJS({
     "src/plots/font_attributes.js"(exports, module) {
       "use strict";
+      var blendMode = require_blend_mode();
       module.exports = function(opts) {
         var variantValues = opts.variantValues;
         var editType = opts.editType;
@@ -10277,6 +10429,10 @@ var Plotly = (() => {
             valType: "color",
             editType: colorEditType
           },
+          blendmode: opts.noFontBlendmode ? void 0 : blendMode.attr({
+            editType: colorEditType,
+            arrayOk: opts.arrayOk
+          }),
           weight,
           style: {
             editType,
@@ -10339,6 +10495,9 @@ var Plotly = (() => {
           }
           attrs.size.arrayOk = true;
           attrs.color.arrayOk = true;
+          if (!opts.noFontBlendmode) {
+            attrs.blendmode.arrayOk = true;
+          }
         }
         return attrs;
       };
@@ -10516,6 +10675,7 @@ var Plotly = (() => {
       "use strict";
       var fontAttrs = require_font_attributes();
       var fxAttrs = require_attributes();
+      var blendMode = require_blend_mode();
       module.exports = {
         type: {
           valType: "enumerated",
@@ -10575,6 +10735,7 @@ var Plotly = (() => {
           dflt: 1,
           editType: "style"
         },
+        blendmode: blendMode.attr({}),
         name: {
           valType: "string",
           editType: "style"
@@ -11341,6 +11502,7 @@ var Plotly = (() => {
           family: coerce(attr + ".family", dfltObj.family),
           size: coerce(attr + ".size", dfltObj.size),
           color: coerce(attr + ".color", dfltObj.color),
+          blendmode: coerce(attr + ".blendmode", dfltObj.blendmode),
           weight: coerce(attr + ".weight", dfltObj.weight),
           style: coerce(attr + ".style", dfltObj.style)
         };
@@ -11564,7 +11726,7 @@ var Plotly = (() => {
         },
         displayModeBar: {
           valType: "enumerated",
-          values: ["hover", true, false],
+          values: ["hover", "hover-position", true, false],
           dflt: "hover"
         },
         showSendToCloud: {
@@ -16133,10 +16295,18 @@ var Plotly = (() => {
         "X .cursor-ne-resize": "cursor:ne-resize;",
         "X .cursor-grab": "cursor:-webkit-grab;cursor:grab;",
         "X .modebar": "position:absolute;top:2px;right:2px;",
+        "X .modebar.modebar--top-left": "left:2px;right:auto;top:2px;bottom:auto;",
+        "X .modebar.modebar--top-right": "left:auto;right:2px;top:2px;bottom:auto;",
+        "X .modebar.modebar--bottom-left": "left:2px;right:auto;top:auto;bottom:2px;",
+        "X .modebar.modebar--bottom-right": "left:auto;right:2px;top:auto;bottom:2px;",
         "X .ease-bg": "-webkit-transition:background-color .3s ease 0s;-moz-transition:background-color .3s ease 0s;-ms-transition:background-color .3s ease 0s;-o-transition:background-color .3s ease 0s;transition:background-color .3s ease 0s;",
         "X .modebar--hover>:not(.watermark)": "opacity:0;-webkit-transition:opacity .3s ease 0s;-moz-transition:opacity .3s ease 0s;-ms-transition:opacity .3s ease 0s;-o-transition:opacity .3s ease 0s;transition:opacity .3s ease 0s;",
+        "X .modebar--hover-position>:not(.watermark)": "opacity:0;-webkit-transition:opacity .3s ease 0s;-moz-transition:opacity .3s ease 0s;-ms-transition:opacity .3s ease 0s;-o-transition:opacity .3s ease 0s;transition:opacity .3s ease 0s;",
         "X:hover .modebar--hover .modebar-group": "opacity:1;",
         "X:focus-within .modebar--hover .modebar-group": "opacity:1;",
+        "X .modebar--hover-position:hover>:not(.watermark)": "opacity:1;",
+        "X .modebar--hover-position.modebar--hover-position-visible>:not(.watermark)": "opacity:1;",
+        "X .modebar--hover-position:focus-within>:not(.watermark)": "opacity:1;",
         "X .modebar-group": "float:left;display:inline-block;box-sizing:border-box;padding-left:8px;position:relative;vertical-align:middle;white-space:nowrap;",
         "X .modebar-group a": "display:grid;place-content:center;",
         "X .modebar-btn": "position:relative;font-size:16px;padding:3px 4px;height:22px;cursor:pointer;line-height:normal;box-sizing:border-box;border:none;background:rgba(0,0,0,0);",
@@ -17863,6 +18033,7 @@ var Plotly = (() => {
       var PlotSchema = require_plot_schema();
       var Template = require_plot_template();
       var Lib = require_lib();
+      var BlendMode = require_blend_mode();
       var Color = require_color();
       var BADNUM = require_numerical().BADNUM;
       var axisIDs = require_axis_ids();
@@ -18950,6 +19121,10 @@ var Plotly = (() => {
         for (i = 0; i < styleModules.length; i++) {
           styleModules[i](gd);
         }
+        d3.select(gd).selectAll("g.trace").each(function(d) {
+          var trace = BlendMode.getTrace(d);
+          BlendMode.applySingleStyle(d3.select(this), BlendMode.getTraceBlendMode(trace));
+        });
       };
       plots.sanitizeMargins = function(fullLayout) {
         if (!fullLayout || !fullLayout.margin) return;
@@ -23013,6 +23188,196 @@ var Plotly = (() => {
     }
   });
 
+  // src/components/labels/point_label.js
+  var require_point_label = __commonJS({
+    "src/components/labels/point_label.js"(exports, module) {
+      "use strict";
+      var Lib = require_lib();
+      var LINE_SPACING = require_alignment().LINE_SPACING;
+      var DEFAULT_TEXT_POSITION = "middle center";
+      var AUTO_TEXT_POSITION = "auto";
+      var AUTO_TEXT_CANDIDATES = [
+        "top center",
+        "top right",
+        "top left",
+        "middle right",
+        "middle left",
+        "bottom center",
+        "bottom right",
+        "bottom left",
+        "middle center"
+      ];
+      var SVG_TEXT_ANCHOR = {
+        left: "end",
+        center: "middle",
+        right: "start"
+      };
+      var GL_TEXT_ALIGN = {
+        left: "right",
+        center: "center",
+        right: "left"
+      };
+      var GL_TEXT_BASELINE = {
+        top: "bottom",
+        middle: "middle",
+        bottom: "top"
+      };
+      var GL_TEXT_OFFSET_SIGN = {
+        left: -1,
+        center: 0,
+        right: 1,
+        top: -1,
+        middle: 0,
+        bottom: 1
+      };
+      function normalizeTextPosition(textPosition) {
+        return textPosition === AUTO_TEXT_POSITION || !textPosition ? DEFAULT_TEXT_POSITION : textPosition;
+      }
+      function parseTextPosition(textPosition) {
+        var position = normalizeTextPosition(textPosition);
+        return {
+          position,
+          vertical: position.indexOf("top") !== -1 ? "top" : position.indexOf("bottom") !== -1 ? "bottom" : "middle",
+          horizontal: position.indexOf("left") !== -1 ? "left" : position.indexOf("right") !== -1 ? "right" : "center"
+        };
+      }
+      function splitTextLines(text) {
+        return String(text).split(/<br\s*\/?>|\n/);
+      }
+      function estimateTextBox(text, fontSize) {
+        var size = fontSize > 0 ? fontSize : 0;
+        var lines = splitTextLines(text);
+        var maxLength = 0;
+        for (var i = 0; i < lines.length; i++) {
+          maxLength = Math.max(maxLength, lines[i].length);
+        }
+        return {
+          width: maxLength * size * 0.6 + 2,
+          height: Math.max(1, lines.length) * size * LINE_SPACING
+        };
+      }
+      function makeLabelRect(x, y, width, height, textPosition, markerPad) {
+        var parsed = parseTextPosition(textPosition);
+        var left;
+        var top;
+        if (parsed.horizontal === "left") {
+          left = x - markerPad - width;
+        } else if (parsed.horizontal === "right") {
+          left = x + markerPad;
+        } else {
+          left = x - width / 2;
+        }
+        if (parsed.vertical === "top") {
+          top = y - markerPad - height;
+        } else if (parsed.vertical === "bottom") {
+          top = y + markerPad;
+        } else {
+          top = y - height / 2;
+        }
+        return {
+          left,
+          top,
+          right: left + width,
+          bottom: top + height
+        };
+      }
+      function rectsOverlap(a, b) {
+        return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      }
+      function rectFitsViewport(rect, viewport) {
+        return rect.left >= viewport.left && rect.right <= viewport.right && rect.top >= viewport.top && rect.bottom <= viewport.bottom;
+      }
+      function createState(viewport) {
+        return {
+          viewport,
+          occupied: []
+        };
+      }
+      function addRectObstacle(state, rect) {
+        if (!state || !rect) return;
+        if (!rectFitsViewport(rect, state.viewport)) return;
+        state.occupied.push(rect);
+      }
+      function addPointObstacle(state, x, y, markerPad) {
+        if (!isFinite(x) || !isFinite(y) || !markerPad) return;
+        addRectObstacle(state, {
+          left: x - markerPad,
+          right: x + markerPad,
+          top: y - markerPad,
+          bottom: y + markerPad
+        });
+      }
+      function canPlaceRect(state, rect) {
+        if (!rectFitsViewport(rect, state.viewport)) return false;
+        for (var i = 0; i < state.occupied.length; i++) {
+          if (rectsOverlap(rect, state.occupied[i])) return false;
+        }
+        return true;
+      }
+      function placePointLabel(state, opts) {
+        var markerPad = opts.markerPad || 0;
+        var fontSize = opts.fontSize || 0;
+        var textBox = estimateTextBox(opts.text, fontSize);
+        var candidates = opts.candidates || AUTO_TEXT_CANDIDATES;
+        for (var i = 0; i < candidates.length; i++) {
+          var textPosition = candidates[i];
+          var rect = makeLabelRect(opts.x, opts.y, textBox.width, textBox.height, textPosition, markerPad);
+          if (canPlaceRect(state, rect)) {
+            state.occupied.push(rect);
+            return textPosition;
+          }
+        }
+        return false;
+      }
+      function hasAutoTextPosition(textPosition) {
+        if (textPosition === AUTO_TEXT_POSITION) return true;
+        if (!Lib.isArrayOrTypedArray(textPosition)) return false;
+        for (var i = 0; i < textPosition.length; i++) {
+          if (textPosition[i] === AUTO_TEXT_POSITION) return true;
+        }
+        return false;
+      }
+      function getPointTextPosition(textPosition, index) {
+        if (!Lib.isArrayOrTypedArray(textPosition)) {
+          return textPosition || DEFAULT_TEXT_POSITION;
+        }
+        return textPosition[index] || DEFAULT_TEXT_POSITION;
+      }
+      function getSvgTextAnchor(textPosition) {
+        return SVG_TEXT_ANCHOR[parseTextPosition(textPosition).horizontal];
+      }
+      function getGlTextPosition(textPosition, fontSize, markerPad) {
+        var parsed = parseTextPosition(textPosition);
+        var horizontal = parsed.horizontal;
+        var vertical = parsed.vertical;
+        var size = fontSize > 0 ? fontSize : 1;
+        var xSign = GL_TEXT_OFFSET_SIGN[horizontal];
+        var ySign = GL_TEXT_OFFSET_SIGN[vertical];
+        return {
+          align: GL_TEXT_ALIGN[horizontal],
+          baseline: GL_TEXT_BASELINE[vertical],
+          offset: [
+            xSign * markerPad / size,
+            (-ySign * markerPad - ySign * 0.5) / size
+          ]
+        };
+      }
+      module.exports = {
+        AUTO_TEXT_POSITION,
+        DEFAULT_TEXT_POSITION,
+        createState,
+        addRectObstacle,
+        addPointObstacle,
+        placePointLabel,
+        hasAutoTextPosition,
+        getPointTextPosition,
+        normalizeTextPosition,
+        getSvgTextAnchor,
+        getGlTextPosition
+      };
+    }
+  });
+
   // node_modules/parse-svg-path/index.js
   var require_parse_svg_path = __commonJS({
     "node_modules/parse-svg-path/index.js"(exports, module) {
@@ -23745,6 +24110,7 @@ var Plotly = (() => {
       var tinycolor = require_tinycolor();
       var Registry = require_registry();
       var Color = require_color();
+      var BlendMode = require_blend_mode();
       var Colorscale = require_colorscale();
       var strTranslate = Lib.strTranslate;
       var svgTextUtils = require_svg_text_utils();
@@ -23755,6 +24121,7 @@ var Plotly = (() => {
       var subTypes = require_subtypes();
       var makeBubbleSizeFn = require_make_bubble_size_func();
       var appendArrayPointValue = require_helpers2().appendArrayPointValue;
+      var PointLabel = require_point_label();
       var drawing = module.exports = {};
       drawing.font = function(s, font) {
         var variant = font.variant;
@@ -23769,6 +24136,7 @@ var Plotly = (() => {
         if (family) s.style("font-family", family);
         if (size + 1) s.style("font-size", size + "px");
         if (color) s.call(Color.fill, color);
+        BlendMode.applyStyle(s, font.blendmode);
         if (weight) s.style("font-weight", weight);
         if (style) s.style("font-style", style);
         if (variant) s.style("font-variant", variant);
@@ -23850,17 +24218,20 @@ var Plotly = (() => {
       drawing.singleLineStyle = function(d, s, lw, lc, ld) {
         s.style("fill", "none");
         var line = (((d || [])[0] || {}).trace || {}).line || {};
+        var trace = ((d || [])[0] || {}).trace || {};
         var lw1 = lw || line.width || 0;
         var dash = ld || line.dash || "";
+        BlendMode.applySingleStyle(s, BlendMode.getContainerBlendMode(trace, line, "line"));
         Color.stroke(s, lc || line.color);
         drawing.dashLine(s, dash, lw1);
       };
       drawing.lineGroupStyle = function(s, lw, lc, ld) {
         s.style("fill", "none").each(function(d) {
           var line = (((d || [])[0] || {}).trace || {}).line || {};
+          var trace = ((d || [])[0] || {}).trace || {};
           var lw1 = lw || line.width || 0;
           var dash = ld || line.dash || "";
-          d3.select(this).call(Color.stroke, lc || line.color).call(drawing.dashLine, dash, lw1);
+          d3.select(this).call(BlendMode.applySingleStyle, BlendMode.getContainerBlendMode(trace, line, "line")).call(Color.stroke, lc || line.color).call(drawing.dashLine, dash, lw1);
         });
       };
       drawing.dashLine = function(s, dash, lineWidth) {
@@ -23888,6 +24259,7 @@ var Plotly = (() => {
       function setFillStyle(sel, trace, gd, forLegend) {
         var markerPattern = trace.fillpattern;
         var fillgradient = trace.fillgradient;
+        BlendMode.applySingleStyle(sel, trace.fillblendmode || (trace._input || {}).fillblendmode, 0, BlendMode.getTraceBlendMode(trace));
         var pAttr = drawing.getPatternAttr;
         var patternShape = markerPattern && (pAttr(markerPattern.shape, 0, "") || pAttr(markerPattern.path, 0, ""));
         if (patternShape) {
@@ -24317,6 +24689,7 @@ var Plotly = (() => {
         var marker = trace.marker;
         var markerLine = marker.line;
         if (pt && pt.i >= 0 && d.i === void 0) d.i = pt.i;
+        BlendMode.applySingleStyle(sel, BlendMode.getContainerBlendMode(trace, marker, "marker"), d.i, BlendMode.getTraceBlendMode(trace));
         sel.style("opacity", fns.selectedOpacityFn ? fns.selectedOpacityFn(d) : d.mo === void 0 ? marker.opacity : d.mo);
         if (fns.ms2mrc) {
           var r;
@@ -24577,8 +24950,9 @@ var Plotly = (() => {
       };
       function textPointPosition(s, textPosition, fontSize, markerRadius, dontTouchParent) {
         var group = d3.select(s.node().parentNode);
-        var v = textPosition.indexOf("top") !== -1 ? "top" : textPosition.indexOf("bottom") !== -1 ? "bottom" : "middle";
-        var h = textPosition.indexOf("left") !== -1 ? "end" : textPosition.indexOf("right") !== -1 ? "start" : "middle";
+        var normalizedPosition = PointLabel.normalizeTextPosition(textPosition);
+        var v = normalizedPosition.indexOf("top") !== -1 ? "top" : normalizedPosition.indexOf("bottom") !== -1 ? "bottom" : "middle";
+        var h = PointLabel.getSvgTextAnchor(normalizedPosition);
         var r = markerRadius ? markerRadius / 0.8 + 1 : 0;
         var numLines = (svgTextUtils.lineCount(s) - 1) * LINE_SPACING + 1;
         var dx = TEXTOFFSETSIGN[h] * r;
@@ -24621,9 +24995,16 @@ var Plotly = (() => {
               template: text
             });
           }
-          var pos = d.tp || trace.textposition;
+          var pos = d._autoTextPosition;
+          if (pos === void 0) pos = d.tp || trace.textposition;
           var fontSize = extracTextFontSize(d, trace);
           var fontColor = selectedTextColorFn ? selectedTextColorFn(d) : d.tc || trace.textfont.color;
+          if (pos === false) {
+            p.style("display", "none").text("");
+            d3.select(this.parentNode).attr("transform", null);
+            return;
+          }
+          p.style("display", null);
           p.call(drawing.font, {
             family: d.tf || trace.textfont.family,
             weight: d.tw || trace.textfont.weight,
@@ -24633,7 +25014,8 @@ var Plotly = (() => {
             lineposition: d.tE || trace.textfont.lineposition,
             shadow: d.tS || trace.textfont.shadow,
             size: fontSize,
-            color: fontColor
+            color: fontColor,
+            blendmode: BlendMode.resolve(BlendMode.getContainerBlendMode(trace, trace.textfont, "textfont"), d.i, BlendMode.getTraceBlendMode(trace))
           }).text(text).call(svgTextUtils.convertToTspans, gd).call(textPointPosition, pos, fontSize, d.mrc);
         });
       };
@@ -24643,8 +25025,14 @@ var Plotly = (() => {
         s.each(function(d) {
           var tx = d3.select(this);
           var tc = fns.selectedTextColorFn(d);
-          var tp = d.tp || trace.textposition;
+          var tp = d._autoTextPosition;
+          if (tp === void 0) tp = d.tp || trace.textposition;
           var fontSize = extracTextFontSize(d, trace);
+          if (tp === false) {
+            tx.style("display", "none");
+            return;
+          }
+          tx.style("display", null);
           Color.fill(tx, tc);
           var dontTouchParent = Registry.traceIs(trace, "bar-like");
           textPointPosition(tx, tp, fontSize, d.mrc2 || d.mrc, dontTouchParent);
@@ -31246,6 +31634,7 @@ var Plotly = (() => {
   var require_style_one = __commonJS({
     "src/traces/pie/style_one.js"(exports, module) {
       "use strict";
+      var BlendMode = require_blend_mode();
       var Color = require_color();
       var castOption = require_helpers4().castOption;
       var fillOne = require_fill_one();
@@ -31253,7 +31642,7 @@ var Plotly = (() => {
         var line = trace.marker.line;
         var lineColor = castOption(line.color, pt.pts) || Color.defaultLine;
         var lineWidth = castOption(line.width, pt.pts) || 0;
-        s.call(fillOne, pt, trace, gd).style("stroke-width", lineWidth).call(Color.stroke, lineColor);
+        s.call(BlendMode.applySingleStyle, BlendMode.getContainerBlendMode(trace, trace.marker, "marker"), pt.i, BlendMode.getTraceBlendMode(trace)).call(fillOne, pt, trace, gd).style("stroke-width", lineWidth).call(Color.stroke, lineColor);
       };
     }
   });
@@ -37813,6 +38202,12 @@ var Plotly = (() => {
           dflt: "h",
           editType: "modebar"
         },
+        position: {
+          valType: "enumerated",
+          values: ["top-left", "top-right", "bottom-left", "bottom-right"],
+          dflt: "top-right",
+          editType: "modebar"
+        },
         bgcolor: {
           valType: "color",
           editType: "modebar"
@@ -37860,6 +38255,7 @@ var Plotly = (() => {
           return Lib.coerce(containerIn, containerOut, attributes, attr, dflt);
         }
         coerce("orientation");
+        coerce("position");
         coerce("bgcolor", Color.addOpacity(layoutOut.paper_bgcolor, 0.5));
         var defaultColor = Color.contrast(Color.rgb(layoutOut.modebar.bgcolor));
         coerce("color", Color.addOpacity(defaultColor, 0.3));
@@ -37881,6 +38277,12 @@ var Plotly = (() => {
       var Icons = require_ploticon();
       var version = require_version().version;
       var Parser = new DOMParser();
+      var POSITION_CLASSES = [
+        "modebar--top-left",
+        "modebar--top-right",
+        "modebar--bottom-left",
+        "modebar--bottom-right"
+      ];
       function ModeBar(opts) {
         this.container = opts.container;
         this.element = document.createElement("div");
@@ -37898,6 +38300,21 @@ var Plotly = (() => {
         this._uid = modeBarId;
         this.element.className = "modebar modebar--custom";
         if (context.displayModeBar === "hover") this.element.className += " modebar--hover ease-bg";
+        if (context.displayModeBar === "hover-position") this.element.className += " modebar--hover-position ease-bg";
+        if (context.displayModeBar === "hover-position") {
+          this.element.onmouseenter = function() {
+            this.classList.add("modebar--hover-position-visible");
+          };
+          this.element.onmouseleave = function() {
+            this.classList.remove("modebar--hover-position-visible");
+          };
+        } else {
+          this.element.classList.remove("modebar--hover-position-visible");
+          this.element.onmouseenter = null;
+          this.element.onmouseleave = null;
+        }
+        this.element.classList.remove.apply(this.element.classList, POSITION_CLASSES);
+        this.element.classList.add("modebar--" + fullLayout.modebar.position);
         if (fullLayout.modebar.orientation === "v") {
           this.element.className += " vertical";
           buttons = buttons.reverse();
@@ -38124,6 +38541,12 @@ var Plotly = (() => {
         var fullLayout = gd._fullLayout;
         var context = gd._context;
         var modeBar = fullLayout._modeBar;
+        var isBottomPosition = fullLayout.modebar.position.indexOf("bottom-") === 0;
+        if (fullLayout.modebar.orientation === "h") {
+          fullLayout._modebardiv.style("width", "100%").style("height", isBottomPosition ? fullLayout.height + "px" : null);
+        } else {
+          fullLayout._modebardiv.style("width", null).style("height", fullLayout.height + "px");
+        }
         if (!context.displayModeBar && !context.watermark) {
           if (modeBar) {
             modeBar.destroy();
@@ -38921,6 +39344,12 @@ var Plotly = (() => {
           height: gd._context.responsive && fullLayout.autosize && !gd._context._hasZeroHeight && !gd.layout.height ? "100%" : fullLayout.height + "px"
         }).selectAll(".main-svg").call(Drawing.setSize, fullLayout.width, fullLayout.height);
         gd._context.setBackground(gd, fullLayout.paper_bgcolor);
+        var isBottomModebarPosition = fullLayout.modebar.position.indexOf("bottom-") === 0;
+        if (fullLayout.modebar.orientation === "h") {
+          fullLayout._modebardiv.style("width", "100%").style("height", isBottomModebarPosition ? fullLayout.height + "px" : null);
+        } else {
+          fullLayout._modebardiv.style("width", null).style("height", fullLayout.height + "px");
+        }
         exports.drawMainTitle(gd);
         ModeBar.manage(gd);
         if (!fullLayout._has("cartesian")) {
@@ -42548,6 +42977,8 @@ var Plotly = (() => {
       var fontAttrs = require_font_attributes();
       var dash = require_attributes4().dash;
       var pattern = require_attributes4().pattern;
+      var baseAttrs = require_attributes2();
+      var blendMode = require_blend_mode();
       var Drawing = require_drawing();
       var constants = require_constants8();
       var extendFlat = require_extend().extendFlat;
@@ -42675,6 +43106,7 @@ var Plotly = (() => {
         },
         hovertemplate: hovertemplateAttrs({}, { keys: constants.eventDataKeys }),
         hovertemplatefallback: templatefallbackAttrs(),
+        blendmode: baseAttrs.blendmode,
         line: {
           color: {
             valType: "color",
@@ -42716,6 +43148,7 @@ var Plotly = (() => {
             editType: "plot"
           },
           dash: extendFlat({}, dash, { editType: "style" }),
+          blendmode: blendMode.attr({}),
           backoff: {
             // we want to have a similar option for the start of the line
             valType: "number",
@@ -42747,6 +43180,7 @@ var Plotly = (() => {
           editType: "calc"
         },
         fillcolor: makeFillcolorAttr(true),
+        fillblendmode: blendMode.attr({}),
         fillgradient: extendFlat({
           type: {
             valType: "enumerated",
@@ -42786,6 +43220,9 @@ var Plotly = (() => {
               editType: "style",
               anim: true
             },
+            blendmode: blendMode.attr({
+              arrayOk: true
+            }),
             angle: {
               valType: "angle",
               dflt: 0,
@@ -42934,6 +43371,7 @@ var Plotly = (() => {
         textposition: {
           valType: "enumerated",
           values: [
+            "auto",
             "top left",
             "top center",
             "top right",
@@ -45178,7 +45616,7 @@ var Plotly = (() => {
           context.showLink = false;
           context.displayModeBar = false;
         }
-        if (context.displayModeBar === "hover" && !hasHover) {
+        if ((context.displayModeBar === "hover" || context.displayModeBar === "hover-position") && !hasHover) {
           context.displayModeBar = true;
         }
         if (context.setBackground === "transparent" || typeof context.setBackground !== "function") {
@@ -47008,6 +47446,9 @@ var Plotly = (() => {
                 if (newFrame.onComplete) {
                   newFrame.onComplete();
                 }
+                if (trans._currentFrame === newFrame && trans._frameQueue.length === 0) {
+                  nextFrame();
+                }
               });
               gd.emit("plotly_animatingframe", {
                 name: stringName,
@@ -48653,6 +49094,7 @@ var Plotly = (() => {
         if (lineColor) defaultColor = lineColor;
         coerce("marker.symbol");
         coerce("marker.opacity", isBubble ? 0.7 : 1);
+        coerce("marker.blendmode");
         coerce("marker.size");
         if (!opts.noAngle) {
           coerce("marker.angle");
@@ -48716,6 +49158,7 @@ var Plotly = (() => {
           coerce("line.color", lineColorDflt);
         }
         coerce("line.width");
+        coerce("line.blendmode");
         if (!opts.noDash) coerce("line.dash");
         if (opts.backoff) coerce("line.backoff");
       };
@@ -48827,6 +49270,7 @@ var Plotly = (() => {
         coerce("xhoverformat");
         coerce("yhoverformat");
         coerce("zorder");
+        coerce("blendmode");
         var stackGroupOpts = handleStackDefaults(traceIn, traceOut, layout, coerce);
         if (layout.scattermode === "group" && traceOut.orientation === void 0) {
           coerce("orientation", "v");
@@ -48860,6 +49304,7 @@ var Plotly = (() => {
           handleFillColorDefaults(traceIn, traceOut, defaultColor, coerce, {
             moduleHasFillgradient: true
           });
+          coerce("fillblendmode");
           if (!subTypes.hasLines(traceOut)) handleLineShapeDefaults(traceIn, traceOut, coerce);
           coercePattern(coerce, "fillpattern", traceOut.fillcolor, false);
         }
@@ -50692,15 +51137,18 @@ var Plotly = (() => {
       var ensureSingle = Lib.ensureSingle;
       var identity = Lib.identity;
       var Drawing = require_drawing();
+      var PointLabel = require_point_label();
       var subTypes = require_subtypes();
       var linePoints = require_line_points();
       var linkTraces = require_link_traces();
+      var makeBubbleSizeFn = require_make_bubble_size_func();
       var polygonTester = require_polygon().tester;
       module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transitionOpts, makeOnCompleteCallback, replotOpts) {
         var join, onComplete;
         var isFullReplot = !transitionOpts && !(replotOpts && replotOpts.partialUpdate);
         var hasTransition = !!transitionOpts && transitionOpts.duration > 0;
         var cdscatterSorted = linkTraces(gd, plotinfo, cdscatter);
+        plotinfo._autoTextState = buildAutoTextState(plotinfo, cdscatterSorted);
         join = scatterLayer.selectAll("g.trace").data(cdscatterSorted, function(d) {
           return d[0].trace.uid;
         });
@@ -50733,6 +51181,78 @@ var Plotly = (() => {
         }
         scatterLayer.selectAll("path:not([d])").remove();
       };
+      function buildAutoTextState(plotinfo, cdscatterSorted) {
+        if (plotinfo.isRangePlot) return null;
+        var hasAuto = false;
+        var i;
+        for (i = 0; i < cdscatterSorted.length; i++) {
+          var trace = (cdscatterSorted[i][0] || {}).trace;
+          if (trace && PointLabel.hasAutoTextPosition(trace.textposition)) {
+            hasAuto = true;
+            break;
+          }
+        }
+        if (!hasAuto) return null;
+        var state = PointLabel.createState({
+          left: 0,
+          top: 0,
+          right: plotinfo.xaxis._length,
+          bottom: plotinfo.yaxis._length
+        });
+        for (i = 0; i < cdscatterSorted.length; i++) {
+          addMarkerObstacles(state, plotinfo, cdscatterSorted[i]);
+        }
+        return state;
+      }
+      function addMarkerObstacles(state, plotinfo, cdscatter) {
+        var trace = (cdscatter[0] || {}).trace;
+        if (!trace || !subTypes.hasMarkers(trace)) return;
+        var xa = plotinfo.xaxis;
+        var ya = plotinfo.yaxis;
+        var radiusFn = makeMarkerRadiusFn(trace);
+        for (var i = 0; i < cdscatter.length; i++) {
+          var d = cdscatter[i];
+          var radius = radiusFn(d);
+          if (!radius) continue;
+          PointLabel.addPointObstacle(state, xa.c2p(d.x), ya.c2p(d.y), radius / 0.8 + 1);
+        }
+      }
+      function makeMarkerRadiusFn(trace) {
+        if (subTypes.isBubble(trace)) {
+          var bubbleRadiusFn = makeBubbleSizeFn(trace);
+          return function(d) {
+            var size = d.ms;
+            return size ? bubbleRadiusFn(size) : 0;
+          };
+        }
+        return function(d) {
+          var size = d.ms;
+          if (size === void 0) size = trace.marker.size;
+          return size ? size / 2 : 0;
+        };
+      }
+      function getTextFontSize(d, trace) {
+        var fontSize = d.ts || trace.textfont.size;
+        return Lib.isNumeric(fontSize) && fontSize > 0 ? fontSize : 0;
+      }
+      function getPointTextValue(d, trace) {
+        var text = d.tx;
+        if (text === void 0) text = trace.text;
+        return text;
+      }
+      function resolveAutoTextPosition(state, trace, d, xa, ya) {
+        var requested = PointLabel.getPointTextPosition(d.tp || trace.textposition, d.i);
+        if (requested !== PointLabel.AUTO_TEXT_POSITION) return requested;
+        var text = getPointTextValue(d, trace);
+        if (!text && text !== 0) return false;
+        return PointLabel.placePointLabel(state, {
+          x: xa.c2p(d.x),
+          y: ya.c2p(d.y),
+          text,
+          fontSize: getTextFontSize(d, trace),
+          markerPad: d.mrc ? d.mrc / 0.8 + 1 : 2
+        });
+      }
       function createFills(gd, traceJoin, plotinfo) {
         traceJoin.each(function(d) {
           var fills = ensureSingle(d3.select(this), "g", "fills");
@@ -51085,10 +51605,16 @@ var Plotly = (() => {
             var sel = transition(g.select("text"));
             hasNode = Drawing.translatePoint(d, sel, xa, ya);
             if (hasNode) {
+              if (plotinfo._autoTextState) {
+                d._autoTextPosition = resolveAutoTextPosition(plotinfo._autoTextState, trace2, d, xa, ya);
+              } else {
+                delete d._autoTextPosition;
+              }
               if (plotinfo.layerClipId) {
                 Drawing.hideOutsideRangePoint(d, g, xa, ya, trace2.xcalendar, trace2.ycalendar);
               }
             } else {
+              delete d._autoTextPosition;
               g.remove();
             }
           });
@@ -58965,6 +59491,7 @@ var Plotly = (() => {
   var require_attributes22 = __commonJS({
     "src/components/errorbars/attributes.js"(exports, module) {
       "use strict";
+      var blendMode = require_blend_mode();
       module.exports = {
         visible: {
           valType: "boolean",
@@ -59023,6 +59550,7 @@ var Plotly = (() => {
           valType: "color",
           editType: "style"
         },
+        blendmode: blendMode.attr({}),
         thickness: {
           valType: "number",
           min: 0,
@@ -59086,6 +59614,7 @@ var Plotly = (() => {
         }
         if (!opts.inherit || !containerOut[copyAttr]) {
           coerce("color", defaultColor);
+          coerce("blendmode");
           coerce("thickness");
           coerce("width", Registry.traceIs(traceOut, "gl3d") ? 0 : 4);
         }
@@ -59316,15 +59845,16 @@ var Plotly = (() => {
       "use strict";
       var d3 = require_d3();
       var Color = require_color();
+      var BlendMode = require_blend_mode();
       module.exports = function style(traces) {
         traces.each(function(d) {
           var trace = d[0].trace;
           var yObj = trace.error_y || {};
           var xObj = trace.error_x || {};
           var s = d3.select(this);
-          s.selectAll("path.yerror").style("stroke-width", yObj.thickness + "px").call(Color.stroke, yObj.color);
+          s.selectAll("path.yerror").call(BlendMode.applyStyle, BlendMode.getContainerBlendMode(trace, yObj, "error_y")).style("stroke-width", yObj.thickness + "px").call(Color.stroke, yObj.color);
           if (xObj.copy_ystyle) xObj = yObj;
-          s.selectAll("path.xerror").style("stroke-width", xObj.thickness + "px").call(Color.stroke, xObj.color);
+          s.selectAll("path.xerror").call(BlendMode.applyStyle, BlendMode.getContainerBlendMode(trace, xObj, "error_x")).style("stroke-width", xObj.thickness + "px").call(Color.stroke, xObj.color);
         });
       };
     }
@@ -60795,6 +61325,7 @@ var Plotly = (() => {
             smoothing: scatterLineAttrs.smoothing,
             tension: scatterLineAttrs.tension,
             alpha: scatterLineAttrs.alpha,
+            blendmode: scatterLineAttrs.blendmode,
             dash: {
               valType: "enumerated",
               values: sortObjectKeys(DASHES),
@@ -60809,6 +61340,7 @@ var Plotly = (() => {
             sizemin: scatterMarkerAttrs.sizemin,
             sizemode: scatterMarkerAttrs.sizemode,
             opacity: scatterMarkerAttrs.opacity,
+            blendmode: scatterMarkerAttrs.blendmode,
             colorbar: scatterMarkerAttrs.colorbar,
             line: extendFlat({}, colorScaleAttrs("marker.line"), {
               width: scatterMarkerLineAttrs.width
@@ -60817,6 +61349,7 @@ var Plotly = (() => {
           connectgaps: scatterAttrs.connectgaps,
           fill: extendFlat({}, scatterAttrs.fill, { dflt: "none" }),
           fillcolor: makeFillcolorAttr(),
+          fillblendmode: scatterAttrs.fillblendmode,
           // no hoveron
           selected: {
             marker: scatterAttrs.selected.marker,
@@ -60826,6 +61359,7 @@ var Plotly = (() => {
             marker: scatterAttrs.unselected.marker,
             textfont: scatterAttrs.unselected.textfont
           },
+          blendmode: baseAttrs.blendmode,
           opacity: baseAttrs.opacity
         },
         "calc",
@@ -60884,6 +61418,7 @@ var Plotly = (() => {
         handlePeriodDefaults(traceIn, traceOut, layout, coerce);
         coerce("xhoverformat");
         coerce("yhoverformat");
+        coerce("blendmode");
         var defaultMode = len < constants.PTS_LINESONLY ? "lines+markers" : "lines";
         coerce("text");
         coerce("hovertext");
@@ -67280,7 +67815,9 @@ var Plotly = (() => {
       var Registry = require_registry();
       var Lib = require_lib();
       var isArrayOrTypedArray = Lib.isArrayOrTypedArray;
+      var BlendMode = require_blend_mode();
       var Drawing = require_drawing();
+      var PointLabel = require_point_label();
       var AxisIDs = require_axis_ids();
       var formatColor = require_gl_format_color().formatColor;
       var subTypes = require_subtypes();
@@ -67339,7 +67876,8 @@ var Plotly = (() => {
             overlay: true,
             thickness: trace.line.width * plotGlPixelRatio,
             color: trace.line.color,
-            opacity: trace.opacity
+            opacity: trace.opacity,
+            blend: BlendMode.getGLBlend(BlendMode.getContainerBlendMode(trace, trace.line, "line"))
           };
           var dashes = (constants.DASHES[trace.line.dash] || [1]).slice();
           for (i = 0; i < dashes.length; ++i) {
@@ -67357,7 +67895,8 @@ var Plotly = (() => {
           opts.fill = {
             closed: true,
             fill: trace.fillcolor,
-            thickness: 0
+            thickness: 0,
+            blend: BlendMode.getGLBlend(trace.fillblendmode, 0, BlendMode.getTraceBlendMode(trace))
           };
         }
         return opts;
@@ -67416,10 +67955,14 @@ var Plotly = (() => {
           }
         }
         optsOut.opacity = trace.opacity;
+        optsOut.blend = BlendMode.getGLBlend(BlendMode.getContainerBlendMode(trace, textfontIn, "textfont"));
         optsOut.font = {};
         optsOut.align = [];
         optsOut.baseline = [];
         for (i = 0; i < textPos.length; i++) {
+          if (textPos[i] === PointLabel.AUTO_TEXT_POSITION) {
+            textPos[i] = "top center";
+          }
           var tp = textPos[i].split(/\s+/);
           switch (tp[1]) {
             case "left":
@@ -67489,6 +68032,7 @@ var Plotly = (() => {
         var multiOpacity = isArrayOrTypedArray(optsIn.opacity);
         var multiSize = isArrayOrTypedArray(optsIn.size);
         var multiLineWidth = isArrayOrTypedArray(optsIn.line.width);
+        optsOut.blend = BlendMode.getGLBlend(BlendMode.getContainerBlendMode(trace, optsIn, "marker"));
         var isOpen;
         if (!multiSymbol) isOpen = helpers.isOpenSymbol(optsIn.symbol);
         if (multiSymbol || multiColor || multiLineColor || multiOpacity || multiAngle) {
@@ -67643,7 +68187,8 @@ var Plotly = (() => {
         var optsOut = {
           capSize: target.width * 2 * plotGlPixelRatio,
           lineWidth: target.thickness * plotGlPixelRatio,
-          color: target.color
+          color: target.color,
+          blend: BlendMode.getGLBlend(target.blendmode, 0, BlendMode.getTraceBlendMode(trace))
         };
         if (target.copy_ystyle) {
           optsOut = trace.error_y;
@@ -72028,12 +72573,12 @@ void main() {
           },
           blend: {
             enable: true,
-            color: [0, 0, 0, 0],
-            equation: {
+            color: (ctx, prop) => prop.blend && prop.blend.color || [0, 0, 0, 0],
+            equation: (ctx, prop) => prop.blend && prop.blend.equation || {
               rgb: "add",
               alpha: "add"
             },
-            func: {
+            func: (ctx, prop) => prop.blend && prop.blend.func || {
               srcRGB: "src alpha",
               dstRGB: "one minus src alpha",
               srcAlpha: "one minus dst alpha",
@@ -72763,12 +73308,12 @@ void main() {
           primitive: "triangles",
           blend: {
             enable: true,
-            color: [0, 0, 0, 0],
-            equation: {
+            color: (ctx, prop) => prop.blend && prop.blend.color || [0, 0, 0, 0],
+            equation: (ctx, prop) => prop.blend && prop.blend.equation || {
               rgb: "add",
               alpha: "add"
             },
-            func: {
+            func: (ctx, prop) => prop.blend && prop.blend.func || {
               srcRGB: "src alpha",
               dstRGB: "one minus src alpha",
               srcAlpha: "one minus dst alpha",
@@ -93569,6 +94114,7 @@ void main() {
       var Lib = require_lib();
       var selectMode = require_helpers5().selectMode;
       var prepareRegl = require_prepare_regl();
+      var PointLabel = require_point_label();
       var subTypes = require_subtypes();
       var linkTraces = require_link_traces();
       var convert = require_convert2();
@@ -93595,6 +94141,102 @@ void main() {
       function getRangeViewport(subplot) {
         var canvas = subplot.rangeSliderCanvas;
         return [0, 0, canvas.width, canvas.height];
+      }
+      function getTextValue(text, index) {
+        return Lib.isArrayOrTypedArray(text) ? text[index] : text;
+      }
+      function getTextStyleValue(value, index) {
+        if (!Lib.isArrayOrTypedArray(value)) return value;
+        var pointValue = value[index];
+        return pointValue !== void 0 ? pointValue : value[0];
+      }
+      function getTextOffsetValue(offset, index) {
+        if (!Array.isArray(offset)) return offset;
+        if (!Array.isArray(offset[0])) return offset;
+        var pointOffset = offset[index];
+        return pointOffset !== void 0 ? pointOffset : offset[0];
+      }
+      function getMarkerPad(markerOptions, index) {
+        if (!markerOptions) return 2;
+        var size = markerOptions.sizes ? markerOptions.sizes[index] : markerOptions.size;
+        return size ? size / 0.8 + 1 : 2;
+      }
+      function refreshAutoTextPlacements(subplot, cdata, scene) {
+        if (subplot.isRangePlot || !scene.glText) return;
+        var xaxis = subplot.xaxis;
+        var yaxis = subplot.yaxis;
+        var state = PointLabel.createState({
+          left: 0,
+          top: 0,
+          right: xaxis._length,
+          bottom: yaxis._length
+        });
+        var i;
+        var j;
+        for (i = 0; i < cdata.length; i++) {
+          var cdscatter = cdata[i];
+          var trace = ((cdscatter || [])[0] || {}).trace;
+          var stash = ((cdscatter || [])[0] || {}).t;
+          var markerOptions = scene.markerOptions[i];
+          if (!trace || !stash || !subTypes.hasMarkers(trace) || !markerOptions) continue;
+          for (j = 0; j < stash.x.length; j++) {
+            PointLabel.addPointObstacle(state, xaxis.c2p(stash.x[j]), yaxis.c2p(stash.y[j]), getMarkerPad(markerOptions, j));
+          }
+        }
+        for (i = 0; i < cdata.length; i++) {
+          var cd0 = (cdata[i] || [])[0] || {};
+          var trace0 = cd0.trace;
+          var stash0 = cd0.t;
+          var textOptions = scene.textOptions[i];
+          if (!trace0 || !stash0 || !textOptions || !PointLabel.hasAutoTextPosition(trace0.textposition)) continue;
+          var sourceText = textOptions._autoTextSource;
+          if (sourceText === void 0) {
+            sourceText = Lib.isArrayOrTypedArray(textOptions.text) ? textOptions.text.slice() : textOptions.text;
+            textOptions._autoTextSource = sourceText;
+          }
+          var count = stash0.x.length;
+          var align = new Array(count);
+          var baseline = new Array(count);
+          var offset = new Array(count);
+          var text = new Array(count);
+          for (j = 0; j < count; j++) {
+            var requested = PointLabel.getPointTextPosition(trace0.textposition, j);
+            var textValue = getTextValue(sourceText, j);
+            var font = getTextStyleValue(textOptions.font, j) || {};
+            var fontSize = font.size || 0;
+            text[j] = textValue;
+            if (requested === PointLabel.AUTO_TEXT_POSITION && (textValue || textValue === 0)) {
+              var markerPad = getMarkerPad(scene.markerOptions[i], j);
+              var chosen = PointLabel.placePointLabel(state, {
+                x: xaxis.c2p(stash0.x[j]),
+                y: yaxis.c2p(stash0.y[j]),
+                text: textValue,
+                fontSize,
+                markerPad
+              });
+              if (chosen) {
+                var glPos = PointLabel.getGlTextPosition(chosen, fontSize, markerPad);
+                align[j] = glPos.align;
+                baseline[j] = glPos.baseline;
+                offset[j] = glPos.offset;
+              } else {
+                align[j] = getTextStyleValue(textOptions.align, j);
+                baseline[j] = getTextStyleValue(textOptions.baseline, j);
+                offset[j] = getTextOffsetValue(textOptions.offset, j);
+                text[j] = "";
+              }
+            } else {
+              align[j] = getTextStyleValue(textOptions.align, j);
+              baseline[j] = getTextStyleValue(textOptions.baseline, j);
+              offset[j] = getTextOffsetValue(textOptions.offset, j);
+            }
+          }
+          textOptions.align = align;
+          textOptions.baseline = baseline;
+          textOptions.offset = offset;
+          textOptions.text = text;
+          scene.glText[i].update(textOptions);
+        }
       }
       function sceneOptions(gd, trace, stash) {
         var opts = convert.style(gd, trace);
@@ -93970,6 +94612,7 @@ void main() {
           }
           scene._incrementalStartCount = null;
         }
+        refreshAutoTextPlacements(subplot, cdata, scene);
         var dragmode = fullLayout.dragmode;
         var isSelectMode = subplot.isRangePlot ? false : selectMode(dragmode);
         var clickSelectEnabled = subplot.isRangePlot ? false : fullLayout.clickmode.indexOf("select") > -1;

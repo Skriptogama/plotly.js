@@ -6,6 +6,8 @@ var colorScaleAttrs = require('../../components/colorscale/attributes');
 var fontAttrs = require('../../plots/font_attributes');
 var dash = require('../../components/drawing/attributes').dash;
 var pattern = require('../../components/drawing/attributes').pattern;
+var baseAttrs = require('../../plots/attributes');
+var blendMode = require('../../lib/blend_mode');
 
 var Drawing = require('../../components/drawing');
 var constants = require('./constants');
@@ -268,6 +270,7 @@ module.exports = {
     },
     hovertemplate: hovertemplateAttrs({}, { keys: constants.eventDataKeys }),
     hovertemplatefallback: templatefallbackAttrs(),
+    blendmode: baseAttrs.blendmode,
 
     line: {
         color: {
@@ -335,6 +338,9 @@ module.exports = {
             ].join(' ')
         },
         dash: extendFlat({}, dash, { editType: 'style' }),
+        blendmode: blendMode.attr({
+            description: 'Sets how this trace line blends with content drawn underneath it.'
+        }),
         backoff: {
             // we want to have a similar option for the start of the line
             valType: 'number',
@@ -411,6 +417,9 @@ module.exports = {
         ].join(' ')
     },
     fillcolor: makeFillcolorAttr(true),
+    fillblendmode: blendMode.attr({
+        description: 'Sets how the area fill blends with content drawn underneath it.'
+    }),
     fillgradient: extendFlat({
         type: {
             valType: 'enumerated',
@@ -488,6 +497,10 @@ module.exports = {
                 anim: true,
                 description: 'Sets the marker opacity.'
             },
+            blendmode: blendMode.attr({
+                arrayOk: true,
+                description: 'Sets how each marker blends with content drawn underneath it.'
+            }),
             angle: {
                 valType: 'angle',
                 dflt: 0,
@@ -682,6 +695,7 @@ module.exports = {
     textposition: {
         valType: 'enumerated',
         values: [
+            'auto',
             'top left',
             'top center',
             'top right',

@@ -10,6 +10,7 @@ var Registry = require('../registry');
 var PlotSchema = require('../plot_api/plot_schema');
 var Template = require('../plot_api/plot_template');
 var Lib = require('../lib');
+var BlendMode = require('../lib/blend_mode');
 var Color = require('../components/color');
 var BADNUM = require('../constants/numerical').BADNUM;
 
@@ -1688,6 +1689,11 @@ plots.style = function (gd) {
     for (i = 0; i < styleModules.length; i++) {
         styleModules[i](gd);
     }
+
+    d3.select(gd).selectAll('g.trace').each(function (d) {
+        var trace = BlendMode.getTrace(d);
+        BlendMode.applySingleStyle(d3.select(this), BlendMode.getTraceBlendMode(trace));
+    });
 };
 
 plots.sanitizeMargins = function (fullLayout) {

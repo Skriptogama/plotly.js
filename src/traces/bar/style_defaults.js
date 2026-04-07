@@ -7,18 +7,19 @@ var coercePattern = require('../../lib').coercePattern;
 
 module.exports = function handleStyleDefaults(traceIn, traceOut, coerce, defaultColor, layout) {
     var markerColor = coerce('marker.color', defaultColor);
+    coerce('marker.blendmode');
     var hasMarkerColorscale = hasColorscale(traceIn, 'marker');
-    if(hasMarkerColorscale) {
+    if (hasMarkerColorscale) {
         colorscaleDefaults(
-            traceIn, traceOut, layout, coerce, {prefix: 'marker.', cLetter: 'c'}
+            traceIn, traceOut, layout, coerce, { prefix: 'marker.', cLetter: 'c' }
         );
     }
 
     coerce('marker.line.color', Color.defaultLine);
 
-    if(hasColorscale(traceIn, 'marker.line')) {
+    if (hasColorscale(traceIn, 'marker.line')) {
         colorscaleDefaults(
-            traceIn, traceOut, layout, coerce, {prefix: 'marker.line.', cLetter: 'c'}
+            traceIn, traceOut, layout, coerce, { prefix: 'marker.line.', cLetter: 'c' }
         );
     }
 

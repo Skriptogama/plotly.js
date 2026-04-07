@@ -1,5 +1,7 @@
 'use strict';
 
+var blendMode = require('../lib/blend_mode');
+
 /*
  * make a font attribute group
  *
@@ -15,11 +17,11 @@
  *
  * @return {object} attributes object containing {family, size, color} as specified
  */
-module.exports = function(opts) {
+module.exports = function (opts) {
     var variantValues = opts.variantValues;
     var editType = opts.editType;
     var colorEditType = opts.colorEditType;
-    if(colorEditType === undefined) colorEditType = editType;
+    if (colorEditType === undefined) colorEditType = editType;
 
     var weight = {
         editType: editType,
@@ -33,7 +35,7 @@ module.exports = function(opts) {
         ].join(' ')
     };
 
-    if(opts.noNumericWeightValues) {
+    if (opts.noNumericWeightValues) {
         weight.valType = 'enumerated';
         weight.values = weight.extras;
         weight.extras = undefined;
@@ -63,6 +65,11 @@ module.exports = function(opts) {
             valType: 'color',
             editType: colorEditType
         },
+        blendmode: opts.noFontBlendmode ? undefined : blendMode.attr({
+            editType: colorEditType,
+            arrayOk: opts.arrayOk,
+            description: 'Sets how this text blends with content drawn underneath it.'
+        }),
 
         weight: weight,
 
@@ -135,27 +142,30 @@ module.exports = function(opts) {
         description: '' + (opts.description || '') + ''
     };
 
-    if(opts.autoSize) attrs.size.dflt = 'auto';
-    if(opts.autoColor) attrs.color.dflt = 'auto';
+    if (opts.autoSize) attrs.size.dflt = 'auto';
+    if (opts.autoColor) attrs.color.dflt = 'auto';
 
-    if(opts.arrayOk) {
+    if (opts.arrayOk) {
         attrs.family.arrayOk = true;
         attrs.weight.arrayOk = true;
         attrs.style.arrayOk = true;
-        if(!opts.noFontVariant) {
+        if (!opts.noFontVariant) {
             attrs.variant.arrayOk = true;
         }
-        if(!opts.noFontTextcase) {
+        if (!opts.noFontTextcase) {
             attrs.textcase.arrayOk = true;
         }
-        if(!opts.noFontLineposition) {
+        if (!opts.noFontLineposition) {
             attrs.lineposition.arrayOk = true;
         }
-        if(!opts.noFontShadow) {
+        if (!opts.noFontShadow) {
             attrs.shadow.arrayOk = true;
         }
         attrs.size.arrayOk = true;
         attrs.color.arrayOk = true;
+        if (!opts.noFontBlendmode) {
+            attrs.blendmode.arrayOk = true;
+        }
     }
 
     return attrs;

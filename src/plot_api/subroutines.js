@@ -26,19 +26,19 @@ var SVG_TEXT_ANCHOR_END = 'end';
 
 var zindexSeparator = require('../plots/cartesian/constants').zindexSeparator;
 
-exports.layoutStyles = function(gd) {
+exports.layoutStyles = function (gd) {
     return Lib.syncOrAsync([Plots.doAutoMargin, lsInner], gd);
 };
 
 function overlappingDomain(xDomain, yDomain, domains) {
-    for(var i = 0; i < domains.length; i++) {
+    for (var i = 0; i < domains.length; i++) {
         var existingX = domains[i][0];
         var existingY = domains[i][1];
 
-        if(existingX[0] >= xDomain[1] || existingX[1] <= xDomain[0]) {
+        if (existingX[0] >= xDomain[1] || existingX[1] <= xDomain[0]) {
             continue;
         }
-        if(existingY[0] < yDomain[1] && existingY[1] > yDomain[0]) {
+        if (existingY[0] < yDomain[1] && existingY[1] > yDomain[0]) {
             return true;
         }
     }
@@ -64,34 +64,41 @@ function lsInner(gd) {
         width: (gd._context.responsive && fullLayout.autosize && !gd._context._hasZeroWidth && !gd.layout.width) ? '100%' : fullLayout.width + 'px',
         height: (gd._context.responsive && fullLayout.autosize && !gd._context._hasZeroHeight && !gd.layout.height) ? '100%' : fullLayout.height + 'px'
     })
-    .selectAll('.main-svg')
-    .call(Drawing.setSize, fullLayout.width, fullLayout.height);
+        .selectAll('.main-svg')
+        .call(Drawing.setSize, fullLayout.width, fullLayout.height);
     gd._context.setBackground(gd, fullLayout.paper_bgcolor);
+    var isBottomModebarPosition = fullLayout.modebar.position.indexOf('bottom-') === 0;
+
+    if (fullLayout.modebar.orientation === 'h') {
+        fullLayout._modebardiv.style('width', '100%').style('height', isBottomModebarPosition ? fullLayout.height + 'px' : null);
+    } else {
+        fullLayout._modebardiv.style('width', null).style('height', fullLayout.height + 'px');
+    }
 
     exports.drawMainTitle(gd);
     ModeBar.manage(gd);
 
     // _has('cartesian') means SVG specifically
-    if(!fullLayout._has('cartesian')) {
+    if (!fullLayout._has('cartesian')) {
         return Plots.previousPromises(gd);
     }
 
     function getLinePosition(ax, counterAx, side) {
         var lwHalf = ax._lw / 2;
 
-        if(ax._id.charAt(0) === 'x') {
-            if(!counterAx) return gs.t + gs.h * (1 - (ax.position || 0)) + (lwHalf % 1);
-            else if(side === 'top') return counterAx._offset - pad - lwHalf;
+        if (ax._id.charAt(0) === 'x') {
+            if (!counterAx) return gs.t + gs.h * (1 - (ax.position || 0)) + (lwHalf % 1);
+            else if (side === 'top') return counterAx._offset - pad - lwHalf;
             return counterAx._offset + counterAx._length + pad + lwHalf;
         }
 
-        if(!counterAx) return gs.l + gs.w * (ax.position || 0) + (lwHalf % 1);
-        else if(side === 'right') return counterAx._offset + counterAx._length + pad + lwHalf;
+        if (!counterAx) return gs.l + gs.w * (ax.position || 0) + (lwHalf % 1);
+        else if (side === 'right') return counterAx._offset + counterAx._length + pad + lwHalf;
         return counterAx._offset - pad - lwHalf;
     }
 
     // some preparation of axis position info
-    for(i = 0; i < axList.length; i++) {
+    for (i = 0; i < axList.length; i++) {
         ax = axList[i];
 
         var counterAx = ax._anchorAxis;
@@ -127,14 +134,14 @@ function lsInner(gd) {
         fullLayout.paper_bgcolor === fullLayout.plot_bgcolor
     );
 
-    for(subplot in fullLayout._plots) {
+    for (subplot in fullLayout._plots) {
         plotinfo = fullLayout._plots[subplot];
 
-        if(plotinfo.mainplot) {
+        if (plotinfo.mainplot) {
             // mainplot is a reference to the main plot this one is overlaid on
             // so if it exists, this is an overlaid plot and we don't need to
             // give it its own background
-            if(plotinfo.bg) {
+            if (plotinfo.bg) {
                 plotinfo.bg.remove();
             }
             plotinfo.bg = undefined;
@@ -143,7 +150,7 @@ function lsInner(gd) {
             var yDomain = plotinfo.yaxis.domain;
             var plotgroup = plotinfo.plotgroup;
 
-            if(overlappingDomain(xDomain, yDomain, lowerDomains) && subplot.indexOf(zindexSeparator) === -1) {
+            if (overlappingDomain(xDomain, yDomain, lowerDomains) && subplot.indexOf(zindexSeparator) === -1) {
                 var pgNode = plotgroup.node();
                 var plotgroupBg = plotinfo.bg = Lib.ensureSingle(plotgroup, 'rect', 'bg');
                 pgNode.insertBefore(plotgroupBg.node(), pgNode.childNodes[0]);
@@ -151,7 +158,7 @@ function lsInner(gd) {
             } else {
                 plotgroup.select('rect.bg').remove();
                 lowerDomains.push([xDomain, yDomain]);
-                if(!noNeedForBg) {
+                if (!noNeedForBg) {
                     lowerBackgroundIDs.push(subplot);
                     backgroundIds.push(subplot);
                 }
@@ -169,17 +176,17 @@ function lsInner(gd) {
 
     lowerBackgrounds.exit().remove();
 
-    lowerBackgrounds.each(function(subplot) {
+    lowerBackgrounds.each(function (subplot) {
         fullLayout._plots[subplot].bg = d3.select(this);
     });
 
     // style all backgrounds
-    for(i = 0; i < backgroundIds.length; i++) {
+    for (i = 0; i < backgroundIds.length; i++) {
         plotinfo = fullLayout._plots[backgroundIds[i]];
         xa = plotinfo.xaxis;
         ya = plotinfo.yaxis;
 
-        if(plotinfo.bg && xa._offset !== undefined && ya._offset !== undefined) {
+        if (plotinfo.bg && xa._offset !== undefined && ya._offset !== undefined) {
             plotinfo.bg
                 .call(Drawing.setRect,
                     xa._offset - pad, ya._offset - pad,
@@ -189,8 +196,8 @@ function lsInner(gd) {
         }
     }
 
-    if(!fullLayout._hasOnlyLargeSploms) {
-        for(subplot in fullLayout._plots) {
+    if (!fullLayout._hasOnlyLargeSploms) {
+        for (subplot in fullLayout._plots) {
             plotinfo = fullLayout._plots[subplot];
             xa = plotinfo.xaxis;
             ya = plotinfo.yaxis;
@@ -198,7 +205,7 @@ function lsInner(gd) {
             // Clip so that data only shows up on the plot area.
             var clipId = plotinfo.clipId = 'clip' + fullLayout._uid + subplot + 'plot';
 
-            var plotClip = Lib.ensureSingleById(fullLayout._clips, 'clipPath', clipId, function(s) {
+            var plotClip = Lib.ensureSingleById(fullLayout._clips, 'clipPath', clipId, function (s) {
                 s.classed('plotclip', true)
                     .append('rect');
             });
@@ -213,7 +220,7 @@ function lsInner(gd) {
             var plotClipId;
             var layerClipId;
 
-            if(plotinfo._hasClipOnAxisFalse) {
+            if (plotinfo._hasClipOnAxisFalse) {
                 plotClipId = null;
                 layerClipId = clipId;
             } else {
@@ -249,21 +256,21 @@ function lsInner(gd) {
     }
 
     function yLinePathFree(x) {
-        if(ya._shift !== undefined) {
+        if (ya._shift !== undefined) {
             x += ya._shift;
         }
         return 'M' + x + ',' + ya._offset + 'v' + ya._length;
     }
 
     function mainPath(ax, pathFn, pathFnFree) {
-        if(!ax.showline || subplot !== ax._mainSubplot) return '';
-        if(!ax._anchorAxis) return pathFnFree(ax._mainLinePosition);
+        if (!ax.showline || subplot !== ax._mainSubplot) return '';
+        if (!ax._anchorAxis) return pathFnFree(ax._mainLinePosition);
         var out = pathFn(ax._mainLinePosition);
-        if(ax.mirror) out += pathFn(ax._mainMirrorPosition);
+        if (ax.mirror) out += pathFn(ax._mainMirrorPosition);
         return out;
     }
 
-    for(subplot in fullLayout._plots) {
+    for (subplot in fullLayout._plots) {
         plotinfo = fullLayout._plots[subplot];
         xa = plotinfo.xaxis;
         ya = plotinfo.yaxis;
@@ -283,7 +290,7 @@ function lsInner(gd) {
          *     x2
          */
         var xPath = 'M0,0';
-        if(shouldShowLinesOrTicks(xa, subplot)) {
+        if (shouldShowLinesOrTicks(xa, subplot)) {
             leftYLineWidth = findCounterAxisLineWidth(xa, 'left', ya, axList);
             xLinesXLeft = xa._offset - (leftYLineWidth ? (pad + leftYLineWidth) : 0);
             rightYLineWidth = findCounterAxisLineWidth(xa, 'right', ya, axList);
@@ -295,12 +302,12 @@ function lsInner(gd) {
             // each subplot that gets ticks from "allticks" gets an entry:
             //    [left or bottom, right or top]
             extraSubplot = (!xa._anchorAxis || subplot !== xa._mainSubplot);
-            if(extraSubplot && (xa.mirror === 'allticks' || xa.mirror === 'all')) {
+            if (extraSubplot && (xa.mirror === 'allticks' || xa.mirror === 'all')) {
                 xa._linepositions[subplot] = [xLinesYBottom, xLinesYTop];
             }
 
             xPath = mainPath(xa, xLinePath, xLinePathFree);
-            if(extraSubplot && xa.showline && (xa.mirror === 'all' || xa.mirror === 'allticks')) {
+            if (extraSubplot && xa.showline && (xa.mirror === 'all' || xa.mirror === 'allticks')) {
                 xPath += xLinePath(xLinesYBottom) + xLinePath(xLinesYTop);
             }
 
@@ -323,7 +330,7 @@ function lsInner(gd) {
          *       +-----
          */
         var yPath = 'M0,0';
-        if(shouldShowLinesOrTicks(ya, subplot)) {
+        if (shouldShowLinesOrTicks(ya, subplot)) {
             connectYBottom = findCounterAxisLineWidth(ya, 'bottom', xa, axList);
             yLinesYBottom = ya._offset + ya._length + (connectYBottom ? pad : 0);
             connectYTop = findCounterAxisLineWidth(ya, 'top', xa, axList);
@@ -332,12 +339,12 @@ function lsInner(gd) {
             yLinesXRight = getLinePosition(ya, xa, 'right');
 
             extraSubplot = (!ya._anchorAxis || subplot !== ya._mainSubplot);
-            if(extraSubplot && (ya.mirror === 'allticks' || ya.mirror === 'all')) {
+            if (extraSubplot && (ya.mirror === 'allticks' || ya.mirror === 'all')) {
                 ya._linepositions[subplot] = [yLinesXLeft, yLinesXRight];
             }
 
             yPath = mainPath(ya, yLinePath, yLinePathFree);
-            if(extraSubplot && ya.showline && (ya.mirror === 'all' || ya.mirror === 'allticks')) {
+            if (extraSubplot && ya.showline && (ya.mirror === 'all' || ya.mirror === 'allticks')) {
                 yPath += yLinePath(yLinesXLeft) + yLinePath(yLinesXRight);
             }
 
@@ -366,21 +373,21 @@ function shouldShowLinesOrTicks(ax, subplot) {
  */
 function shouldShowLineThisSide(ax, side, counterAx) {
     // does counterAx get a line at all?
-    if(!counterAx.showline || !counterAx._lw) return false;
+    if (!counterAx.showline || !counterAx._lw) return false;
 
     // are we drawing *all* lines for counterAx?
-    if(counterAx.mirror === 'all' || counterAx.mirror === 'allticks') return true;
+    if (counterAx.mirror === 'all' || counterAx.mirror === 'allticks') return true;
 
     var anchorAx = counterAx._anchorAxis;
 
     // is this a free axis? free axes can only have a subplot side-line with all(ticks)? mirroring
-    if(!anchorAx) return false;
+    if (!anchorAx) return false;
 
     // in order to handle cases where the user forgot to anchor this axis correctly
     // (because its default anchor has the same domain on the relevant end)
     // check whether the relevant position is the same.
     var sideIndex = alignmentConstants.FROM_BL[side];
-    if(counterAx.side === side) {
+    if (counterAx.side === side) {
         return anchorAx.domain[sideIndex] === ax.domain[sideIndex];
     }
     return counterAx.mirror && anchorAx.domain[1 - sideIndex] === ax.domain[1 - sideIndex];
@@ -393,19 +400,19 @@ function shouldShowLineThisSide(ax, side, counterAx) {
  * Take the line width from the first one that has a line.
  */
 function findCounterAxisLineWidth(ax, side, counterAx, axList) {
-    if(shouldShowLineThisSide(ax, side, counterAx)) {
+    if (shouldShowLineThisSide(ax, side, counterAx)) {
         return counterAx._lw;
     }
-    for(var i = 0; i < axList.length; i++) {
+    for (var i = 0; i < axList.length; i++) {
         var axi = axList[i];
-        if(axi._mainAxis === counterAx._mainAxis && shouldShowLineThisSide(ax, side, axi)) {
+        if (axi._mainAxis === counterAx._mainAxis && shouldShowLineThisSide(ax, side, axi)) {
             return axi._lw;
         }
     }
     return 0;
 }
 
-exports.drawMainTitle = function(gd) {
+exports.drawMainTitle = function (gd) {
     var title = gd._fullLayout.title;
     var fullLayout = gd._fullLayout;
     var textAnchor = getMainTitleTextAnchor(fullLayout);
@@ -427,11 +434,11 @@ exports.drawMainTitle = function(gd) {
         }),
     });
 
-    if(title.text && title.automargin) {
+    if (title.text && title.automargin) {
         var titleObj = d3.select(gd).selectAll('.gtitle');
         var titleHeight = Drawing.bBox(d3.select(gd).selectAll('.g-gtitle').node()).height;
         var pushMargin = needsMarginPush(gd, title, titleHeight);
-        if(pushMargin > 0) {
+        if (pushMargin > 0) {
             applyTitleAutoMargin(gd, y, pushMargin, titleHeight);
             // Re-position the title once we know where it needs to be
             titleObj.attr({
@@ -442,13 +449,13 @@ exports.drawMainTitle = function(gd) {
             }).call(svgTextUtils.positionText, x, y);
 
             var extraLines = (title.text.match(svgTextUtils.BR_TAG_ALL) || []).length;
-            if(extraLines) {
+            if (extraLines) {
                 var delta = alignmentConstants.LINE_SPACING * extraLines + alignmentConstants.MID_SHIFT;
-                if(title.y === 0) {
+                if (title.y === 0) {
                     delta = -delta;
                 }
 
-                titleObj.selectAll('.line').each(function() {
+                titleObj.selectAll('.line').each(function () {
                     var newDy = +(this.getAttribute('dy')).slice(0, -2) - delta + 'em';
                     this.setAttribute('dy', newDy);
                 });
@@ -456,7 +463,7 @@ exports.drawMainTitle = function(gd) {
 
             // If there is a subtitle
             var subtitleObj = d3.select(gd).selectAll('.gtitle-subtitle');
-            if(subtitleObj.node()) {
+            if (subtitleObj.node()) {
                 // Get bottom edge of title bounding box
                 var titleBB = titleObj.node().getBBox();
                 var titleBottom = titleBB.y + titleBB.height;
@@ -477,7 +484,7 @@ function isOutsideContainer(gd, title, position, y, titleHeight) {
     var plotHeight = title.yref === 'paper' ? gd._fullLayout._size.h : gd._fullLayout.height;
     var yPosTop = Lib.isTopAnchor(title) ? y : y - titleHeight; // Standardize to the top of the title
     var yPosRel = position === 'b' ? plotHeight - yPosTop : yPosTop; // Position relative to the top or bottom of plot
-    if((Lib.isTopAnchor(title) && position === 't') || Lib.isBottomAnchor(title) && position === 'b') {
+    if ((Lib.isTopAnchor(title) && position === 't') || Lib.isBottomAnchor(title) && position === 'b') {
         return false;
     } else {
         return yPosRel < titleHeight;
@@ -486,16 +493,16 @@ function isOutsideContainer(gd, title, position, y, titleHeight) {
 
 function containerPushVal(position, titleY, titleYanchor, height, titleDepth) {
     var push = 0;
-    if(titleYanchor === 'middle') {
+    if (titleYanchor === 'middle') {
         push += titleDepth / 2;
     }
-    if(position === 't') {
-        if(titleYanchor === 'top') {
+    if (position === 't') {
+        if (titleYanchor === 'top') {
             push += titleDepth;
         }
         push += (height - titleY * height);
     } else {
-        if(titleYanchor === 'bottom') {
+        if (titleYanchor === 'bottom') {
             push += titleDepth;
         }
         push += titleY * height;
@@ -509,20 +516,20 @@ function needsMarginPush(gd, title, titleHeight) {
     var position = titleY > 0.5 ? 't' : 'b';
     var curMargin = gd._fullLayout.margin[position];
     var pushMargin = 0;
-    if(title.yref === 'paper') {
+    if (title.yref === 'paper') {
         pushMargin = (
             titleHeight +
             title.pad.t +
             title.pad.b
         );
-    } else if(title.yref === 'container') {
+    } else if (title.yref === 'container') {
         pushMargin = (
             containerPushVal(position, titleY, titleYanchor, gd._fullLayout.height, titleHeight) +
             title.pad.t +
             title.pad.b
         );
     }
-    if(pushMargin > curMargin) {
+    if (pushMargin > curMargin) {
         return pushMargin;
     }
     return 0;
@@ -540,9 +547,9 @@ function applyTitleAutoMargin(gd, y, pushMargin, titleHeight) {
     };
     var reservedPush = {};
 
-    if(title.yref === 'paper' && isOutsideContainer(gd, title, position, y, titleHeight)) {
+    if (title.yref === 'paper' && isOutsideContainer(gd, title, position, y, titleHeight)) {
         push[position] = pushMargin;
-    } else if(title.yref === 'container') {
+    } else if (title.yref === 'container') {
         reservedPush[position] = pushMargin;
         gd._fullLayout._reservedMargin[titleID] = reservedPush;
     }
@@ -555,13 +562,13 @@ function getMainTitleX(fullLayout, textAnchor) {
     var gs = fullLayout._size;
     var hPadShift = 0;
 
-    if(textAnchor === SVG_TEXT_ANCHOR_START) {
+    if (textAnchor === SVG_TEXT_ANCHOR_START) {
         hPadShift = title.pad.l;
-    } else if(textAnchor === SVG_TEXT_ANCHOR_END) {
+    } else if (textAnchor === SVG_TEXT_ANCHOR_END) {
         hPadShift = -title.pad.r;
     }
 
-    switch(title.xref) {
+    switch (title.xref) {
         case 'paper':
             return gs.l + gs.w * title.x + hPadShift;
         case 'container':
@@ -574,16 +581,16 @@ function getMainTitleY(fullLayout, dy) {
     var title = fullLayout.title;
     var gs = fullLayout._size;
     var vPadShift = 0;
-    if(dy === '0em' || !dy) {
+    if (dy === '0em' || !dy) {
         vPadShift = -title.pad.b;
-    } else if(dy === alignmentConstants.CAP_SHIFT + 'em') {
+    } else if (dy === alignmentConstants.CAP_SHIFT + 'em') {
         vPadShift = title.pad.t;
     }
 
-    if(title.y === 'auto') {
+    if (title.y === 'auto') {
         return gs.t / 2;
     } else {
-        switch(title.yref) {
+        switch (title.yref) {
             case 'paper':
                 return gs.t + gs.h - gs.h * title.y + vPadShift;
             case 'container':
@@ -594,9 +601,9 @@ function getMainTitleY(fullLayout, dy) {
 }
 
 function getMainTitleDyAdj(yanchor) {
-    if(yanchor === 'top') {
+    if (yanchor === 'top') {
         return alignmentConstants.CAP_SHIFT + 0.3 + 'em';
-    } else if(yanchor === 'bottom') {
+    } else if (yanchor === 'bottom') {
         return '-0.3em';
     } else {
         return alignmentConstants.MID_SHIFT + 'em';
@@ -607,9 +614,9 @@ function getMainTitleTextAnchor(fullLayout) {
     var title = fullLayout.title;
 
     var textAnchor = SVG_TEXT_ANCHOR_MIDDLE;
-    if(Lib.isRightAnchor(title)) {
+    if (Lib.isRightAnchor(title)) {
         textAnchor = SVG_TEXT_ANCHOR_END;
-    } else if(Lib.isLeftAnchor(title)) {
+    } else if (Lib.isLeftAnchor(title)) {
         textAnchor = SVG_TEXT_ANCHOR_START;
     }
 
@@ -620,21 +627,21 @@ function getMainTitleDy(fullLayout) {
     var title = fullLayout.title;
 
     var dy = '0em';
-    if(Lib.isTopAnchor(title)) {
+    if (Lib.isTopAnchor(title)) {
         dy = alignmentConstants.CAP_SHIFT + 'em';
-    } else if(Lib.isMiddleAnchor(title)) {
+    } else if (Lib.isMiddleAnchor(title)) {
         dy = alignmentConstants.MID_SHIFT + 'em';
     }
 
     return dy;
 }
 
-exports.doTraceStyle = function(gd) {
+exports.doTraceStyle = function (gd) {
     var calcdata = gd.calcdata;
     var editStyleCalls = [];
     var i;
 
-    for(i = 0; i < calcdata.length; i++) {
+    for (i = 0; i < calcdata.length; i++) {
         var cd = calcdata[i];
         var cd0 = cd[0] || {};
         var trace = cd0.trace || {};
@@ -645,14 +652,14 @@ exports.doTraceStyle = function(gd) {
         // supplyDefaults brought in an array that was already
         // in gd.data but not in gd._fullData previously
         var arraysToCalcdata = _module.arraysToCalcdata;
-        if(arraysToCalcdata) arraysToCalcdata(cd, trace);
+        if (arraysToCalcdata) arraysToCalcdata(cd, trace);
 
         var editStyle = _module.editStyle;
-        if(editStyle) editStyleCalls.push({fn: editStyle, cd0: cd0});
+        if (editStyle) editStyleCalls.push({ fn: editStyle, cd0: cd0 });
     }
 
-    if(editStyleCalls.length) {
-        for(i = 0; i < editStyleCalls.length; i++) {
+    if (editStyleCalls.length) {
+        for (i = 0; i < editStyleCalls.length; i++) {
             var edit = editStyleCalls[i];
             edit.fn(gd, edit.cd0);
         }
@@ -666,27 +673,27 @@ exports.doTraceStyle = function(gd) {
     return Plots.previousPromises(gd);
 };
 
-exports.doColorBars = function(gd) {
+exports.doColorBars = function (gd) {
     Registry.getComponentMethod('colorbar', 'draw')(gd);
     return Plots.previousPromises(gd);
 };
 
 // force plot() to redo the layout and replot with the modified layout
-exports.layoutReplot = function(gd) {
+exports.layoutReplot = function (gd) {
     var layout = gd.layout;
     gd.layout = undefined;
     return Registry.call('_doPlot', gd, '', layout);
 };
 
-exports.doLegend = function(gd) {
+exports.doLegend = function (gd) {
     Registry.getComponentMethod('legend', 'draw')(gd);
     return Plots.previousPromises(gd);
 };
 
-exports.doTicksRelayout = function(gd) {
+exports.doTicksRelayout = function (gd) {
     Axes.draw(gd, 'redraw');
 
-    if(gd._fullLayout._hasOnlyLargeSploms) {
+    if (gd._fullLayout._hasOnlyLargeSploms) {
         Registry.subplotsRegistry.splom.updateGrid(gd);
         clearGlCanvases(gd);
         exports.redrawReglTraces(gd);
@@ -696,24 +703,24 @@ exports.doTicksRelayout = function(gd) {
     return Plots.previousPromises(gd);
 };
 
-exports.doModeBar = function(gd) {
+exports.doModeBar = function (gd) {
     var fullLayout = gd._fullLayout;
 
     ModeBar.manage(gd);
 
-    for(var i = 0; i < fullLayout._basePlotModules.length; i++) {
+    for (var i = 0; i < fullLayout._basePlotModules.length; i++) {
         var updateFx = fullLayout._basePlotModules[i].updateFx;
-        if(updateFx) updateFx(gd);
+        if (updateFx) updateFx(gd);
     }
 
     return Plots.previousPromises(gd);
 };
 
-exports.doCamera = function(gd) {
+exports.doCamera = function (gd) {
     var fullLayout = gd._fullLayout;
     var sceneIds = fullLayout._subplots.gl3d;
 
-    for(var i = 0; i < sceneIds.length; i++) {
+    for (var i = 0; i < sceneIds.length; i++) {
         var sceneLayout = fullLayout[sceneIds[i]];
         var scene = sceneLayout._scene;
 
@@ -721,14 +728,14 @@ exports.doCamera = function(gd) {
     }
 };
 
-exports.drawData = function(gd) {
+exports.drawData = function (gd) {
     var fullLayout = gd._fullLayout;
 
     clearGlCanvases(gd);
 
     // loop over the base plot modules present on graph
     var basePlotModules = fullLayout._basePlotModules;
-    for(var i = 0; i < basePlotModules.length; i++) {
+    for (var i = 0; i < basePlotModules.length; i++) {
         basePlotModules[i].plot(gd);
     }
 
@@ -763,16 +770,16 @@ exports.drawData = function(gd) {
 //
 // TODO try to include parcoords in here.
 // https://github.com/plotly/plotly.js/issues/3069
-exports.redrawReglTraces = function(gd) {
+exports.redrawReglTraces = function (gd) {
     var fullLayout = gd._fullLayout;
 
-    if(fullLayout._has('regl')) {
+    if (fullLayout._has('regl')) {
         var fullData = gd._fullData;
         var cartesianIds = [];
         var polarIds = [];
         var i, sp;
 
-        if(fullLayout._hasOnlyLargeSploms) {
+        if (fullLayout._hasOnlyLargeSploms) {
             fullLayout._splomGrid.draw();
         }
 
@@ -780,42 +787,42 @@ exports.redrawReglTraces = function(gd) {
         // - Loop over fullData (not _splomScenes) to preserve splom trace-to-trace ordering
         // - Fill list if subplot ids (instead of fullLayout._subplots) to handle cases where all traces
         //   of a given module are `visible !== true`
-        for(i = 0; i < fullData.length; i++) {
+        for (i = 0; i < fullData.length; i++) {
             var trace = fullData[i];
 
-            if(trace.visible === true && trace._length !== 0) {
-                if(trace.type === 'splom') {
+            if (trace.visible === true && trace._length !== 0) {
+                if (trace.type === 'splom') {
                     fullLayout._splomScenes[trace.uid].draw();
-                } else if(trace.type === 'scattergl') {
+                } else if (trace.type === 'scattergl') {
                     Lib.pushUnique(cartesianIds, trace.xaxis + trace.yaxis);
-                } else if(trace.type === 'scatterpolargl') {
+                } else if (trace.type === 'scatterpolargl') {
                     Lib.pushUnique(polarIds, trace.subplot);
                 }
             }
         }
 
-        for(i = 0; i < cartesianIds.length; i++) {
+        for (i = 0; i < cartesianIds.length; i++) {
             sp = fullLayout._plots[cartesianIds[i]];
-            if(sp._scene) sp._scene.draw();
+            if (sp._scene) sp._scene.draw();
         }
 
-        for(i = 0; i < polarIds.length; i++) {
+        for (i = 0; i < polarIds.length; i++) {
             sp = fullLayout[polarIds[i]]._subplot;
-            if(sp._scene) sp._scene.draw();
+            if (sp._scene) sp._scene.draw();
         }
     }
 };
 
-exports.doAutoRangeAndConstraints = function(gd) {
+exports.doAutoRangeAndConstraints = function (gd) {
     var axList = Axes.list(gd, '', true);
     var ax;
 
     var autoRangeDone = {};
 
-    for(var i = 0; i < axList.length; i++) {
+    for (var i = 0; i < axList.length; i++) {
         ax = axList[i];
 
-        if(!autoRangeDone[ax._id]) {
+        if (!autoRangeDone[ax._id]) {
             autoRangeDone[ax._id] = 1;
             cleanAxisConstraints(gd, ax);
             doAutoRange(gd, ax);
@@ -825,8 +832,8 @@ exports.doAutoRangeAndConstraints = function(gd) {
             // since doAutoRange by itself accounts for all matching axes. but
             // there are other side-effects of doAutoRange that we still want.
             var matchGroup = ax._matchGroup;
-            if(matchGroup) {
-                for(var id2 in matchGroup) {
+            if (matchGroup) {
+                for (var id2 in matchGroup) {
                     var ax2 = Axes.getFromId(gd, id2);
                     doAutoRange(gd, ax2, ax.range);
                     autoRangeDone[id2] = 1;
@@ -841,7 +848,7 @@ exports.doAutoRangeAndConstraints = function(gd) {
 // An initial paint must be completed before these components can be
 // correctly sized and the whole plot re-margined. fullLayout._replotting must
 // be set to false before these will work properly.
-exports.finalDraw = function(gd) {
+exports.finalDraw = function (gd) {
     // TODO: rangesliders really belong in marginPushers but they need to be
     // drawn after data - can we at least get the margin pushing part separated
     // out and done earlier?
@@ -853,7 +860,7 @@ exports.finalDraw = function(gd) {
     Registry.getComponentMethod('rangeselector', 'draw')(gd);
 };
 
-exports.drawMarginPushers = function(gd) {
+exports.drawMarginPushers = function (gd) {
     Registry.getComponentMethod('legend', 'draw')(gd);
     Registry.getComponentMethod('rangeselector', 'draw')(gd);
     Registry.getComponentMethod('sliders', 'draw')(gd);

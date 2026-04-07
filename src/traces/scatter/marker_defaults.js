@@ -22,6 +22,7 @@ module.exports = function markerDefaults(traceIn, traceOut, defaultColor, layout
 
     coerce('marker.symbol');
     coerce('marker.opacity', isBubble ? 0.7 : 1);
+    coerce('marker.blendmode');
     coerce('marker.size');
     if (!opts.noAngle) {
         coerce('marker.angle');

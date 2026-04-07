@@ -1,5 +1,7 @@
 'use strict';
 
+var blendMode = require('../../lib/blend_mode');
+
 
 module.exports = {
     visible: {
@@ -104,6 +106,9 @@ module.exports = {
         editType: 'style',
         description: 'Sets the stroke color of the error bars.'
     },
+    blendmode: blendMode.attr({
+        description: 'Sets how these error bars blend with content drawn underneath them.'
+    }),
     thickness: {
         valType: 'number',
         min: 0,

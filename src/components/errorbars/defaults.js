@@ -9,7 +9,7 @@ var Template = require('../../plot_api/plot_template');
 var attributes = require('./attributes');
 
 
-module.exports = function(traceIn, traceOut, defaultColor, opts) {
+module.exports = function (traceIn, traceOut, defaultColor, opts) {
     var objName = 'error_' + opts.axis;
     var containerOut = Template.newContainer(traceOut, objName);
     var containerIn = traceIn[objName] || {};
@@ -26,39 +26,40 @@ module.exports = function(traceIn, traceOut, defaultColor, opts) {
 
     var visible = coerce('visible', hasErrorBars);
 
-    if(visible === false) return;
+    if (visible === false) return;
 
     var type = coerce('type', 'array' in containerIn ? 'data' : 'percent');
     var symmetric = true;
 
-    if(type !== 'sqrt') {
+    if (type !== 'sqrt') {
         symmetric = coerce('symmetric',
             !((type === 'data' ? 'arrayminus' : 'valueminus') in containerIn));
     }
 
-    if(type === 'data') {
+    if (type === 'data') {
         coerce('array');
         coerce('traceref');
-        if(!symmetric) {
+        if (!symmetric) {
             coerce('arrayminus');
             coerce('tracerefminus');
         }
-    } else if(type === 'percent' || type === 'constant') {
+    } else if (type === 'percent' || type === 'constant') {
         coerce('value');
-        if(!symmetric) coerce('valueminus');
+        if (!symmetric) coerce('valueminus');
     }
 
     var copyAttr = 'copy_' + opts.inherit + 'style';
-    if(opts.inherit) {
+    if (opts.inherit) {
         var inheritObj = traceOut['error_' + opts.inherit];
-        if((inheritObj || {}).visible) {
+        if ((inheritObj || {}).visible) {
             coerce(copyAttr, !(containerIn.color ||
-                               isNumeric(containerIn.thickness) ||
-                               isNumeric(containerIn.width)));
+                isNumeric(containerIn.thickness) ||
+                isNumeric(containerIn.width)));
         }
     }
-    if(!opts.inherit || !containerOut[copyAttr]) {
+    if (!opts.inherit || !containerOut[copyAttr]) {
         coerce('color', defaultColor);
+        coerce('blendmode');
         coerce('thickness');
         coerce('width', Registry.traceIs(traceOut, 'gl3d') ? 0 : 4);
     }

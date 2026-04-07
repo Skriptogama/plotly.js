@@ -38,8 +38,14 @@
             width: min(1400px, calc(100vw - 32px));
             margin: 24px auto;
             display: grid;
-            grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.7fr);
+            grid-template-columns: minmax(250px, 290px) minmax(0, 1.45fr) minmax(280px, 0.72fr);
             gap: 20px;
+        }
+
+        .control-sidebar {
+            display: grid;
+            gap: 20px;
+            align-content: start;
         }
 
         .panel {
@@ -70,43 +76,44 @@
 
         .controls {
             display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
-            gap: 12px;
-            padding: 20px 24px 24px;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            padding: 18px;
         }
 
         .control {
             background: var(--panel-alt);
             border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 12px;
+            border-radius: 14px;
+            padding: 10px;
         }
 
         .control label,
         .metric-label {
             display: block;
-            font-size: 0.82rem;
+            font-size: 0.74rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--muted);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .control input,
         .control select {
             width: 100%;
             border: 1px solid #bfd0d9;
-            border-radius: 10px;
-            padding: 10px 12px;
-            font: inherit;
+            border-radius: 9px;
+            padding: 8px 10px;
+            font-size: 0.9rem;
+            font-family: inherit;
             color: var(--text);
             background: #fff;
         }
 
         .control-help {
-            margin-top: 8px;
+            margin-top: 6px;
             color: var(--muted);
-            font-size: 0.8rem;
+            font-size: 0.74rem;
             line-height: 1.4;
         }
 
@@ -119,7 +126,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            font-size: 0.95rem;
+            font-size: 0.88rem;
             color: var(--text);
             text-transform: none;
             letter-spacing: 0;
@@ -133,19 +140,20 @@
         }
 
         .actions {
-            padding: 0 24px 24px;
+            padding: 18px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
+            flex-direction: column;
+            gap: 10px;
+            align-items: stretch;
         }
 
         button {
             appearance: none;
             border: 0;
             border-radius: 999px;
-            padding: 12px 18px;
-            font: inherit;
+            padding: 10px 14px;
+            font-family: inherit;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
             transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
@@ -176,9 +184,10 @@
         }
 
         .status {
-            margin-left: auto;
+            margin-left: 0;
             color: var(--muted);
-            font-size: 0.95rem;
+            font-size: 0.84rem;
+            text-align: center;
         }
 
         #chart {
@@ -249,10 +258,6 @@
                 grid-template-columns: 1fr;
             }
 
-            .controls {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
             #chart {
                 height: 580px;
             }
@@ -264,7 +269,6 @@
 
         @media (max-width: 700px) {
 
-            .controls,
             .stats-grid {
                 grid-template-columns: 1fr;
             }
@@ -272,17 +276,152 @@
             .actions {
                 align-items: stretch;
             }
-
-            .status {
-                margin-left: 0;
-                width: 100%;
-            }
         }
     </style>
 </head>
 
 <body>
     <div class="page">
+        <aside class="control-sidebar">
+            <section class="panel">
+                <div class="controls">
+                    <div class="control">
+                        <label for="modeSelect">Mode</label>
+                        <select id="modeSelect">
+                            <option value="scatter">Scatter</option>
+                            <option value="scatter-range">Scatter with RangeSlider</option>
+                            <option value="scattergl">ScatterGL</option>
+                            <option value="scattergl-range">ScatterGL with RangeSlider</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label for="curveModeSelect">Curve Mode</label>
+                        <select id="curveModeSelect">
+                            <option value="linear">linear</option>
+                            <option value="cardinal">cardinal</option>
+                            <option value="catmull-rom">catmull-rom</option>
+                            <option value="monotone">monotone</option>
+                            <option value="natural">natural</option>
+                            <option value="step">step</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label for="seriesCount">Series Count</label>
+                        <input id="seriesCount" type="number" min="1" max="500" value="60">
+                    </div>
+                    <div class="control">
+                        <label for="pointCount">Points Per Series</label>
+                        <input id="pointCount" type="number" min="10" max="50000" value="2500">
+                    </div>
+                    <div class="control">
+                        <label for="xScaleSelect">X Axis Scale</label>
+                        <select id="xScaleSelect">
+                            <option value="index">index</option>
+                            <option value="continuous">continuous</option>
+                        </select>
+                        <div class="control-help">Continuous uses uneven numeric step sizes, and some series
+                            intentionally skip samples to expose irregular x coverage.</div>
+                    </div>
+                    <div class="control">
+                        <label for="missingValueModeSelect">Missing Value Handling</label>
+                        <select id="missingValueModeSelect">
+                            <option value="gaps">gaps</option>
+                            <option value="zeros">zeros</option>
+                            <option value="connect">connect</option>
+                        </select>
+                        <div class="control-help">Controls how intentionally skipped samples are rendered. Connect
+                            interpolates missing values before drawing.</div>
+                    </div>
+                    <div class="control">
+                        <label for="missingValuePercentInput">Missing Value Percent</label>
+                        <input id="missingValuePercentInput" type="number" min="0" max="100" step="1" value="15">
+                        <div class="control-help">Applies deterministic skipped samples to both index and continuous
+                            scales.</div>
+                    </div>
+                    <div class="control">
+                        <label for="chartOrientationSelect">Chart Orientation</label>
+                        <select id="chartOrientationSelect">
+                            <option value="vertical">vertical</option>
+                            <option value="horizontal">horizontal</option>
+                        </select>
+                        <div class="control-help">Horizontal swaps the generated index or continuous axis onto the
+                            y-axis.</div>
+                    </div>
+                    <div class="control">
+                        <label for="pauseMs">Pause Between Adds (ms)</label>
+                        <input id="pauseMs" type="number" min="0" max="5000" value="0">
+                    </div>
+                    <div class="control">
+                        <label for="lineWidth">Line Width</label>
+                        <input id="lineWidth" type="number" min="1" max="8" value="1">
+                    </div>
+                    <div class="control">
+                        <label for="labelPositionSelect">Label Position</label>
+                        <select id="labelPositionSelect">
+                            <option value="auto">auto</option>
+                            <option value="top center">top center</option>
+                            <option value="top right">top right</option>
+                            <option value="middle right">middle right</option>
+                            <option value="bottom center">bottom center</option>
+                        </select>
+                        <div class="control-help">Best seen with markers and labels enabled.</div>
+                    </div>
+                    <div class="control">
+                        <label for="modebarVisibilitySelect">Modebar Visibility</label>
+                        <select id="modebarVisibilitySelect">
+                            <option value="hover-position">hover-position</option>
+                            <option value="hover">hover</option>
+                            <option value="true">always visible</option>
+                            <option value="false">hidden</option>
+                        </select>
+                        <div class="control-help">hover-position only reveals the modebar when you hover over its own
+                            corner area.</div>
+                    </div>
+                    <div class="control">
+                        <label for="modebarPositionSelect">Modebar Position</label>
+                        <select id="modebarPositionSelect">
+                            <option value="top-right">top-right</option>
+                            <option value="top-left">top-left</option>
+                            <option value="bottom-right">bottom-right</option>
+                            <option value="bottom-left">bottom-left</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label for="modebarOrientationSelect">Modebar Orientation</label>
+                        <select id="modebarOrientationSelect">
+                            <option value="h">horizontal</option>
+                            <option value="v">vertical</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label>Render Options</label>
+                        <div class="toggle-list">
+                            <label class="toggle-option" for="showMarkers">
+                                <input id="showMarkers" type="checkbox">
+                                <span>Markers</span>
+                            </label>
+                            <label class="toggle-option" for="showLabels">
+                                <input id="showLabels" type="checkbox">
+                                <span>Labels</span>
+                            </label>
+                            <label class="toggle-option" for="showErrorBars">
+                                <input id="showErrorBars" type="checkbox">
+                                <span>Error bars</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button id="startBtn" class="primary">Start Progressive Add</button>
+                    <button id="labelDemoBtn" class="secondary">Load Label Demo Preset</button>
+                    <button id="resetBtn" class="secondary">Reset Chart</button>
+                    <button id="stopBtn" class="danger">Stop</button>
+                    <span id="status" class="status">Idle</span>
+                </div>
+            </section>
+        </aside>
+
         <section class="panel">
             <div class="hero">
                 <h1>Progressive 60-Series Plotly Repro</h1>
@@ -291,75 +430,16 @@
                     It can switch between SVG scatter and WebGL <strong>scattergl</strong>, with or without
                     a range slider,
                     then logs how long each append takes and summarizes how append time changes as the chart grows.
+                    Enable labels and switch <strong>Label Position</strong> to <strong>auto</strong> to compare
+                    collision-aware point labels against fixed text anchors.
                 </p>
-            </div>
-
-            <div class="controls">
-                <div class="control">
-                    <label for="modeSelect">Mode</label>
-                    <select id="modeSelect">
-                        <option value="scatter">Scatter</option>
-                        <option value="scatter-range">Scatter with RangeSlider</option>
-                        <option value="scattergl">ScatterGL</option>
-                        <option value="scattergl-range">ScatterGL with RangeSlider</option>
-                    </select>
-                </div>
-                <div class="control">
-                    <label for="curveModeSelect">Curve Mode</label>
-                    <select id="curveModeSelect">
-                        <option value="linear">linear</option>
-                        <option value="cardinal">cardinal</option>
-                        <option value="catmull-rom">catmull-rom</option>
-                        <option value="monotone">monotone</option>
-                        <option value="natural">natural</option>
-                        <option value="step">step</option>
-                    </select>
-                </div>
-                <div class="control">
-                    <label for="seriesCount">Series Count</label>
-                    <input id="seriesCount" type="number" min="1" max="500" value="60">
-                </div>
-                <div class="control">
-                    <label for="pointCount">Points Per Series</label>
-                    <input id="pointCount" type="number" min="10" max="50000" value="2500">
-                </div>
-                <div class="control">
-                    <label for="pauseMs">Pause Between Adds (ms)</label>
-                    <input id="pauseMs" type="number" min="0" max="5000" value="0">
-                </div>
-                <div class="control">
-                    <label for="lineWidth">Line Width</label>
-                    <input id="lineWidth" type="number" min="1" max="8" value="1">
-                </div>
-                <div class="control">
-                    <label>Render Options</label>
-                    <div class="toggle-list">
-                        <label class="toggle-option" for="showMarkers">
-                            <input id="showMarkers" type="checkbox">
-                            <span>Markers</span>
-                        </label>
-                        <label class="toggle-option" for="showLabels">
-                            <input id="showLabels" type="checkbox">
-                            <span>Labels</span>
-                        </label>
-                        <label class="toggle-option" for="showErrorBars">
-                            <input id="showErrorBars" type="checkbox">
-                            <span>Error bars</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="actions">
-                <button id="startBtn" class="primary">Start Progressive Add</button>
-                <button id="resetBtn" class="secondary">Reset Chart</button>
-                <button id="stopBtn" class="danger">Stop</button>
-                <span id="status" class="status">Idle</span>
             </div>
 
             <div class="hint">
                 Open devtools to compare browser timing with the in-page log. This sample uses the local GL-capable
-                bundle at <code>dist/plotly-gl2d.js</code>.
+                bundle at <code>dist/plotly-gl2d.js</code>. The label demo preset switches to fewer series and sparse
+                callouts so auto placement stays readable while progressive adds still run through the same code path.
+                Modebar controls now let you compare position, orientation, and hover-position visibility behavior.
             </div>
 
             <div id="chart"></div>
@@ -415,6 +495,7 @@
             var logEl = document.getElementById('log');
             var statusEl = document.getElementById('status');
             var startBtn = document.getElementById('startBtn');
+            var labelDemoBtn = document.getElementById('labelDemoBtn');
             var resetBtn = document.getElementById('resetBtn');
             var stopBtn = document.getElementById('stopBtn');
 
@@ -431,14 +512,23 @@
             var curveModeSelect = document.getElementById('curveModeSelect');
             var seriesCountInput = document.getElementById('seriesCount');
             var pointCountInput = document.getElementById('pointCount');
+            var xScaleSelect = document.getElementById('xScaleSelect');
+            var missingValueModeSelect = document.getElementById('missingValueModeSelect');
+            var missingValuePercentInput = document.getElementById('missingValuePercentInput');
+            var chartOrientationSelect = document.getElementById('chartOrientationSelect');
             var pauseMsInput = document.getElementById('pauseMs');
             var lineWidthInput = document.getElementById('lineWidth');
+            var labelPositionSelect = document.getElementById('labelPositionSelect');
+            var modebarVisibilitySelect = document.getElementById('modebarVisibilitySelect');
+            var modebarPositionSelect = document.getElementById('modebarPositionSelect');
+            var modebarOrientationSelect = document.getElementById('modebarOrientationSelect');
             var showMarkersInput = document.getElementById('showMarkers');
             var showLabelsInput = document.getElementById('showLabels');
             var showErrorBarsInput = document.getElementById('showErrorBars');
 
             var stopRequested = false;
             var addDurations = [];
+            var webglSupported = detectWebGlSupport();
 
             function log(message) {
                 var time = new Date().toLocaleTimeString();
@@ -466,11 +556,43 @@
                 });
             }
 
+            function detectWebGlSupport() {
+                try {
+                    var canvas = document.createElement('canvas');
+                    return Boolean(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+                } catch (error) {
+                    return false;
+                }
+            }
+
+            function normalizeModeForEnvironment(mode) {
+                if (webglSupported) return mode;
+                if (mode === 'scattergl') return 'scatter';
+                if (mode === 'scattergl-range') return 'scatter-range';
+                return mode;
+            }
+
             function syncCurveModeControl() {
                 var options = curveModeSelect.querySelectorAll('option');
 
                 for (var i = 0; i < options.length; i++) {
                     options[i].disabled = false;
+                }
+
+                var scatterGlOption = modeSelect.querySelector('option[value="scattergl"]');
+                var scatterGlRangeOption = modeSelect.querySelector('option[value="scattergl-range"]');
+
+                if (scatterGlOption) {
+                    scatterGlOption.disabled = !webglSupported;
+                }
+
+                if (scatterGlRangeOption) {
+                    scatterGlRangeOption.disabled = !webglSupported;
+                }
+
+                var normalizedMode = normalizeModeForEnvironment(modeSelect.value);
+                if (normalizedMode !== modeSelect.value) {
+                    modeSelect.value = normalizedMode;
                 }
             }
 
@@ -497,7 +619,7 @@
             }
 
             function getModeConfig() {
-                var mode = modeSelect.value;
+                var mode = normalizeModeForEnvironment(modeSelect.value);
                 var isScatterGlMode = mode === 'scattergl' || mode === 'scattergl-range';
                 var curve = resolveCurveShape({ traceType: isScatterGlMode ? 'scattergl' : 'scatter' });
 
@@ -560,8 +682,49 @@
                 return {
                     showMarkers: showMarkersInput.checked,
                     showLabels: showLabelsInput.checked,
-                    showErrorBars: showErrorBarsInput.checked
+                    showErrorBars: showErrorBarsInput.checked,
+                    xScale: xScaleSelect.value,
+                    missingValueMode: missingValueModeSelect.value,
+                    missingValuePercent: Math.max(0, Math.min(100, Number(missingValuePercentInput.value) || 0)),
+                    chartOrientation: chartOrientationSelect.value,
+                    labelPosition: labelPositionSelect.value
                 };
+            }
+
+            function getModebarConfigValue() {
+                var value = modebarVisibilitySelect.value;
+                if (value === 'true') return true;
+                if (value === 'false') return false;
+                return value;
+            }
+
+            function getModebarOptions() {
+                return {
+                    visibility: getModebarConfigValue(),
+                    position: modebarPositionSelect.value,
+                    orientation: modebarOrientationSelect.value
+                };
+            }
+
+            function applyLabelDemoPreset() {
+                modeSelect.value = webglSupported ? 'scatter' : 'scatter';
+                curveModeSelect.value = 'linear';
+                seriesCountInput.value = '8';
+                pointCountInput.value = '80';
+                xScaleSelect.value = 'continuous';
+                missingValueModeSelect.value = 'gaps';
+                missingValuePercentInput.value = '15';
+                chartOrientationSelect.value = 'vertical';
+                pauseMsInput.value = '25';
+                lineWidthInput.value = '2';
+                labelPositionSelect.value = 'auto';
+                modebarVisibilitySelect.value = 'hover-position';
+                modebarPositionSelect.value = 'top-right';
+                modebarOrientationSelect.value = 'h';
+                showMarkersInput.checked = true;
+                showLabelsInput.checked = true;
+                showErrorBarsInput.checked = false;
+                syncCurveModeControl();
             }
 
             function getSeriesColor(index) {
@@ -571,6 +734,43 @@
                     marker: 'hsla(' + hue + ', 76%, 40%, 0.82)',
                     error: 'hsla(' + hue + ', 78%, 34%, 0.92)'
                 };
+            }
+
+            function interpolateMissingValues(x, y) {
+                var previousIndex = -1;
+                var length = y.length;
+
+                for (var i = 0; i < length; i++) {
+                    if (y[i] !== null) {
+                        previousIndex = i;
+                        continue;
+                    }
+
+                    var gapStart = i;
+                    while (i < length && y[i] === null) {
+                        i++;
+                    }
+
+                    var nextIndex = i < length ? i : -1;
+
+                    for (var j = gapStart; j < i; j++) {
+                        if (previousIndex !== -1 && nextIndex !== -1) {
+                            var xSpan = x[nextIndex] - x[previousIndex];
+                            var ratio = xSpan ? (x[j] - x[previousIndex]) / xSpan : (j - previousIndex) / (nextIndex - previousIndex);
+                            y[j] = y[previousIndex] + ((y[nextIndex] - y[previousIndex]) * ratio);
+                        } else if (previousIndex !== -1) {
+                            y[j] = y[previousIndex];
+                        } else if (nextIndex !== -1) {
+                            y[j] = y[nextIndex];
+                        }
+                    }
+
+                    if (nextIndex === -1) {
+                        break;
+                    }
+
+                    previousIndex = nextIndex;
+                }
             }
 
             function makeTrace(index, pointCount, lineWidth, modeConfig, renderOptions) {
@@ -583,20 +783,57 @@
                 var state = index + 1;
                 var drift = (index % 7) * 4;
                 var wobble = 8 + (index % 5);
+                var labelStride = Math.max(1, Math.floor(pointCount / 6));
+                var clusterCenter = Math.max(2, Math.floor(pointCount * 0.55));
+                var xValue = index * 0.35;
+                var missingValuePercent = renderOptions.missingValuePercent;
 
                 for (var i = 0; i < pointCount; i++) {
                     state = (1664525 * state + 1013904223) >>> 0;
                     var noise = (state / 4294967296) - 0.5;
-                    x[i] = i;
+                    var shouldSkipPoint = false;
+
+                    if (renderOptions.xScale === 'continuous') {
+                        xValue += 0.75 + ((index % 4) * 0.09) + (((i + index) % 7) * 0.11);
+                        x[i] = Number(xValue.toFixed(3));
+                    } else {
+                        x[i] = i;
+                    }
+
+                    if (missingValuePercent > 0) {
+                        var skipScore = ((index + 1) * 131 + (i + 1) * 17 + ((index % 5) * 23)) % 100;
+                        shouldSkipPoint = skipScore < missingValuePercent;
+                    }
+
+                    if (shouldSkipPoint) {
+                        y[i] = renderOptions.missingValueMode === 'zeros' ? 0 : null;
+
+                        if (text) {
+                            text[i] = '';
+                        }
+
+                        if (errorY) {
+                            errorY[i] = null;
+                        }
+
+                        continue;
+                    }
+
                     y[i] = Math.sin(i / 45 + index * 0.17) * wobble + drift + noise * 10;
 
                     if (text) {
-                        text[i] = y[i].toFixed(1);
+                        var isStrideLabel = i % labelStride === 0;
+                        var isClusterLabel = Math.abs(i - clusterCenter) <= 1;
+                        text[i] = isStrideLabel || isClusterLabel ? 'S' + (index + 1) + ' · ' + i : '';
                     }
 
                     if (errorY) {
                         errorY[i] = 0.6 + (i % 5) * 0.15;
                     }
+                }
+
+                if (renderOptions.missingValueMode === 'connect') {
+                    interpolateMissingValues(x, y);
                 }
 
                 var traceModeParts = ['lines'];
@@ -608,12 +845,16 @@
                 }
 
                 var traceMode = traceModeParts.join('+');
+                var chartOrientation = renderOptions.chartOrientation;
+                var traceX = chartOrientation === 'horizontal' ? y : x;
+                var traceY = chartOrientation === 'horizontal' ? x : y;
                 var trace = {
                     type: modeConfig.traceType,
                     mode: traceMode,
                     name: 'sample' + (index + 1),
-                    x: x,
-                    y: y,
+                    x: traceX,
+                    y: traceY,
+                    connectgaps: renderOptions.missingValueMode === 'connect',
                     line: {
                         width: lineWidth,
                         shape: modeConfig.curve.shape,
@@ -631,15 +872,15 @@
 
                 if (renderOptions.showLabels) {
                     trace.text = text;
-                    trace.textposition = 'top center';
+                    trace.textposition = renderOptions.labelPosition;
                     trace.textfont = {
-                        size: 9,
+                        size: pointCount <= 120 ? 11 : 9,
                         color: '#16313f'
                     };
                 }
 
                 if (renderOptions.showErrorBars) {
-                    trace.error_y = {
+                    trace[chartOrientation === 'horizontal' ? 'error_x' : 'error_y'] = {
                         type: 'data',
                         array: errorY,
                         visible: true,
@@ -701,15 +942,24 @@
 
             function setRunningState(isRunning) {
                 startBtn.disabled = isRunning;
+                labelDemoBtn.disabled = isRunning;
                 modeSelect.disabled = isRunning;
                 curveModeSelect.disabled = isRunning;
                 seriesCountInput.disabled = isRunning;
                 pointCountInput.disabled = isRunning;
                 pauseMsInput.disabled = isRunning;
                 lineWidthInput.disabled = isRunning;
+                missingValueModeSelect.disabled = isRunning;
+                missingValuePercentInput.disabled = isRunning;
+                chartOrientationSelect.disabled = isRunning;
+                labelPositionSelect.disabled = isRunning;
+                modebarVisibilitySelect.disabled = isRunning;
+                modebarPositionSelect.disabled = isRunning;
+                modebarOrientationSelect.disabled = isRunning;
                 showMarkersInput.disabled = isRunning;
                 showLabelsInput.disabled = isRunning;
                 showErrorBarsInput.disabled = isRunning;
+                xScaleSelect.disabled = isRunning;
             }
 
             function resetLogAndStats(modeConfig) {
@@ -719,22 +969,42 @@
             }
 
             function createLayout(modeConfig) {
+                var renderOptions = getRenderOptions();
+                var modebarOptions = getModebarOptions();
+                var sourceAxisTitle = renderOptions.xScale === 'continuous' ? 'Continuous X Value' : 'Point Index';
+                var xAxisTitle = renderOptions.chartOrientation === 'horizontal' ? 'Value' : sourceAxisTitle;
+                var yAxisTitle = renderOptions.chartOrientation === 'horizontal' ? sourceAxisTitle : 'Value';
+
                 return {
                     title: {
                         text: modeConfig.title
                     },
                     paper_bgcolor: '#ffffff',
                     plot_bgcolor: '#ffffff',
-                    margin: { t: 72, r: 24, b: 56, l: 64 },
-                    showlegend: false,
+                    margin: { t: 72, r: 180, b: 56, l: 64 },
+                    showlegend: true,
+                    legend: {
+                        x: 1.02,
+                        xanchor: 'left',
+                        y: 1,
+                        yanchor: 'top',
+                        bgcolor: 'rgba(255, 255, 255, 0.92)',
+                        bordercolor: '#d4e2ea',
+                        borderwidth: 1,
+                        font: { size: 11 }
+                    },
                     xaxis: {
-                        title: { text: 'Point Index' },
+                        title: { text: xAxisTitle },
                         rangeslider: { visible: modeConfig.showRangeSlider },
                         zeroline: false
                     },
                     yaxis: {
-                        title: { text: 'Value' },
+                        title: { text: yAxisTitle },
                         zeroline: false
+                    },
+                    modebar: {
+                        orientation: modebarOptions.orientation,
+                        position: modebarOptions.position
                     }
                 };
             }
@@ -759,9 +1029,12 @@
             }
 
             async function initializeChart(modeConfig, pointCount) {
+                var modebarOptions = getModebarOptions();
+
                 await Plotly.newPlot(chart, [], createLayout(modeConfig), {
                     responsive: true,
-                    displaylogo: false
+                    displaylogo: false,
+                    displayModeBar: modebarOptions.visibility
                 });
 
                 if (modeConfig.traceType !== 'scattergl') {
@@ -793,6 +1066,7 @@
                 var pauseMs = Number(pauseMsInput.value) || 0;
                 var lineWidth = Number(lineWidthInput.value) || 1;
                 var renderOptions = getRenderOptions();
+                var modebarOptions = getModebarOptions();
 
                 stopRequested = false;
                 resetLogAndStats(modeConfig);
@@ -803,8 +1077,16 @@
 
                 log('Starting progressive add: mode=' + modeConfig.mode +
                     ' curve=' + modeConfig.curve.label +
+                    ' xScale=' + renderOptions.xScale +
+                    ' missingValueMode=' + renderOptions.missingValueMode +
+                    ' missingValuePercent=' + renderOptions.missingValuePercent +
+                    ' chartOrientation=' + renderOptions.chartOrientation +
+                    ' modebarVisibility=' + modebarOptions.visibility +
+                    ' modebarPosition=' + modebarOptions.position +
+                    ' modebarOrientation=' + modebarOptions.orientation +
                     ' markers=' + renderOptions.showMarkers +
                     ' labels=' + renderOptions.showLabels +
+                    ' labelPosition=' + renderOptions.labelPosition +
                     ' errorBars=' + renderOptions.showErrorBars +
                     ' ' + seriesCount + ' series x ' + pointCount + ' points');
 
@@ -870,6 +1152,15 @@
                 });
             });
 
+            labelDemoBtn.addEventListener('click', function () {
+                applyLabelDemoPreset();
+                resetChart().catch(function (error) {
+                    console.error(error);
+                    log('[error] ' + (error && error.stack ? error.stack : error));
+                    setStatus('Preset failed');
+                });
+            });
+
             resetBtn.addEventListener('click', function () {
                 resetChart().catch(function (error) {
                     console.error(error);
@@ -889,6 +1180,12 @@
 
             window.addEventListener('load', function () {
                 syncCurveModeControl();
+
+                if (!webglSupported) {
+                    log('WebGL is unavailable in this browser. ScatterGL modes are disabled and the demo will use SVG scatter modes instead.');
+                }
+
+                applyLabelDemoPreset();
                 resetChart().catch(function (error) {
                     console.error(error);
                     log('[error] ' + (error && error.stack ? error.stack : error));

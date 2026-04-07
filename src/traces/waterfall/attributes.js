@@ -17,6 +17,7 @@ function directionAttrs(dirTxt) {
                 editType: 'style',
                 description: 'Sets the marker color of all ' + dirTxt + ' values.'
             }),
+            blendmode: barAttrs.marker.blendmode,
             line: {
                 color: extendFlat({}, barAttrs.marker.line.color, {
                     arrayOk: false,
@@ -37,6 +38,7 @@ function directionAttrs(dirTxt) {
 }
 
 module.exports = {
+    blendmode: baseAttrs.blendmode,
     measure: {
         valType: 'data_array',
         dflt: [],
@@ -119,6 +121,7 @@ module.exports = {
     connector: {
         line: {
             color: extendFlat({}, lineAttrs.color, { dflt: Color.defaultLine }),
+            blendmode: lineAttrs.blendmode,
             width: extendFlat({}, lineAttrs.width, {
                 editType: 'plot' // i.e. to adjust bars is mode: 'between'. See https://github.com/plotly/plotly.js/issues/3787
             }),

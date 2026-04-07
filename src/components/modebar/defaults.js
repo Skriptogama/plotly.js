@@ -14,6 +14,7 @@ module.exports = function supplyLayoutDefaults(layoutIn, layoutOut) {
     }
 
     coerce('orientation');
+    coerce('position');
     coerce('bgcolor', Color.addOpacity(layoutOut.paper_bgcolor, 0.5));
     var defaultColor = Color.contrast(Color.rgb(layoutOut.modebar.bgcolor));
     coerce('color', Color.addOpacity(defaultColor, 0.3));

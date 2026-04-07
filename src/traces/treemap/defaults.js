@@ -17,6 +17,8 @@ module.exports = function supplyDefaults(traceIn, traceOut, defaultColor, layout
         return Lib.coerce(traceIn, traceOut, attributes, attr, dflt);
     }
 
+    coerce('blendmode');
+
     var labels = coerce('labels');
     var parents = coerce('parents');
 

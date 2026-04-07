@@ -21,21 +21,21 @@ function style(gd) {
     var fullLayout = gd._fullLayout;
 
     // trace styling
-    s.style('opacity', function(d) { return d[0].trace.opacity; })
+    s.style('opacity', function (d) { return d[0].trace.opacity; })
 
-    // for gapless (either stacked or neighboring grouped) bars use
-    // crispEdges to turn off antialiasing so an artificial gap
-    // isn't introduced.
-    .each(function(d) {
-        if((fullLayout.barmode === 'stack' && barcount > 1) ||
+        // for gapless (either stacked or neighboring grouped) bars use
+        // crispEdges to turn off antialiasing so an artificial gap
+        // isn't introduced.
+        .each(function (d) {
+            if ((fullLayout.barmode === 'stack' && barcount > 1) ||
                 (fullLayout.bargap === 0 &&
-                 fullLayout.bargroupgap === 0 &&
-                 !d[0].trace.marker.line.width)) {
-            d3.select(this).attr('shape-rendering', 'crispEdges');
-        }
-    });
+                    fullLayout.bargroupgap === 0 &&
+                    !d[0].trace.marker.line.width)) {
+                d3.select(this).attr('shape-rendering', 'crispEdges');
+            }
+        });
 
-    s.selectAll('g.points').each(function(d) {
+    s.selectAll('g.points').each(function (d) {
         var sel = d3.select(this);
         var trace = d[0].trace;
         stylePoints(sel, trace, gd);
@@ -50,7 +50,7 @@ function stylePoints(sel, trace, gd) {
 }
 
 function styleTextPoints(sel, trace, gd) {
-    sel.selectAll('text').each(function(d) {
+    sel.selectAll('text').each(function (d) {
         var tx = d3.select(this);
         var font = Lib.ensureUniformFontSize(gd, determineFont(tx, d, trace, gd));
 
@@ -61,7 +61,7 @@ function styleTextPoints(sel, trace, gd) {
 function styleOnSelect(gd, cd, sel) {
     var trace = cd[0].trace;
 
-    if(trace.selectedpoints) {
+    if (trace.selectedpoints) {
         stylePointsInSelectionMode(sel, trace, gd);
     } else {
         stylePoints(sel, trace, gd);
@@ -75,15 +75,15 @@ function stylePointsInSelectionMode(s, trace, gd) {
 }
 
 function styleTextInSelectionMode(txs, trace, gd) {
-    txs.each(function(d) {
+    txs.each(function (d) {
         var tx = d3.select(this);
         var font;
 
-        if(d.selected) {
+        if (d.selected) {
             font = Lib.ensureUniformFontSize(gd, determineFont(tx, d, trace, gd));
 
             var selectedFontColor = trace.selected.textfont && trace.selected.textfont.color;
-            if(selectedFontColor) {
+            if (selectedFontColor) {
                 font.color = selectedFontColor;
             }
 
@@ -98,10 +98,10 @@ function determineFont(tx, d, trace, gd) {
     var layoutFont = gd._fullLayout.font;
     var textFont = trace.textfont;
 
-    if(tx.classed('bartext-inside')) {
+    if (tx.classed('bartext-inside')) {
         var barColor = getBarColor(d, trace);
         textFont = getInsideTextFont(trace, d.i, layoutFont, barColor);
-    } else if(tx.classed('bartext-outside')) {
+    } else if (tx.classed('bartext-outside')) {
         textFont = getOutsideTextFont(trace, d.i, layoutFont);
     }
 
@@ -110,18 +110,19 @@ function determineFont(tx, d, trace, gd) {
 
 function getTextFont(trace, index, defaultValue) {
     return getFontValue(
-      attributeTextFont, trace.textfont, index, defaultValue);
+        attributeTextFont, trace.textfont, index, defaultValue);
 }
 
 function getInsideTextFont(trace, index, layoutFont, barColor) {
     var defaultFont = getTextFont(trace, index, layoutFont);
 
     var wouldFallBackToLayoutFont =
-      (trace._input.textfont === undefined || trace._input.textfont.color === undefined) ||
-      (Array.isArray(trace.textfont.color) && trace.textfont.color[index] === undefined);
-    if(wouldFallBackToLayoutFont) {
+        (trace._input.textfont === undefined || trace._input.textfont.color === undefined) ||
+        (Array.isArray(trace.textfont.color) && trace.textfont.color[index] === undefined);
+    if (wouldFallBackToLayoutFont) {
         defaultFont = {
             color: Color.contrast(barColor),
+            blendmode: defaultFont.blendmode,
             family: defaultFont.family,
             size: defaultFont.size,
             weight: defaultFont.weight,
@@ -134,13 +135,13 @@ function getInsideTextFont(trace, index, layoutFont, barColor) {
     }
 
     return getFontValue(
-      attributeInsideTextFont, trace.insidetextfont, index, defaultFont);
+        attributeInsideTextFont, trace.insidetextfont, index, defaultFont);
 }
 
 function getOutsideTextFont(trace, index, layoutFont) {
     var defaultFont = getTextFont(trace, index, layoutFont);
     return getFontValue(
-      attributeOutsideTextFont, trace.outsidetextfont, index, defaultFont);
+        attributeOutsideTextFont, trace.outsidetextfont, index, defaultFont);
 }
 
 function getFontValue(attributeDefinition, attributeValue, index, defaultValue) {
@@ -149,6 +150,7 @@ function getFontValue(attributeDefinition, attributeValue, index, defaultValue) 
     var familyValue = helpers.getValue(attributeValue.family, index);
     var sizeValue = helpers.getValue(attributeValue.size, index);
     var colorValue = helpers.getValue(attributeValue.color, index);
+    var blendmodeValue = helpers.getValue(attributeValue.blendmode, index);
     var weightValue = helpers.getValue(attributeValue.weight, index);
     var styleValue = helpers.getValue(attributeValue.style, index);
     var variantValue = helpers.getValue(attributeValue.variant, index);
@@ -158,11 +160,13 @@ function getFontValue(attributeDefinition, attributeValue, index, defaultValue) 
 
     return {
         family: helpers.coerceString(
-          attributeDefinition.family, familyValue, defaultValue.family),
+            attributeDefinition.family, familyValue, defaultValue.family),
         size: helpers.coerceNumber(
-          attributeDefinition.size, sizeValue, defaultValue.size),
+            attributeDefinition.size, sizeValue, defaultValue.size),
         color: helpers.coerceColor(
-          attributeDefinition.color, colorValue, defaultValue.color),
+            attributeDefinition.color, colorValue, defaultValue.color),
+        blendmode: helpers.coerceString(
+            attributeDefinition.blendmode, blendmodeValue, defaultValue.blendmode),
         weight: helpers.coerceString(
             attributeDefinition.weight, weightValue, defaultValue.weight),
         style: helpers.coerceString(
@@ -179,7 +183,7 @@ function getFontValue(attributeDefinition, attributeValue, index, defaultValue) 
 }
 
 function getBarColor(cd, trace) {
-    if(trace.type === 'waterfall') {
+    if (trace.type === 'waterfall') {
         return trace[cd.dir].marker.color;
     }
     return cd.mcc || cd.mc || trace.marker.color;

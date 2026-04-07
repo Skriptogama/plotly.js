@@ -122,7 +122,7 @@ module.exports = function sceneUpdate(gd, subplot) {
             if (scene.line2d && scene.line2d.destroy) scene.line2d.destroy();
             if (scene.select2d && scene.select2d.destroy) scene.select2d.destroy();
             if (scene.glText) {
-                scene.glText.forEach(function (text) {
+                scene.glText.forEach(function(text) {
                     if (text.destroy) text.destroy();
                 });
             }

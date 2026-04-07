@@ -1,5 +1,7 @@
 'use strict';
 
+var baseAttrs = require('../../plots/attributes');
+var blendMode = require('../../lib/blend_mode');
 var makeFillcolorAttr = require('../scatter/fillcolor_attribute');
 var scatterAttrs = require('../scatter/attributes');
 var barAttrs = require('../bar/attributes');
@@ -12,6 +14,7 @@ var scatterMarkerAttrs = scatterAttrs.marker;
 var scatterMarkerLineAttrs = scatterMarkerAttrs.line;
 
 module.exports = {
+    blendmode: baseAttrs.blendmode,
     y: {
         valType: 'data_array',
         editType: 'calc+clearAxisTypes',
@@ -316,6 +319,7 @@ module.exports = {
         },
         symbol: extendFlat({}, scatterMarkerAttrs.symbol, { arrayOk: false, editType: 'plot' }),
         opacity: extendFlat({}, scatterMarkerAttrs.opacity, { arrayOk: false, dflt: 1, editType: 'style' }),
+        blendmode: extendFlat({}, scatterMarkerAttrs.blendmode, { arrayOk: false, editType: 'style' }),
         angle: extendFlat({}, scatterMarkerAttrs.angle, { arrayOk: false, editType: 'calc' }),
         size: extendFlat({}, scatterMarkerAttrs.size, { arrayOk: false, editType: 'calc' }),
         color: extendFlat({}, scatterMarkerAttrs.color, { arrayOk: false, editType: 'style' }),
@@ -352,6 +356,9 @@ module.exports = {
             editType: 'style',
             description: 'Sets the color of line bounding the box(es).'
         },
+        blendmode: blendMode.attr({
+            description: 'Sets how the box outline and mean lines blend with content drawn underneath them.'
+        }),
         width: {
             valType: 'number',
             min: 0,
@@ -363,6 +370,9 @@ module.exports = {
     },
 
     fillcolor: makeFillcolorAttr(),
+    fillblendmode: blendMode.attr({
+        description: 'Sets how the box fill blends with content drawn underneath it.'
+    }),
 
     whiskerwidth: {
         valType: 'number',

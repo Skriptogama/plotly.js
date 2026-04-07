@@ -63,6 +63,7 @@ var attrs = (module.exports = overrideAll(
             smoothing: scatterLineAttrs.smoothing,
             tension: scatterLineAttrs.tension,
             alpha: scatterLineAttrs.alpha,
+            blendmode: scatterLineAttrs.blendmode,
             dash: {
                 valType: 'enumerated',
                 values: sortObjectKeys(DASHES),
@@ -78,6 +79,7 @@ var attrs = (module.exports = overrideAll(
             sizemin: scatterMarkerAttrs.sizemin,
             sizemode: scatterMarkerAttrs.sizemode,
             opacity: scatterMarkerAttrs.opacity,
+            blendmode: scatterMarkerAttrs.blendmode,
             colorbar: scatterMarkerAttrs.colorbar,
             line: extendFlat({}, colorScaleAttrs('marker.line'), {
                 width: scatterMarkerLineAttrs.width
@@ -86,6 +88,7 @@ var attrs = (module.exports = overrideAll(
         connectgaps: scatterAttrs.connectgaps,
         fill: extendFlat({}, scatterAttrs.fill, { dflt: 'none' }),
         fillcolor: makeFillcolorAttr(),
+        fillblendmode: scatterAttrs.fillblendmode,
 
         // no hoveron
 
@@ -98,6 +101,7 @@ var attrs = (module.exports = overrideAll(
             textfont: scatterAttrs.unselected.textfont
         },
 
+        blendmode: baseAttrs.blendmode,
         opacity: baseAttrs.opacity
     },
     'calc',

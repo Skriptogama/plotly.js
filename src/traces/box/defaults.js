@@ -19,6 +19,7 @@ function supplyDefaults(traceIn, traceOut, defaultColor, layout) {
     handlePeriodDefaults(traceIn, traceOut, layout, coerce);
     coerce('xhoverformat');
     coerce('yhoverformat');
+    coerce('blendmode');
 
     var hasPreCompStats = traceOut._hasPreCompStats;
 
@@ -28,8 +29,10 @@ function supplyDefaults(traceIn, traceOut, defaultColor, layout) {
     }
 
     coerce('line.color', (traceIn.marker || {}).color || defaultColor);
+    coerce('line.blendmode');
     coerce('line.width');
     coerce('fillcolor', Color.addOpacity(traceOut.line.color, 0.5));
+    coerce('fillblendmode');
 
     var boxmeanDflt = false;
     if (hasPreCompStats) {
@@ -251,6 +254,7 @@ function handlePointsDefaults(traceIn, traceOut, coerce, opts) {
 
         coerce('marker.symbol');
         coerce('marker.opacity');
+        coerce('marker.blendmode');
         coerce('marker.size');
         coerce('marker.angle');
 

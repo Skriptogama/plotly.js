@@ -43,7 +43,7 @@ The main plotly.js bundles weight in at:
 
 | plotly.js | plotly.min.js | plotly.min.js + gzip | plotly-with-meta.js |
 |-----------|---------------|----------------------|---------------------|
-| 10.8 MB | 4.6 MB | 1.4 MB | 11.1 MB |
+| 10.8 MB | 4.7 MB | 1.4 MB | 11.1 MB |
 
 #### CDN links
 > https://cdn.plot.ly/plotly-3.4.0-fork.skriptogama.js
@@ -91,7 +91,7 @@ The `basic` partial bundle contains trace modules `bar`, `pie` and `scatter`.
 
 | Raw size | Minified size | Minified + gzip size |
 |------|-----------------|------------------------|
-| 2.7 MB | 1.1 MB | 368.3 kB |
+| 2.7 MB | 1.1 MB | 371.3 kB |
 
 #### CDN links
 > https://cdn.plot.ly/plotly-basic-3.4.0-fork.skriptogama.js
@@ -114,7 +114,7 @@ The `cartesian` partial bundle contains trace modules `bar`, `box`, `contour`, `
 
 | Raw size | Minified size | Minified + gzip size |
 |------|-----------------|------------------------|
-| 3.4 MB | 1.4 MB | 466.6 kB |
+| 3.4 MB | 1.4 MB | 469.4 kB |
 
 #### CDN links
 > https://cdn.plot.ly/plotly-cartesian-3.4.0-fork.skriptogama.js
@@ -137,7 +137,7 @@ The `geo` partial bundle contains trace modules `choropleth`, `scatter` and `sca
 
 | Raw size | Minified size | Minified + gzip size |
 |------|-----------------|------------------------|
-| 3 MB | 1.2 MB | 418.7 kB |
+| 3 MB | 1.2 MB | 421.2 kB |
 
 #### CDN links
 > https://cdn.plot.ly/plotly-geo-3.4.0-fork.skriptogama.js
@@ -160,7 +160,7 @@ The `gl3d` partial bundle contains trace modules `cone`, `isosurface`, `mesh3d`,
 
 | Raw size | Minified size | Minified + gzip size |
 |------|-----------------|------------------------|
-| 4.2 MB | 1.6 MB | 536.6 kB |
+| 4.2 MB | 1.6 MB | 539.6 kB |
 
 #### CDN links
 > https://cdn.plot.ly/plotly-gl3d-3.4.0-fork.skriptogama.js
@@ -183,7 +183,7 @@ The `gl2d` partial bundle contains trace modules `parcoords`, `scatter`, `scatte
 
 | Raw size | Minified size | Minified + gzip size |
 |------|-----------------|------------------------|
-| 3.9 MB | 1.5 MB | 527.7 kB |
+| 3.9 MB | 1.5 MB | 531.5 kB |
 
 #### CDN links
 > https://cdn.plot.ly/plotly-gl2d-3.4.0-fork.skriptogama.js
@@ -206,7 +206,7 @@ The `mapbox` partial bundle contains trace modules `choroplethmapbox`, `densitym
 
 | Raw size | Minified size | Minified + gzip size |
 |------|-----------------|------------------------|
-| 4.6 MB | 1.9 MB | 584.3 kB |
+| 4.6 MB | 1.9 MB | 587.1 kB |
 
 #### CDN links
 > https://cdn.plot.ly/plotly-mapbox-3.4.0-fork.skriptogama.js
@@ -229,7 +229,7 @@ The `finance` partial bundle contains trace modules `bar`, `candlestick`, `funne
 
 | Raw size | Minified size | Minified + gzip size |
 |------|-----------------|------------------------|
-| 2.9 MB | 1.2 MB | 402 kB |
+| 3 MB | 1.2 MB | 405.6 kB |
 
 #### CDN links
 > https://cdn.plot.ly/plotly-finance-3.4.0-fork.skriptogama.js

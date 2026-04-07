@@ -7,10 +7,12 @@ var Lib = require('../../lib');
 var ensureSingle = Lib.ensureSingle;
 var identity = Lib.identity;
 var Drawing = require('../../components/drawing');
+var PointLabel = require('../../components/labels/point_label');
 
 var subTypes = require('./subtypes');
 var linePoints = require('./line_points');
 var linkTraces = require('./link_traces');
+var makeBubbleSizeFn = require('./make_bubble_size_func');
 var polygonTester = require('../../lib/polygon').tester;
 
 module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transitionOpts, makeOnCompleteCallback, replotOpts) {
@@ -23,6 +25,8 @@ module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transition
 
     // Link traces so the z-order of fill layers is correct
     var cdscatterSorted = linkTraces(gd, plotinfo, cdscatter);
+
+    plotinfo._autoTextState = buildAutoTextState(plotinfo, cdscatterSorted);
 
     join = scatterLayer.selectAll('g.trace')
         .data(cdscatterSorted, function (d) { return d[0].trace.uid; });
@@ -75,6 +79,97 @@ module.exports = function plot(gd, plotinfo, cdscatter, scatterLayer, transition
     // remove paths that didn't get used
     scatterLayer.selectAll('path:not([d])').remove();
 };
+
+function buildAutoTextState(plotinfo, cdscatterSorted) {
+    if (plotinfo.isRangePlot) return null;
+
+    var hasAuto = false;
+    var i;
+
+    for (i = 0; i < cdscatterSorted.length; i++) {
+        var trace = (cdscatterSorted[i][0] || {}).trace;
+        if (trace && PointLabel.hasAutoTextPosition(trace.textposition)) {
+            hasAuto = true;
+            break;
+        }
+    }
+
+    if (!hasAuto) return null;
+
+    var state = PointLabel.createState({
+        left: 0,
+        top: 0,
+        right: plotinfo.xaxis._length,
+        bottom: plotinfo.yaxis._length
+    });
+
+    for (i = 0; i < cdscatterSorted.length; i++) {
+        addMarkerObstacles(state, plotinfo, cdscatterSorted[i]);
+    }
+
+    return state;
+}
+
+function addMarkerObstacles(state, plotinfo, cdscatter) {
+    var trace = (cdscatter[0] || {}).trace;
+    if (!trace || !subTypes.hasMarkers(trace)) return;
+
+    var xa = plotinfo.xaxis;
+    var ya = plotinfo.yaxis;
+    var radiusFn = makeMarkerRadiusFn(trace);
+
+    for (var i = 0; i < cdscatter.length; i++) {
+        var d = cdscatter[i];
+        var radius = radiusFn(d);
+
+        if (!radius) continue;
+
+        PointLabel.addPointObstacle(state, xa.c2p(d.x), ya.c2p(d.y), radius / 0.8 + 1);
+    }
+}
+
+function makeMarkerRadiusFn(trace) {
+    if (subTypes.isBubble(trace)) {
+        var bubbleRadiusFn = makeBubbleSizeFn(trace);
+        return function (d) {
+            var size = d.ms;
+            return size ? bubbleRadiusFn(size) : 0;
+        };
+    }
+
+    return function (d) {
+        var size = d.ms;
+        if (size === undefined) size = trace.marker.size;
+        return size ? size / 2 : 0;
+    };
+}
+
+function getTextFontSize(d, trace) {
+    var fontSize = d.ts || trace.textfont.size;
+    return Lib.isNumeric(fontSize) && fontSize > 0 ? fontSize : 0;
+}
+
+function getPointTextValue(d, trace) {
+    var text = d.tx;
+    if (text === undefined) text = trace.text;
+    return text;
+}
+
+function resolveAutoTextPosition(state, trace, d, xa, ya) {
+    var requested = PointLabel.getPointTextPosition(d.tp || trace.textposition, d.i);
+    if (requested !== PointLabel.AUTO_TEXT_POSITION) return requested;
+
+    var text = getPointTextValue(d, trace);
+    if (!text && text !== 0) return false;
+
+    return PointLabel.placePointLabel(state, {
+        x: xa.c2p(d.x),
+        y: ya.c2p(d.y),
+        text: text,
+        fontSize: getTextFontSize(d, trace),
+        markerPad: d.mrc ? d.mrc / 0.8 + 1 : 2
+    });
+}
 
 function createFills(gd, traceJoin, plotinfo) {
     traceJoin.each(function (d) {
@@ -610,10 +705,17 @@ function plotOne(gd, idx, plotinfo, cdscatter, cdscatterAll, element, transition
             hasNode = Drawing.translatePoint(d, sel, xa, ya);
 
             if (hasNode) {
+                if (plotinfo._autoTextState) {
+                    d._autoTextPosition = resolveAutoTextPosition(plotinfo._autoTextState, trace, d, xa, ya);
+                } else {
+                    delete d._autoTextPosition;
+                }
+
                 if (plotinfo.layerClipId) {
                     Drawing.hideOutsideRangePoint(d, g, xa, ya, trace.xcalendar, trace.ycalendar);
                 }
             } else {
+                delete d._autoTextPosition;
                 g.remove();
             }
         });

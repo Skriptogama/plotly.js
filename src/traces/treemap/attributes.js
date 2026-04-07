@@ -11,6 +11,7 @@ var extendFlat = require('../../lib/extend').extendFlat;
 var pattern = require('../../components/drawing/attributes').pattern;
 
 module.exports = {
+    blendmode: sunburstAttrs.blendmode,
     labels: sunburstAttrs.labels,
     parents: sunburstAttrs.parents,
 
@@ -100,6 +101,7 @@ module.exports = {
                 editType: 'calc'
             },
 
+            blendmode: sunburstAttrs.marker.blendmode,
             colors: sunburstAttrs.marker.colors,
 
             pattern: pattern,

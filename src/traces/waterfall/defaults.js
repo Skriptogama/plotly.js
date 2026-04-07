@@ -16,6 +16,7 @@ var TOTALS_COLOR = '#4499FF';
 
 function handleDirection(coerce, direction, defaultColor) {
     coerce(direction + '.marker.color', defaultColor);
+    coerce(direction + '.marker.blendmode');
     coerce(direction + '.marker.line.color', Color.defaultLine);
     coerce(direction + '.marker.line.width');
 }
@@ -34,6 +35,7 @@ function supplyDefaults(traceIn, traceOut, defaultColor, layout) {
     handlePeriodDefaults(traceIn, traceOut, layout, coerce);
     coerce('xhoverformat');
     coerce('yhoverformat');
+    coerce('blendmode');
 
     coerce('measure');
 
@@ -74,6 +76,7 @@ function supplyDefaults(traceIn, traceOut, defaultColor, layout) {
         var connectorLineWidth = coerce('connector.line.width');
         if (connectorLineWidth) {
             coerce('connector.line.color');
+            coerce('connector.line.blendmode');
             coerce('connector.line.dash');
         }
     }

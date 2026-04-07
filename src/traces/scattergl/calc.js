@@ -39,12 +39,12 @@ module.exports = function calc(gd, trace) {
     trace._x = x;
     trace._y = y;
 
-    if(trace.xperiodalignment) {
+    if (trace.xperiodalignment) {
         trace._origX = origX;
         trace._xStarts = xObj.starts;
         trace._xEnds = xObj.ends;
     }
-    if(trace.yperiodalignment) {
+    if (trace.yperiodalignment) {
         trace._origY = origY;
         trace._yStarts = yObj.starts;
         trace._yEnds = yObj.ends;
@@ -54,27 +54,27 @@ module.exports = function calc(gd, trace) {
     // regl-scatter2d uses NaNs for bad/missing values
     var positions = new Array(len2);
     var _ids = new Array(len);
-    for(i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
         positions[i * 2] = x[i] === BADNUM ? NaN : x[i];
         positions[i * 2 + 1] = y[i] === BADNUM ? NaN : y[i];
         // Pre-compute ids.
         _ids[i] = i;
     }
 
-    if(xa.type === 'log') {
-        for(i = 0; i < len2; i += 2) {
+    if (xa.type === 'log') {
+        for (i = 0; i < len2; i += 2) {
             positions[i] = xa.c2l(positions[i]);
         }
     }
-    if(ya.type === 'log') {
-        for(i = 1; i < len2; i += 2) {
+    if (ya.type === 'log') {
+        for (i = 1; i < len2; i += 2) {
             positions[i] = ya.c2l(positions[i]);
         }
     }
 
     // we don't build a tree for log axes since it takes long to convert log2px
     // and it is also
-    if(hasTooManyPoints && (xa.type !== 'log' && ya.type !== 'log')) {
+    if (hasTooManyPoints && (xa.type !== 'log' && ya.type !== 'log')) {
         // FIXME: delegate this to webworker
         stash.tree = cluster(positions);
     } else {
@@ -91,22 +91,22 @@ module.exports = function calc(gd, trace) {
     // use average marker size instead to speed things up.
     setFirstScatter(fullLayout, trace);
     var ppad;
-    if(!hasTooManyPoints) {
+    if (!hasTooManyPoints) {
         ppad = calcMarkerSize(trace, len);
-    } else if(opts.marker) {
+    } else if (opts.marker) {
         ppad = opts.marker.sizeAvg || Math.max(opts.marker.size, 3);
     }
     calcAxisExpansion(gd, trace, xa, ya, x, y, ppad);
-    if(opts.errorX) expandForErrorBars(trace, xa, opts.errorX);
-    if(opts.errorY) expandForErrorBars(trace, ya, opts.errorY);
+    if (opts.errorX) expandForErrorBars(trace, xa, opts.errorX);
+    if (opts.errorY) expandForErrorBars(trace, ya, opts.errorY);
 
     // set flags to create scene renderers
-    if(opts.fill && !scene.fill2d) scene.fill2d = true;
-    if(opts.marker && !scene.scatter2d) scene.scatter2d = true;
-    if(opts.line && !scene.line2d) scene.line2d = true;
-    if((opts.errorX || opts.errorY) && !scene.error2d) scene.error2d = true;
-    if(opts.text && !scene.glText) scene.glText = true;
-    if(opts.marker) opts.marker.snap = len;
+    if (opts.fill && !scene.fill2d) scene.fill2d = true;
+    if (opts.marker && !scene.scatter2d) scene.scatter2d = true;
+    if (opts.line && !scene.line2d) scene.line2d = true;
+    if ((opts.errorX || opts.errorY) && !scene.error2d) scene.error2d = true;
+    if (opts.text && !scene.glText) scene.glText = true;
+    if (opts.marker) opts.marker.snap = len;
 
     scene.lineOptions.push(opts.line);
     scene.errorXOptions.push(opts.errorX);
@@ -133,12 +133,12 @@ module.exports = function calc(gd, trace) {
     stash.positions = positions;
     scene.count++;
 
-    return [{x: false, y: false, t: stash, trace: trace}];
+    return [{ x: false, y: false, t: stash, trace: trace }];
 };
 
 function expandForErrorBars(trace, ax, opts) {
     var extremes = trace._extremes[ax._id];
-    var errExt = findExtremes(ax, opts._bnds, {padded: true});
+    var errExt = findExtremes(ax, opts._bnds, { padded: true });
     extremes.min = extremes.min.concat(errExt.min);
     extremes.max = extremes.max.concat(errExt.max);
 }
@@ -146,44 +146,44 @@ function expandForErrorBars(trace, ax, opts) {
 function sceneOptions(gd, subplot, trace, positions, x, y) {
     var opts = convert.style(gd, trace);
 
-    if(opts.marker) {
+    if (opts.marker) {
         opts.marker.positions = positions;
     }
 
-    if(opts.line && positions.length > 1) {
+    if (opts.line && positions.length > 1) {
         Lib.extendFlat(
             opts.line,
             convert.linePositions(gd, trace, positions)
         );
     }
 
-    if(opts.errorX || opts.errorY) {
+    if (opts.errorX || opts.errorY) {
         var errors = convert.errorBarPositions(gd, trace, positions, x, y);
 
-        if(opts.errorX) {
+        if (opts.errorX) {
             Lib.extendFlat(opts.errorX, errors.x);
         }
-        if(opts.errorY) {
+        if (opts.errorY) {
             Lib.extendFlat(opts.errorY, errors.y);
         }
     }
 
-    if(opts.text) {
+    if (opts.text) {
         var baseTextPosition = convert.textPosition(gd, trace, opts.text, opts.marker);
 
         Lib.extendFlat(
             opts.text,
-            {positions: positions},
+            { positions: positions },
             baseTextPosition
         );
         Lib.extendFlat(
             opts.textSel,
-            {positions: positions},
+            { positions: positions },
             convert.textPosition(gd, trace, opts.text, opts.markerSel, baseTextPosition)
         );
         Lib.extendFlat(
             opts.textUnsel,
-            {positions: positions},
+            { positions: positions },
             convert.textPosition(gd, trace, opts.text, opts.markerUnsel, baseTextPosition)
         );
     }

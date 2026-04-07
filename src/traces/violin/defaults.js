@@ -15,39 +15,46 @@ module.exports = function supplyDefaults(traceIn, traceOut, defaultColor, layout
     }
 
     boxDefaults.handleSampleDefaults(traceIn, traceOut, coerce, layout);
-    if(traceOut.visible === false) return;
+    if (traceOut.visible === false) return;
+
+    coerce('blendmode');
 
     coerce('bandwidth');
     coerce('side');
 
     var width = coerce('width');
-    if(!width) {
+    if (!width) {
         coerce('scalegroup', traceOut.name);
         coerce('scalemode');
     }
 
     var span = coerce('span');
     var spanmodeDflt;
-    if(Array.isArray(span)) spanmodeDflt = 'manual';
+    if (Array.isArray(span)) spanmodeDflt = 'manual';
     coerce('spanmode', spanmodeDflt);
 
     var lineColor = coerce('line.color', (traceIn.marker || {}).color || defaultColor);
+    coerce('line.blendmode');
     var lineWidth = coerce('line.width');
     var fillColor = coerce('fillcolor', Color.addOpacity(traceOut.line.color, 0.5));
+    coerce('fillblendmode');
 
-    boxDefaults.handlePointsDefaults(traceIn, traceOut, coerce, {prefix: ''});
+    boxDefaults.handlePointsDefaults(traceIn, traceOut, coerce, { prefix: '' });
 
     var boxWidth = coerce2('box.width');
     var boxFillColor = coerce2('box.fillcolor', fillColor);
+    coerce2('box.fillblendmode');
     var boxLineColor = coerce2('box.line.color', lineColor);
+    coerce2('box.line.blendmode');
     var boxLineWidth = coerce2('box.line.width', lineWidth);
     var boxVisible = coerce('box.visible', Boolean(boxWidth || boxFillColor || boxLineColor || boxLineWidth));
-    if(!boxVisible) traceOut.box = {visible: false};
+    if (!boxVisible) traceOut.box = { visible: false };
 
     var meanLineColor = coerce2('meanline.color', lineColor);
+    coerce2('meanline.blendmode');
     var meanLineWidth = coerce2('meanline.width', lineWidth);
     var meanLineVisible = coerce('meanline.visible', Boolean(meanLineColor || meanLineWidth));
-    if(!meanLineVisible) traceOut.meanline = {visible: false};
+    if (!meanLineVisible) traceOut.meanline = { visible: false };
 
     coerce('quartilemethod');
     coerce('zorder');

@@ -34,6 +34,7 @@ function handleLabelsAndValues(labels, values) {
 }
 
 function handleMarkerDefaults(traceIn, traceOut, layout, coerce, isPie) {
+    coerce('marker.blendmode');
     var lineWidth = coerce('marker.line.width');
     if (lineWidth) {
         coerce(
@@ -53,6 +54,8 @@ function supplyDefaults(traceIn, traceOut, defaultColor, layout) {
     function coerce(attr, dflt) {
         return Lib.coerce(traceIn, traceOut, attributes, attr, dflt);
     }
+
+    coerce('blendmode');
 
     var labels = coerce('labels');
     var values = coerce('values');

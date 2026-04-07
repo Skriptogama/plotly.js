@@ -8,6 +8,7 @@ dist/*.LICENSE.txt
 dist/*.css
 
 logs/*
+refs/*
 
 npm-debug.log*
 *.sublime*

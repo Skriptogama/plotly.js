@@ -4,6 +4,7 @@ var d3 = require('@plotly/d3');
 
 var Plots = require('../../plots/plots');
 var Fx = require('../../components/fx');
+var BlendMode = require('../../lib/blend_mode');
 var Color = require('../../components/color');
 var Drawing = require('../../components/drawing');
 var Lib = require('../../lib');
@@ -122,13 +123,13 @@ function plot(gd, cdModule) {
                         slicePath.attr(
                             'd',
                             'M' +
-                                (cx + hole * pt.px0[0]) +
-                                ',' +
-                                (cy + hole * pt.px0[1]) +
-                                arc(pt.px0, pt.pxmid, false, hole) +
-                                arc(pt.pxmid, pt.px0, false, hole) +
-                                'Z' +
-                                outerCircle
+                            (cx + hole * pt.px0[0]) +
+                            ',' +
+                            (cy + hole * pt.px0[1]) +
+                            arc(pt.px0, pt.pxmid, false, hole) +
+                            arc(pt.pxmid, pt.px0, false, hole) +
+                            'Z' +
+                            outerCircle
                         );
                     } else slicePath.attr('d', outerCircle);
                 } else {
@@ -139,16 +140,16 @@ function plot(gd, cdModule) {
                         slicePath.attr(
                             'd',
                             'M' +
-                                (cx + hole * pt.px1[0]) +
-                                ',' +
-                                (cy + hole * pt.px1[1]) +
-                                arc(pt.px1, pt.px0, false, hole) +
-                                'l' +
-                                rim * pt.px0[0] +
-                                ',' +
-                                rim * pt.px0[1] +
-                                outerArc +
-                                'Z'
+                            (cx + hole * pt.px1[0]) +
+                            ',' +
+                            (cy + hole * pt.px1[1]) +
+                            arc(pt.px1, pt.px0, false, hole) +
+                            'l' +
+                            rim * pt.px0[0] +
+                            ',' +
+                            rim * pt.px0[1] +
+                            outerArc +
+                            'Z'
                         );
                     } else {
                         slicePath.attr('d', 'M' + cx + ',' + cy + 'l' + pt.px0[0] + ',' + pt.px0[1] + outerArc + 'Z');
@@ -273,8 +274,8 @@ function plot(gd, cdModule) {
                 titleText.attr(
                     'transform',
                     strTranslate(transform.x, transform.y) +
-                        strScale(Math.min(1, transform.scale)) +
-                        strTranslate(transform.tx, transform.ty)
+                    strScale(Math.min(1, transform.scale)) +
+                    strTranslate(transform.tx, transform.ty)
                 );
             });
 
@@ -368,6 +369,7 @@ function plotTextLines(slices, trace) {
         }
 
         Lib.ensureSingle(sliceTop, 'path', 'textline')
+            .call(BlendMode.applySingleStyle, trace.outsidetextfont.blendmode || trace.textfont.blendmode, pt.i, trace.blendmode)
             .call(Color.stroke, trace.outsidetextfont.color)
             .attr({
                 'stroke-width': Math.min(2, trace.outsidetextfont.size / 8),
@@ -525,6 +527,11 @@ function attachFxHandlers(sliceTop, gd, cd) {
 }
 
 function determineOutsideTextFont(trace, pt, layoutFont) {
+    var blendmode =
+        helpers.castOption(trace.outsidetextfont.blendmode, pt.pts) ||
+        helpers.castOption(trace.textfont.blendmode, pt.pts) ||
+        layoutFont.blendmode;
+
     var color =
         helpers.castOption(trace.outsidetextfont.color, pt.pts) ||
         helpers.castOption(trace.textfont.color, pt.pts) ||
@@ -571,6 +578,7 @@ function determineOutsideTextFont(trace, pt, layoutFont) {
         layoutFont.shadow;
 
     return {
+        blendmode: blendmode,
         color: color,
         family: family,
         size: size,
@@ -585,6 +593,10 @@ function determineOutsideTextFont(trace, pt, layoutFont) {
 
 function determineInsideTextFont(trace, pt, layoutFont) {
     var customColor = helpers.castOption(trace.insidetextfont.color, pt.pts);
+    var blendmode =
+        helpers.castOption(trace.insidetextfont.blendmode, pt.pts) ||
+        helpers.castOption(trace.textfont.blendmode, pt.pts) ||
+        layoutFont.blendmode;
     if (!customColor && trace._input.textfont) {
         // Why not simply using trace.textfont? Because if not set, it
         // defaults to layout.font which has a default color. But if
@@ -634,6 +646,7 @@ function determineInsideTextFont(trace, pt, layoutFont) {
         layoutFont.shadow;
 
     return {
+        blendmode: blendmode,
         color: customColor || Color.contrast(pt.color),
         family: family,
         size: size,

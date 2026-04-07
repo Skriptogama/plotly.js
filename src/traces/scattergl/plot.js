@@ -9,6 +9,7 @@ var createRegl = require('@plotly/regl');
 var Lib = require('../../lib');
 var selectMode = require('../../components/dragelement/helpers').selectMode;
 var prepareRegl = require('../../lib/prepare_regl');
+var PointLabel = require('../../components/labels/point_label');
 
 var subTypes = require('../scatter/subtypes');
 var linkTraces = require('../scatter/link_traces');
@@ -41,6 +42,124 @@ function getViewport(fullLayout, xaxis, yaxis, plotGlPixelRatio) {
 function getRangeViewport(subplot) {
     var canvas = subplot.rangeSliderCanvas;
     return [0, 0, canvas.width, canvas.height];
+}
+
+function getTextValue(text, index) {
+    return Lib.isArrayOrTypedArray(text) ? text[index] : text;
+}
+
+function getTextStyleValue(value, index) {
+    if (!Lib.isArrayOrTypedArray(value)) return value;
+
+    var pointValue = value[index];
+    return pointValue !== undefined ? pointValue : value[0];
+}
+
+function getTextOffsetValue(offset, index) {
+    if (!Array.isArray(offset)) return offset;
+
+    if (!Array.isArray(offset[0])) return offset;
+
+    var pointOffset = offset[index];
+    return pointOffset !== undefined ? pointOffset : offset[0];
+}
+
+function getMarkerPad(markerOptions, index) {
+    if (!markerOptions) return 2;
+
+    var size = markerOptions.sizes ? markerOptions.sizes[index] : markerOptions.size;
+    return size ? size / 0.8 + 1 : 2;
+}
+
+function refreshAutoTextPlacements(subplot, cdata, scene) {
+    if (subplot.isRangePlot || !scene.glText) return;
+
+    var xaxis = subplot.xaxis;
+    var yaxis = subplot.yaxis;
+    var state = PointLabel.createState({
+        left: 0,
+        top: 0,
+        right: xaxis._length,
+        bottom: yaxis._length
+    });
+    var i;
+    var j;
+
+    for (i = 0; i < cdata.length; i++) {
+        var cdscatter = cdata[i];
+        var trace = ((cdscatter || [])[0] || {}).trace;
+        var stash = ((cdscatter || [])[0] || {}).t;
+        var markerOptions = scene.markerOptions[i];
+
+        if (!trace || !stash || !subTypes.hasMarkers(trace) || !markerOptions) continue;
+
+        for (j = 0; j < stash.x.length; j++) {
+            PointLabel.addPointObstacle(state, xaxis.c2p(stash.x[j]), yaxis.c2p(stash.y[j]), getMarkerPad(markerOptions, j));
+        }
+    }
+
+    for (i = 0; i < cdata.length; i++) {
+        var cd0 = ((cdata[i] || [])[0] || {});
+        var trace0 = cd0.trace;
+        var stash0 = cd0.t;
+        var textOptions = scene.textOptions[i];
+
+        if (!trace0 || !stash0 || !textOptions || !PointLabel.hasAutoTextPosition(trace0.textposition)) continue;
+
+        var sourceText = textOptions._autoTextSource;
+        if (sourceText === undefined) {
+            sourceText = Lib.isArrayOrTypedArray(textOptions.text) ? textOptions.text.slice() : textOptions.text;
+            textOptions._autoTextSource = sourceText;
+        }
+
+        var count = stash0.x.length;
+        var align = new Array(count);
+        var baseline = new Array(count);
+        var offset = new Array(count);
+        var text = new Array(count);
+
+        for (j = 0; j < count; j++) {
+            var requested = PointLabel.getPointTextPosition(trace0.textposition, j);
+            var textValue = getTextValue(sourceText, j);
+            var font = getTextStyleValue(textOptions.font, j) || {};
+            var fontSize = font.size || 0;
+
+            text[j] = textValue;
+
+            if (requested === PointLabel.AUTO_TEXT_POSITION && (textValue || textValue === 0)) {
+                var markerPad = getMarkerPad(scene.markerOptions[i], j);
+                var chosen = PointLabel.placePointLabel(state, {
+                    x: xaxis.c2p(stash0.x[j]),
+                    y: yaxis.c2p(stash0.y[j]),
+                    text: textValue,
+                    fontSize: fontSize,
+                    markerPad: markerPad
+                });
+
+                if (chosen) {
+                    var glPos = PointLabel.getGlTextPosition(chosen, fontSize, markerPad);
+                    align[j] = glPos.align;
+                    baseline[j] = glPos.baseline;
+                    offset[j] = glPos.offset;
+                } else {
+                    align[j] = getTextStyleValue(textOptions.align, j);
+                    baseline[j] = getTextStyleValue(textOptions.baseline, j);
+                    offset[j] = getTextOffsetValue(textOptions.offset, j);
+                    text[j] = '';
+                }
+            } else {
+                align[j] = getTextStyleValue(textOptions.align, j);
+                baseline[j] = getTextStyleValue(textOptions.baseline, j);
+                offset[j] = getTextOffsetValue(textOptions.offset, j);
+            }
+        }
+
+        textOptions.align = align;
+        textOptions.baseline = baseline;
+        textOptions.offset = offset;
+        textOptions.text = text;
+        scene.glText[i].update(textOptions);
+    }
 }
 
 function sceneOptions(gd, trace, stash) {
@@ -513,6 +632,8 @@ var exports = module.exports = function plot(gd, subplot, cdata) {
 
         scene._incrementalStartCount = null;
     }
+
+    refreshAutoTextPlacements(subplot, cdata, scene);
 
     // form batch arrays, and check for selected points
     var dragmode = fullLayout.dragmode;

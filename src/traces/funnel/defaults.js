@@ -23,6 +23,7 @@ function supplyDefaults(traceIn, traceOut, defaultColor, layout) {
     handlePeriodDefaults(traceIn, traceOut, layout, coerce);
     coerce('xhoverformat');
     coerce('yhoverformat');
+    coerce('blendmode');
 
     coerce('orientation', traceOut.y && !traceOut.x ? 'v' : 'h');
     coerce('offset');
@@ -49,16 +50,19 @@ function supplyDefaults(traceIn, traceOut, defaultColor, layout) {
     }
 
     var markerColor = coerce('marker.color', defaultColor);
+    coerce('marker.blendmode');
     coerce('marker.line.color', Color.defaultLine);
     coerce('marker.line.width');
 
     var connectorVisible = coerce('connector.visible');
     if (connectorVisible) {
         coerce('connector.fillcolor', defaultFillColor(markerColor));
+        coerce('connector.fillblendmode');
 
         var connectorLineWidth = coerce('connector.line.width');
         if (connectorLineWidth) {
             coerce('connector.line.color');
+            coerce('connector.line.blendmode');
             coerce('connector.line.dash');
         }
     }

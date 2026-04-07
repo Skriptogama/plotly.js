@@ -1228,6 +1228,44 @@ describe('end-to-end scatter tests', function () {
     });
 });
 
+describe('scatter auto text placement', function () {
+    var gd;
+
+    beforeEach(function () {
+        gd = createGraphDiv();
+    });
+
+    afterEach(function () {
+        Plotly.purge(gd);
+        destroyGraphDiv();
+    });
+
+    it('should accept textposition auto and render text points', function (done) {
+        Plotly.newPlot(gd, [{
+            type: 'scatter',
+            mode: 'markers+text',
+            x: [0.5, 0.505],
+            y: [0.5, 0.5],
+            text: ['ALPHA', 'BETA'],
+            textposition: 'auto',
+            textfont: { size: 24 },
+            marker: { size: 28 }
+        }], {
+            width: 320,
+            height: 320,
+            xaxis: { range: [0, 1], autorange: false },
+            yaxis: { range: [0, 1], autorange: false }
+        })
+            .then(function () {
+                expect(d3SelectAll('.textpoint').size()).toBe(2);
+                d3SelectAll('.textpoint text').each(function () {
+                    expect(d3Select(this).attr('text-anchor')).toBeTruthy();
+                });
+            })
+            .then(done, done.fail);
+    });
+});
+
 describe('Text templates on scatter traces:', function () {
     checkTextTemplate([{
         type: 'scatter',

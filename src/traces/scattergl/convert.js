@@ -8,7 +8,9 @@ var parseSvgPath = require('parse-svg-path');
 var Registry = require('../../registry');
 var Lib = require('../../lib');
 var isArrayOrTypedArray = Lib.isArrayOrTypedArray;
+var BlendMode = require('../../lib/blend_mode');
 var Drawing = require('../../components/drawing');
+var PointLabel = require('../../components/labels/point_label');
 var AxisIDs = require('../../plots/cartesian/axis_ids');
 
 var formatColor = require('../../lib/gl_format_color').formatColor;
@@ -80,7 +82,8 @@ function convertStyle(gd, trace) {
             overlay: true,
             thickness: trace.line.width * plotGlPixelRatio,
             color: trace.line.color,
-            opacity: trace.opacity
+            opacity: trace.opacity,
+            blend: BlendMode.getGLBlend(BlendMode.getContainerBlendMode(trace, trace.line, 'line'))
         };
 
         var dashes = (constants.DASHES[trace.line.dash] || [1]).slice();
@@ -102,7 +105,8 @@ function convertStyle(gd, trace) {
         opts.fill = {
             closed: true,
             fill: trace.fillcolor,
-            thickness: 0
+            thickness: 0,
+            blend: BlendMode.getGLBlend(trace.fillblendmode, 0, BlendMode.getTraceBlendMode(trace))
         };
     }
 
@@ -171,11 +175,16 @@ function convertTextStyle(gd, trace) {
     }
 
     optsOut.opacity = trace.opacity;
+    optsOut.blend = BlendMode.getGLBlend(BlendMode.getContainerBlendMode(trace, textfontIn, 'textfont'));
     optsOut.font = {};
     optsOut.align = [];
     optsOut.baseline = [];
 
     for (i = 0; i < textPos.length; i++) {
+        if (textPos[i] === PointLabel.AUTO_TEXT_POSITION) {
+            textPos[i] = 'top center';
+        }
+
         var tp = textPos[i].split(/\s+/);
 
         switch (tp[1]) {
@@ -266,6 +275,8 @@ function convertMarkerStyle(gd, trace) {
     var multiOpacity = isArrayOrTypedArray(optsIn.opacity);
     var multiSize = isArrayOrTypedArray(optsIn.size);
     var multiLineWidth = isArrayOrTypedArray(optsIn.line.width);
+
+    optsOut.blend = BlendMode.getGLBlend(BlendMode.getContainerBlendMode(trace, optsIn, 'marker'));
 
     var isOpen;
     if (!multiSymbol) isOpen = helpers.isOpenSymbol(optsIn.symbol);
@@ -448,7 +459,8 @@ function convertErrorBarStyle(trace, target, plotGlPixelRatio) {
     var optsOut = {
         capSize: target.width * 2 * plotGlPixelRatio,
         lineWidth: target.thickness * plotGlPixelRatio,
-        color: target.color
+        color: target.color,
+        blend: BlendMode.getGLBlend(target.blendmode, 0, BlendMode.getTraceBlendMode(trace))
     };
 
     if (target.copy_ystyle) {

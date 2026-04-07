@@ -12,6 +12,15 @@ module.exports = {
         editType: 'modebar',
         description: 'Sets the orientation of the modebar.'
     },
+    position: {
+        valType: 'enumerated',
+        values: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+        dflt: 'top-right',
+        editType: 'modebar',
+        description: [
+            'Sets which corner of the graph the modebar is positioned in.'
+        ].join(' ')
+    },
     bgcolor: {
         valType: 'color',
         editType: 'modebar',

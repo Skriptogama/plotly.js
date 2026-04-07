@@ -8,6 +8,7 @@ var tinycolor = require('tinycolor2');
 
 var Registry = require('../../registry');
 var Color = require('../color');
+var BlendMode = require('../../lib/blend_mode');
 var Colorscale = require('../colorscale');
 var strTranslate = Lib.strTranslate;
 var svgTextUtils = require('../../lib/svg_text_utils');
@@ -20,6 +21,7 @@ var DESELECTDIM = require('../../constants/interactions').DESELECTDIM;
 var subTypes = require('../../traces/scatter/subtypes');
 var makeBubbleSizeFn = require('../../traces/scatter/make_bubble_size_func');
 var appendArrayPointValue = require('../../components/fx/helpers').appendArrayPointValue;
+var PointLabel = require('../labels/point_label');
 
 var drawing = (module.exports = {});
 
@@ -41,6 +43,7 @@ drawing.font = function (s, font) {
     if (family) s.style('font-family', family);
     if (size + 1) s.style('font-size', size + 'px');
     if (color) s.call(Color.fill, color);
+    BlendMode.applyStyle(s, font.blendmode);
 
     if (weight) s.style('font-weight', weight);
     if (style) s.style('font-style', style);
@@ -169,9 +172,11 @@ drawing.crispRound = function (gd, lineWidth, dflt) {
 drawing.singleLineStyle = function (d, s, lw, lc, ld) {
     s.style('fill', 'none');
     var line = (((d || [])[0] || {}).trace || {}).line || {};
+    var trace = (((d || [])[0] || {}).trace || {});
     var lw1 = lw || line.width || 0;
     var dash = ld || line.dash || '';
 
+    BlendMode.applySingleStyle(s, BlendMode.getContainerBlendMode(trace, line, 'line'));
     Color.stroke(s, lc || line.color);
     drawing.dashLine(s, dash, lw1);
 };
@@ -179,10 +184,12 @@ drawing.singleLineStyle = function (d, s, lw, lc, ld) {
 drawing.lineGroupStyle = function (s, lw, lc, ld) {
     s.style('fill', 'none').each(function (d) {
         var line = (((d || [])[0] || {}).trace || {}).line || {};
+        var trace = (((d || [])[0] || {}).trace || {});
         var lw1 = lw || line.width || 0;
         var dash = ld || line.dash || '';
 
         d3.select(this)
+            .call(BlendMode.applySingleStyle, BlendMode.getContainerBlendMode(trace, line, 'line'))
             .call(Color.stroke, lc || line.color)
             .call(drawing.dashLine, dash, lw1);
     });
@@ -220,6 +227,7 @@ drawing.dashStyle = function (dash, lineWidth) {
 function setFillStyle(sel, trace, gd, forLegend) {
     var markerPattern = trace.fillpattern;
     var fillgradient = trace.fillgradient;
+    BlendMode.applySingleStyle(sel, trace.fillblendmode || ((trace._input || {}).fillblendmode), 0, BlendMode.getTraceBlendMode(trace));
     var pAttr = drawing.getPatternAttr;
     var patternShape = markerPattern && (pAttr(markerPattern.shape, 0, '') || pAttr(markerPattern.path, 0, ''));
     if (patternShape) {
@@ -895,6 +903,7 @@ drawing.singlePointStyle = function (d, sel, trace, fns, gd, pt) {
 
     if (pt && pt.i >= 0 && d.i === undefined) d.i = pt.i;
 
+    BlendMode.applySingleStyle(sel, BlendMode.getContainerBlendMode(trace, marker, 'marker'), d.i, BlendMode.getTraceBlendMode(trace));
     sel.style('opacity', fns.selectedOpacityFn ? fns.selectedOpacityFn(d) : d.mo === undefined ? marker.opacity : d.mo);
 
     if (fns.ms2mrc) {
@@ -1246,9 +1255,10 @@ var TEXTOFFSETSIGN = {
 
 function textPointPosition(s, textPosition, fontSize, markerRadius, dontTouchParent) {
     var group = d3.select(s.node().parentNode);
+    var normalizedPosition = PointLabel.normalizeTextPosition(textPosition);
 
-    var v = textPosition.indexOf('top') !== -1 ? 'top' : textPosition.indexOf('bottom') !== -1 ? 'bottom' : 'middle';
-    var h = textPosition.indexOf('left') !== -1 ? 'end' : textPosition.indexOf('right') !== -1 ? 'start' : 'middle';
+    var v = normalizedPosition.indexOf('top') !== -1 ? 'top' : normalizedPosition.indexOf('bottom') !== -1 ? 'bottom' : 'middle';
+    var h = PointLabel.getSvgTextAnchor(normalizedPosition);
 
     // if markers are shown, offset a little more than
     // the nominal marker size
@@ -1310,9 +1320,18 @@ drawing.textPointStyle = function (s, trace, gd) {
             });
         }
 
-        var pos = d.tp || trace.textposition;
+        var pos = d._autoTextPosition;
+        if (pos === undefined) pos = d.tp || trace.textposition;
         var fontSize = extracTextFontSize(d, trace);
         var fontColor = selectedTextColorFn ? selectedTextColorFn(d) : d.tc || trace.textfont.color;
+
+        if (pos === false) {
+            p.style('display', 'none').text('');
+            d3.select(this.parentNode).attr('transform', null);
+            return;
+        }
+
+        p.style('display', null);
 
         p.call(drawing.font, {
             family: d.tf || trace.textfont.family,
@@ -1323,7 +1342,8 @@ drawing.textPointStyle = function (s, trace, gd) {
             lineposition: d.tE || trace.textfont.lineposition,
             shadow: d.tS || trace.textfont.shadow,
             size: fontSize,
-            color: fontColor
+            color: fontColor,
+            blendmode: BlendMode.resolve(BlendMode.getContainerBlendMode(trace, trace.textfont, 'textfont'), d.i, BlendMode.getTraceBlendMode(trace))
         })
             .text(text)
             .call(svgTextUtils.convertToTspans, gd)
@@ -1339,8 +1359,16 @@ drawing.selectedTextStyle = function (s, trace) {
     s.each(function (d) {
         var tx = d3.select(this);
         var tc = fns.selectedTextColorFn(d);
-        var tp = d.tp || trace.textposition;
+        var tp = d._autoTextPosition;
+        if (tp === undefined) tp = d.tp || trace.textposition;
         var fontSize = extracTextFontSize(d, trace);
+
+        if (tp === false) {
+            tx.style('display', 'none');
+            return;
+        }
+
+        tx.style('display', null);
 
         Color.fill(tx, tc);
         var dontTouchParent = Registry.traceIs(trace, 'bar-like');

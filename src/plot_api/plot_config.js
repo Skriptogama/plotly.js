@@ -263,14 +263,16 @@ var configAttributes = {
 
     displayModeBar: {
         valType: 'enumerated',
-        values: ['hover', true, false],
+        values: ['hover', 'hover-position', true, false],
         dflt: 'hover',
         description: [
             'Determines the mode bar display mode.',
             'If *true*, the mode bar is always visible.',
             'If *false*, the mode bar is always hidden.',
             'If *hover*, the mode bar is visible while the mouse cursor',
-            'is on the graph container.'
+            'is on the graph container.',
+            'If *hover-position*, the mode bar is visible only while the',
+            'mouse cursor is over the mode bar corner area itself.'
         ].join(' ')
     },
     showSendToCloud: {
@@ -473,12 +475,12 @@ var configAttributes = {
 var dfltConfig = {};
 
 function crawl(src, target) {
-    for(var k in src) {
+    for (var k in src) {
         var obj = src[k];
-        if(obj.valType) {
+        if (obj.valType) {
             target[k] = obj.dflt;
         } else {
-            if(!target[k]) {
+            if (!target[k]) {
                 target[k] = {};
             }
             crawl(obj, target[k]);

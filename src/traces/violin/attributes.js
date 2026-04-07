@@ -1,10 +1,13 @@
 'use strict';
 
+var baseAttrs = require('../../plots/attributes');
+var blendMode = require('../../lib/blend_mode');
 var boxAttrs = require('../box/attributes');
 var extendFlat = require('../../lib/extend').extendFlat;
 var axisHoverFormat = require('../../plots/cartesian/axis_format_attributes').axisHoverFormat;
 
 module.exports = {
+    blendmode: baseAttrs.blendmode,
     y: boxAttrs.y,
     x: boxAttrs.x,
     x0: boxAttrs.x0,
@@ -99,6 +102,7 @@ module.exports = {
             editType: 'style',
             description: 'Sets the color of line bounding the violin(s).'
         },
+        blendmode: boxAttrs.line.blendmode,
         width: {
             valType: 'number',
             min: 0,
@@ -109,6 +113,7 @@ module.exports = {
         editType: 'plot'
     },
     fillcolor: boxAttrs.fillcolor,
+    fillblendmode: boxAttrs.fillblendmode,
 
     points: extendFlat({}, boxAttrs.boxpoints, {
         description: [
@@ -181,12 +186,16 @@ module.exports = {
             editType: 'style',
             description: 'Sets the inner box plot fill color.'
         },
+        fillblendmode: blendMode.attr({
+            description: 'Sets how the inner box fill blends with content drawn underneath it.'
+        }),
         line: {
             color: {
                 valType: 'color',
                 editType: 'style',
                 description: 'Sets the inner box plot bounding line color.'
             },
+            blendmode: boxAttrs.line.blendmode,
             width: {
                 valType: 'number',
                 min: 0,
@@ -215,6 +224,9 @@ module.exports = {
             editType: 'style',
             description: 'Sets the mean line color.'
         },
+        blendmode: blendMode.attr({
+            description: 'Sets how the mean line blends with content drawn underneath it.'
+        }),
         width: {
             valType: 'number',
             min: 0,

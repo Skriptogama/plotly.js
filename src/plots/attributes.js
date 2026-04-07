@@ -2,6 +2,7 @@
 
 var fontAttrs = require('./font_attributes');
 var fxAttrs = require('../components/fx/attributes');
+var blendMode = require('../lib/blend_mode');
 
 module.exports = {
     type: {
@@ -100,6 +101,9 @@ module.exports = {
         editType: 'style',
         description: 'Sets the opacity of the trace.'
     },
+    blendmode: blendMode.attr({
+        description: 'Sets how this trace blends with content drawn underneath it.'
+    }),
     name: {
         valType: 'string',
         editType: 'style',

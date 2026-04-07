@@ -1,6 +1,7 @@
 /* eslint-env node*/
 
 var path = require('path');
+var fs = require('fs');
 var minimist = require('minimist');
 var constants = require('../../tasks/util/constants');
 const { esbuildConfig } = require('../../esbuild-config.js');
@@ -16,7 +17,9 @@ var argv = minimist(process.argv.slice(4), {
         'randomize',
         'failFast',
         'doNotFailOnEmptyTestSuite',
+        'NoBrowser',
         'Chrome',
+        'Edge',
         'Firefox',
         'verbose',
         'showSkipped',
@@ -25,7 +28,9 @@ var argv = minimist(process.argv.slice(4), {
         'report-dots'
     ],
     alias: {
+        NoBrowser: 'no-browser',
         Chrome: 'chrome',
+        Edge: 'edge',
         Firefox: ['firefox', 'FF'],
         bundleTest: ['bundletest', 'bundle_test'],
         nowatch: 'no-watch',
@@ -150,6 +155,16 @@ if (argv['report-progress'] || argv['report-spec'] || argv['report-dots']) {
 }
 
 var hasSpecReporter = reporters.indexOf('spec') !== -1;
+var edgeChromiumBin = getEdgeChromiumBin();
+var edgeDataDir = path.join(process.env.LOCALAPPDATA || process.env.TEMP || constants.pathToRoot, 'plotly-karma-edge');
+
+try {
+    fs.mkdirSync(edgeDataDir, { recursive: true });
+} catch (e) { }
+
+if (argv.Edge && edgeChromiumBin) {
+    process.env.CHROME_BIN = edgeChromiumBin;
+}
 
 if (!hasSpecReporter && argv.showSkipped) reporters.push('spec');
 if (argv.verbose) reporters.push('verbose');
@@ -272,6 +287,18 @@ func.defaultConfig = {
                 isBundleTest && basename(testFileGlob) === 'no_webgl' ? '--disable-webgl' : ''
             ]
         },
+        _Edge: {
+            base: 'ChromeHeadless',
+            chromeDataDir: edgeDataDir,
+            flags: [
+                '--touch-events',
+                '--window-size=' + argv.width + ',' + argv.height,
+                isCI ? '--ignore-gpu-blocklist' : '',
+                isCI && process.env.GITHUB_ACTIONS ? '--enable-unsafe-swiftshader' : '',
+                isCI && process.env.GITHUB_ACTIONS ? '--no-sandbox' : '',
+                isBundleTest && basename(testFileGlob) === 'no_webgl' ? '--disable-webgl' : ''
+            ]
+        },
         _Firefox: {
             base: 'Firefox',
             flags: ['--width=' + argv.width, '--height=' + argv.height],
@@ -344,8 +371,37 @@ func.defaultConfig.files.push(testFileGlob);
 
 // add browsers
 var browsers = func.defaultConfig.browsers;
-if (argv.Chrome) browsers.push('_Chrome');
-if (argv.Firefox) browsers.push('_Firefox');
-if (browsers.length === 0) browsers.push('_Chrome');
+if (!argv.NoBrowser) {
+    if (argv.Chrome) browsers.push('_Chrome');
+    if (argv.Edge) browsers.push('_Edge');
+    if (argv.Firefox) browsers.push('_Firefox');
+    if (browsers.length === 0) browsers.push('_Chrome');
+}
 
 module.exports = func;
+
+function getEdgeChromiumBin() {
+    var envBin = process.env.CHROME_BIN;
+    if (envBin && /msedge\.exe$/i.test(envBin)) return envBin;
+
+    var prefixes = [
+        process.env.LOCALAPPDATA,
+        process.env.PROGRAMFILES,
+        process.env['PROGRAMFILES(X86)'],
+        process.env.ProgramW6432
+    ];
+    var suffix = path.join('Microsoft', 'Edge', 'Application', 'msedge.exe');
+
+    for (var i = 0; i < prefixes.length; i++) {
+        var prefix = prefixes[i];
+        if (!prefix) continue;
+
+        var candidate = path.join(prefix, suffix);
+        try {
+            fs.accessSync(candidate);
+            return candidate;
+        } catch (e) { }
+    }
+
+    return null;
+}

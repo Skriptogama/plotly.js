@@ -31,6 +31,7 @@ module.exports = function supplyDefaults(traceIn, traceOut, defaultColor, layout
     coerce('yhoverformat');
 
     coerce('zorder');
+    coerce('blendmode');
 
     var stackGroupOpts = handleStackDefaults(traceIn, traceOut, layout, coerce);
     if (layout.scattermode === 'group' && traceOut.orientation === undefined) {
@@ -74,6 +75,7 @@ module.exports = function supplyDefaults(traceIn, traceOut, defaultColor, layout
         handleFillColorDefaults(traceIn, traceOut, defaultColor, coerce, {
             moduleHasFillgradient: true
         });
+        coerce('fillblendmode');
         if (!subTypes.hasLines(traceOut)) handleLineShapeDefaults(traceIn, traceOut, coerce);
         coercePattern(coerce, 'fillpattern', traceOut.fillcolor, false);
     }

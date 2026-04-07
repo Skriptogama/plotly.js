@@ -17,6 +17,7 @@ var textFontAttrs = fontAttrs({
 });
 
 module.exports = {
+    blendmode: baseAttrs.blendmode,
     labels: {
         valType: 'data_array',
         editType: 'calc',
@@ -54,6 +55,7 @@ module.exports = {
     },
 
     marker: {
+        blendmode: baseAttrs.blendmode,
         colors: {
             valType: 'data_array', // TODO 'color_array' ?
             editType: 'calc',

@@ -1956,6 +1956,55 @@ describe('Test plot api', function () {
                 .then(done, done.fail);
         });
 
+        it('@gl should render error bars for incrementally appended scattergl traces', function (done) {
+            var layout = {
+                width: 400,
+                height: 400,
+                margin: { l: 0, r: 0, t: 0, b: 0 },
+                xaxis: { range: [0, 3], autorange: false },
+                yaxis: { range: [0, 5], autorange: false }
+            };
+
+            Plotly.newPlot(gd, [{
+                x: [0.5],
+                y: [1],
+                type: 'scattergl',
+                mode: 'markers',
+                marker: { size: 6, color: 'blue' },
+                error_y: { value: 0.5, thickness: 4, width: 10, color: 'blue' }
+            }], layout)
+                .then(function () {
+                    var scene = gd._fullLayout._plots.xy._scene;
+
+                    spyOn(scene.error2d, 'update').and.callThrough();
+                    spyOn(scene.error2d, 'draw').and.callThrough();
+
+                    return Plotly.addTraces(gd, {
+                        x: [2],
+                        y: [3],
+                        type: 'scattergl',
+                        mode: 'markers',
+                        marker: { size: 6, color: 'red' },
+                        error_y: { value: 1, thickness: 4, width: 12, color: 'red' }
+                    });
+                })
+                .then(function () {
+                    var scene = gd._fullLayout._plots.xy._scene;
+                    var updateBatches = scene.error2d.update.calls.allArgs()
+                        .map(function (args) { return args[0]; })
+                        .filter(function (batch) {
+                            return Array.isArray(batch) && batch.length === 4 && batch[0] === undefined && batch[3] !== undefined;
+                        });
+
+                    expect(scene.count).toBe(2);
+                    expect(scene.errorYOptions[1]).toBeDefined();
+                    expect(updateBatches.length).toBeGreaterThan(0);
+                    expect(updateBatches[0][3]).toBe(scene.errorYOptions[1]);
+                    expect(scene.error2d.draw).toHaveBeenCalledWith(3);
+                })
+                .then(done, done.fail);
+        });
+
         it('@gl should bootstrap scattergl framework when first trace is appended to an empty chart', function (done) {
             Plotly.newPlot(gd, [], {
                 xaxis: { rangeslider: { visible: true } }

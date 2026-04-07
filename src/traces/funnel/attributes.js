@@ -10,6 +10,7 @@ var extendFlat = require('../../lib/extend').extendFlat;
 var Color = require('../../components/color');
 
 module.exports = {
+    blendmode: baseAttrs.blendmode,
     x: barAttrs.x,
     x0: barAttrs.x0,
     dx: barAttrs.dx,
@@ -83,8 +84,10 @@ module.exports = {
             editType: 'style',
             description: ['Sets the fill color.'].join(' ')
         },
+        fillblendmode: baseAttrs.blendmode,
         line: {
             color: extendFlat({}, lineAttrs.color, { dflt: Color.defaultLine }),
+            blendmode: lineAttrs.blendmode,
             width: extendFlat({}, lineAttrs.width, {
                 dflt: 0,
                 editType: 'plot'
