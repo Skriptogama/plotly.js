@@ -3,7 +3,9 @@
 var cartesianConstants = require('../../plots/cartesian/constants');
 var fontAttrs = require('../../plots/font_attributes');
 var scatterLineAttrs = require('../../traces/scatter/attributes').line;
-var dash = require('../drawing/attributes').dash;
+var drawAttrs = require('../drawing/attributes');
+var dash = drawAttrs.dash;
+var linecap = drawAttrs.linecap;
 var extendFlat = require('../../lib/extend').extendFlat;
 var templatedArray = require('../../plot_api/plot_template').templatedArray;
 var axisPlaceableObjs = require('../../constants/axis_placeable_objects');
@@ -303,6 +305,7 @@ module.exports = templatedArray('shape', {
         color: extendFlat({}, scatterLineAttrs.color, { editType: 'arraydraw' }),
         width: extendFlat({}, scatterLineAttrs.width, { editType: 'calc+arraydraw' }),
         dash: extendFlat({}, dash, { editType: 'arraydraw' }),
+        cap: extendFlat({}, linecap, { editType: 'arraydraw' }),
         editType: 'calc+arraydraw'
     },
     fillcolor: {

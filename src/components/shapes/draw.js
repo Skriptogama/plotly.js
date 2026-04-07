@@ -49,16 +49,16 @@ function draw(gd) {
     fullLayout._shapeUpperLayer.selectAll('text').remove();
     fullLayout._shapeLowerLayer.selectAll('text').remove();
 
-    for(var k in fullLayout._plots) {
+    for (var k in fullLayout._plots) {
         var shapelayer = fullLayout._plots[k].shapelayer;
-        if(shapelayer) {
+        if (shapelayer) {
             shapelayer.selectAll('path').remove();
             shapelayer.selectAll('text').remove();
         }
     }
 
-    for(var i = 0; i < fullLayout.shapes.length; i++) {
-        if(fullLayout.shapes[i].visible === true) {
+    for (var i = 0; i < fullLayout.shapes.length; i++) {
+        if (fullLayout.shapes[i].visible === true) {
             drawOne(gd, i);
         }
     }
@@ -89,18 +89,18 @@ function drawOne(gd, index) {
 
     // this shape is gone - quit now after deleting it
     // TODO: use d3 idioms instead of deleting and redrawing every time
-    if(!options._input || options.visible !== true) return;
+    if (!options._input || options.visible !== true) return;
 
     const isMultiAxisShape = Array.isArray(options.xref) || Array.isArray(options.yref);
 
-    if(options.layer === 'above') {
+    if (options.layer === 'above') {
         drawShape(gd._fullLayout._shapeUpperLayer);
-    } else if(options.xref.includes('paper') || options.yref.includes('paper')) {
+    } else if (options.xref.includes('paper') || options.yref.includes('paper')) {
         drawShape(gd._fullLayout._shapeLowerLayer);
-    } else if(options.layer === 'between' && !isMultiAxisShape) {
+    } else if (options.layer === 'between' && !isMultiAxisShape) {
         drawShape(plotinfo.shapelayerBetween);
     } else {
-        if(plotinfo._hadPlotinfo) {
+        if (plotinfo._hadPlotinfo) {
             var mainPlot = plotinfo.mainplotinfo || plotinfo;
             drawShape(mainPlot.shapelayer);
         } else {
@@ -124,7 +124,8 @@ function drawOne(gd, index) {
         var lineColor = options.line.width ? options.line.color : 'rgba(0,0,0,0)';
         var lineWidth = options.line.width;
         var lineDash = options.line.dash;
-        if(!lineWidth && options.editable === true) {
+        var lineCap = options.line.cap;
+        if (!lineWidth && options.editable === true) {
             // ensure invisible border to activate the shape
             lineWidth = 5;
             lineDash = 'solid';
@@ -135,7 +136,7 @@ function drawOne(gd, index) {
         var isActiveShape = couldHaveActiveShape(gd) &&
             options.editable && gd._fullLayout._activeShapeIndex === index;
 
-        if(isActiveShape) {
+        if (isActiveShape) {
             fillColor = isOpen ? 'rgba(0,0,0,0)' :
                 gd._fullLayout.activeshape.fillcolor;
 
@@ -151,7 +152,7 @@ function drawOne(gd, index) {
             .style('opacity', opacity)
             .call(Color.stroke, lineColor)
             .call(Color.fill, fillColor)
-            .call(Drawing.dashLine, lineDash, lineWidth);
+            .call(Drawing.dashLine, lineDash, lineWidth, lineCap);
 
         setClipPath(shapeGroup, gd, options);
 
@@ -159,9 +160,9 @@ function drawOne(gd, index) {
         drawLabel(gd, index, options, shapeGroup);
 
         var editHelpers;
-        if(isActiveShape || gd._context.edits.shapePosition) editHelpers = arrayEditor(gd.layout, 'shapes', options);
+        if (isActiveShape || gd._context.edits.shapePosition) editHelpers = arrayEditor(gd.layout, 'shapes', options);
 
-        if(isActiveShape) {
+        if (isActiveShape) {
             path.style({
                 cursor: 'move',
             });
@@ -179,15 +180,15 @@ function drawOne(gd, index) {
             // display polygons on the screen
             displayOutlines(polygons, path, dragOptions);
         } else {
-            if(gd._context.edits.shapePosition) {
+            if (gd._context.edits.shapePosition) {
                 setupDragElement(gd, path, options, index, shapeLayer, editHelpers);
-            } else if(options.editable === true) {
+            } else if (options.editable === true) {
                 path.style('pointer-events',
                     (isOpen || Color.opacity(fillColor) * opacity <= 0.5) ? 'stroke' : 'all'
                 );
             }
         }
-        path.node().addEventListener('click', function() { return activateShape(gd, path); });
+        path.node().addEventListener('click', function () { return activateShape(gd, path); });
     }
 }
 
@@ -203,11 +204,11 @@ function setClipPath(shapePath, gd, shapeOptions) {
     const yref = shapeOptions.yref;
 
     // For multi-axis shapes, create a custom clip path from axis bounds
-    if(Array.isArray(xref) || Array.isArray(yref)) {
+    if (Array.isArray(xref) || Array.isArray(yref)) {
         const clipId = 'clip' + gd._fullLayout._uid + 'shape' + shapeOptions._index;
         const rect = getMultiAxisClipRect(gd, xref, yref);
 
-        Lib.ensureSingleById(gd._fullLayout._clips, 'clipPath', clipId, function(s) {
+        Lib.ensureSingleById(gd._fullLayout._clips, 'clipPath', clipId, function (s) {
             s.append('rect');
         }).select('rect').attr(rect);
 
@@ -228,20 +229,20 @@ function getMultiAxisClipRect(gd, xref, yref) {
             .filter(Boolean);
 
         // If no valid axes, return the bounds of the larger plot area
-        if(!axes.length) {
+        if (!axes.length) {
             return isVertical ? [gs.t, gs.t + gs.h] : [gs.l, gs.l + gs.w];
         }
 
         // Otherwise, we find all find and return the smallest start point
         // and largest end point to be used as the clip bounds
-        const startBounds = axes.map(function(ax) { return ax._offset; });
-        const endBounds = axes.map(function(ax) { return ax._offset + ax._length; });
+        const startBounds = axes.map(function (ax) { return ax._offset; });
+        const endBounds = axes.map(function (ax) { return ax._offset + ax._length; });
         return [Math.min(...startBounds), Math.max(...endBounds)];
     }
 
     const xb = getBounds(xref, false);
     const yb = getBounds(yref, true);
-    return {x: xb[0], y: yb[0], width: xb[1] - xb[0], height: yb[1] - yb[0]};
+    return { x: xb[0], y: yb[0], width: xb[1] - xb[0], height: yb[1] - yb[0] };
 }
 
 function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHelpers) {
@@ -270,11 +271,11 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
     var shiftXEnd = shapeOptions.x1shift;
     var shiftYStart = shapeOptions.y0shift;
     var shiftYEnd = shapeOptions.y1shift;
-    var x2p = function(v, shift) {
+    var x2p = function (v, shift) {
         var dataToPixel = helpers.getDataToPixel(gd, xa, shift, false, xRefType);
         return dataToPixel(v);
     };
-    var y2p = function(v, shift) {
+    var y2p = function (v, shift) {
         var dataToPixel = helpers.getDataToPixel(gd, ya, shift, true, yRefType);
         return dataToPixel(v);
     };
@@ -312,12 +313,12 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
 
         // Helper path for moving
         g.append('path')
-          .attr('d', shapePath.attr('d'))
-          .style({
-              cursor: 'move',
-              'stroke-width': sensoryWidth,
-              'stroke-opacity': '0' // ensure not visible
-          });
+            .attr('d', shapePath.attr('d'))
+            .style({
+                cursor: 'move',
+                'stroke-width': sensoryWidth,
+                'stroke-opacity': '0' // ensure not visible
+            });
 
         // Helper circles for resizing
         var circleStyle = {
@@ -326,40 +327,40 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
         var circleRadius = Math.max(sensoryWidth / 2, minSensoryWidth);
 
         g.append('circle')
-          .attr({
-              'data-line-point': 'start-point',
-              cx: xPixelSized ? x2p(shapeOptions.xanchor) + shapeOptions.x0 : x2p(shapeOptions.x0, shiftXStart),
-              cy: yPixelSized ? y2p(shapeOptions.yanchor) - shapeOptions.y0 : y2p(shapeOptions.y0, shiftYStart),
-              r: circleRadius
-          })
-          .style(circleStyle)
-          .classed('cursor-grab', true);
+            .attr({
+                'data-line-point': 'start-point',
+                cx: xPixelSized ? x2p(shapeOptions.xanchor) + shapeOptions.x0 : x2p(shapeOptions.x0, shiftXStart),
+                cy: yPixelSized ? y2p(shapeOptions.yanchor) - shapeOptions.y0 : y2p(shapeOptions.y0, shiftYStart),
+                r: circleRadius
+            })
+            .style(circleStyle)
+            .classed('cursor-grab', true);
 
         g.append('circle')
-          .attr({
-              'data-line-point': 'end-point',
-              cx: xPixelSized ? x2p(shapeOptions.xanchor) + shapeOptions.x1 : x2p(shapeOptions.x1, shiftXEnd),
-              cy: yPixelSized ? y2p(shapeOptions.yanchor) - shapeOptions.y1 : y2p(shapeOptions.y1, shiftYEnd),
-              r: circleRadius
-          })
-          .style(circleStyle)
-          .classed('cursor-grab', true);
+            .attr({
+                'data-line-point': 'end-point',
+                cx: xPixelSized ? x2p(shapeOptions.xanchor) + shapeOptions.x1 : x2p(shapeOptions.x1, shiftXEnd),
+                cy: yPixelSized ? y2p(shapeOptions.yanchor) - shapeOptions.y1 : y2p(shapeOptions.y1, shiftYEnd),
+                r: circleRadius
+            })
+            .style(circleStyle)
+            .classed('cursor-grab', true);
 
         return g;
     }
 
     function updateDragMode(evt) {
-        if(shouldSkipEdits(gd)) {
+        if (shouldSkipEdits(gd)) {
             dragMode = null;
             return;
         }
 
-        if(isLine) {
-            if(evt.target.tagName === 'path') {
+        if (isLine) {
+            if (evt.target.tagName === 'path') {
                 dragMode = 'move';
             } else {
                 dragMode = evt.target.attributes['data-line-point'].value === 'start-point' ?
-                  'resize-over-start-point' : 'resize-over-end-point';
+                    'resize-over-start-point' : 'resize-over-end-point';
             }
         } else {
             // element might not be on screen at time of setup,
@@ -384,17 +385,17 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
     }
 
     function startDrag(evt) {
-        if(shouldSkipEdits(gd)) return;
+        if (shouldSkipEdits(gd)) return;
 
         // setup update strings and initial values
-        if(xPixelSized) {
+        if (xPixelSized) {
             xAnchor = x2p(shapeOptions.xanchor);
         }
-        if(yPixelSized) {
+        if (yPixelSized) {
             yAnchor = y2p(shapeOptions.yanchor);
         }
 
-        if(shapeOptions.type === 'path') {
+        if (shapeOptions.type === 'path') {
             pathIn = shapeOptions.path;
         } else {
             x0 = xPixelSized ? shapeOptions.x0 : x2p(shapeOptions.x0);
@@ -403,7 +404,7 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
             y1 = yPixelSized ? shapeOptions.y1 : y2p(shapeOptions.y1);
         }
 
-        if(x0 < x1) {
+        if (x0 < x1) {
             w0 = x0;
             optW = 'x0';
             e0 = x1;
@@ -417,7 +418,7 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
 
         // For fixed size shapes take opposing direction of y-axis into account.
         // Hint: For data sized shapes this is done by the y2p function.
-        if((!yPixelSized && y0 < y1) || (yPixelSized && y0 > y1)) {
+        if ((!yPixelSized && y0 < y1) || (yPixelSized && y0 > y1)) {
             n0 = y0;
             optN = 'y0';
             s0 = y1;
@@ -438,7 +439,7 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
     }
 
     function endDrag() {
-        if(shouldSkipEdits(gd)) return;
+        if (shouldSkipEdits(gd)) return;
 
         setCursor(shapePath);
         removeVisualCues(shapeLayer);
@@ -449,41 +450,41 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
     }
 
     function abortDrag() {
-        if(shouldSkipEdits(gd)) return;
+        if (shouldSkipEdits(gd)) return;
 
         removeVisualCues(shapeLayer);
     }
 
     function moveShape(dx, dy) {
-        if(shapeOptions.type === 'path') {
-            var noOp = function(coord) { return coord; };
+        if (shapeOptions.type === 'path') {
+            var noOp = function (coord) { return coord; };
             var moveX = noOp;
             var moveY = noOp;
 
-            if(xPixelSized) {
+            if (xPixelSized) {
                 modifyItem('xanchor', shapeOptions.xanchor = p2x(xAnchor + dx));
             } else {
                 moveX = function moveX(x) { return p2x(x2p(x) + dx); };
-                if(xa && xa.type === 'date') moveX = helpers.encodeDate(moveX);
+                if (xa && xa.type === 'date') moveX = helpers.encodeDate(moveX);
             }
 
-            if(yPixelSized) {
+            if (yPixelSized) {
                 modifyItem('yanchor', shapeOptions.yanchor = p2y(yAnchor + dy));
             } else {
                 moveY = function moveY(y) { return p2y(y2p(y) + dy); };
-                if(ya && ya.type === 'date') moveY = helpers.encodeDate(moveY);
+                if (ya && ya.type === 'date') moveY = helpers.encodeDate(moveY);
             }
 
             modifyItem('path', shapeOptions.path = movePath(pathIn, moveX, moveY));
         } else {
-            if(xPixelSized) {
+            if (xPixelSized) {
                 modifyItem('xanchor', shapeOptions.xanchor = p2x(xAnchor + dx));
             } else {
                 modifyItem('x0', shapeOptions.x0 = p2x(x0 + dx));
                 modifyItem('x1', shapeOptions.x1 = p2x(x1 + dx));
             }
 
-            if(yPixelSized) {
+            if (yPixelSized) {
                 modifyItem('yanchor', shapeOptions.yanchor = p2y(yAnchor + dy));
             } else {
                 modifyItem('y0', shapeOptions.y0 = p2y(y0 + dy));
@@ -497,41 +498,41 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
     }
 
     function resizeShape(dx, dy) {
-        if(isPath) {
+        if (isPath) {
             // TODO: implement path resize, don't forget to update dragMode code
-            var noOp = function(coord) { return coord; };
+            var noOp = function (coord) { return coord; };
             var moveX = noOp;
             var moveY = noOp;
 
-            if(xPixelSized) {
+            if (xPixelSized) {
                 modifyItem('xanchor', shapeOptions.xanchor = p2x(xAnchor + dx));
             } else {
                 moveX = function moveX(x) { return p2x(x2p(x) + dx); };
-                if(xa && xa.type === 'date') moveX = helpers.encodeDate(moveX);
+                if (xa && xa.type === 'date') moveX = helpers.encodeDate(moveX);
             }
 
-            if(yPixelSized) {
+            if (yPixelSized) {
                 modifyItem('yanchor', shapeOptions.yanchor = p2y(yAnchor + dy));
             } else {
                 moveY = function moveY(y) { return p2y(y2p(y) + dy); };
-                if(ya && ya.type === 'date') moveY = helpers.encodeDate(moveY);
+                if (ya && ya.type === 'date') moveY = helpers.encodeDate(moveY);
             }
 
             modifyItem('path', shapeOptions.path = movePath(pathIn, moveX, moveY));
-        } else if(isLine) {
-            if(dragMode === 'resize-over-start-point') {
+        } else if (isLine) {
+            if (dragMode === 'resize-over-start-point') {
                 var newX0 = x0 + dx;
                 var newY0 = yPixelSized ? y0 - dy : y0 + dy;
                 modifyItem('x0', shapeOptions.x0 = xPixelSized ? newX0 : p2x(newX0));
                 modifyItem('y0', shapeOptions.y0 = yPixelSized ? newY0 : p2y(newY0));
-            } else if(dragMode === 'resize-over-end-point') {
+            } else if (dragMode === 'resize-over-end-point') {
                 var newX1 = x1 + dx;
                 var newY1 = yPixelSized ? y1 - dy : y1 + dy;
                 modifyItem('x1', shapeOptions.x1 = xPixelSized ? newX1 : p2x(newX1));
                 modifyItem('y1', shapeOptions.y1 = yPixelSized ? newY1 : p2y(newY1));
             }
         } else {
-            var has = function(str) { return dragMode.indexOf(str) !== -1; };
+            var has = function (str) { return dragMode.indexOf(str) !== -1; };
             var hasN = has('n');
             var hasS = has('s');
             var hasW = has('w');
@@ -542,23 +543,23 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
             var newW = hasW ? w0 + dx : w0;
             var newE = hasE ? e0 + dx : e0;
 
-            if(yPixelSized) {
+            if (yPixelSized) {
                 // Do things in opposing direction for y-axis.
                 // Hint: for data-sized shapes the reversal of axis direction is done in p2y.
-                if(hasN) newN = n0 - dy;
-                if(hasS) newS = s0 - dy;
+                if (hasN) newN = n0 - dy;
+                if (hasS) newS = s0 - dy;
             }
 
             // Update shape eventually. Again, be aware of the
             // opposing direction of the y-axis of fixed size shapes.
-            if(
+            if (
                 (!yPixelSized && newS - newN > MINHEIGHT) ||
                 (yPixelSized && newN - newS > MINHEIGHT)
             ) {
                 modifyItem(optN, shapeOptions[optN] = yPixelSized ? newN : p2y(newN));
                 modifyItem(optS, shapeOptions[optS] = yPixelSized ? newS : p2y(newS));
             }
-            if(newE - newW > MINWIDTH) {
+            if (newE - newW > MINWIDTH) {
                 modifyItem(optW, shapeOptions[optW] = xPixelSized ? newW : p2x(newW));
                 modifyItem(optE, shapeOptions[optE] = xPixelSized ? newE : p2x(newE));
             }
@@ -570,7 +571,7 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
     }
 
     function renderVisualCues(shapeLayer, shapeOptions) {
-        if(xPixelSized || yPixelSized) {
+        if (xPixelSized || yPixelSized) {
             renderAnchor();
         }
 
@@ -583,47 +584,47 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
             // Enter
             var strokeWidth = 1;
             visualCues.enter()
-              .append('path')
-              .attr({
-                  fill: '#fff',
-                  'fill-rule': 'evenodd',
-                  stroke: '#000',
-                  'stroke-width': strokeWidth
-              })
-              .classed('visual-cue', true);
+                .append('path')
+                .attr({
+                    fill: '#fff',
+                    'fill-rule': 'evenodd',
+                    stroke: '#000',
+                    'stroke-width': strokeWidth
+                })
+                .classed('visual-cue', true);
 
             // Update
             var posX = x2p(
-              xPixelSized ?
-                shapeOptions.xanchor :
-                Lib.midRange(
-                  isNotPath ?
-                    [shapeOptions.x0, shapeOptions.x1] :
-                    helpers.extractPathCoords(shapeOptions.path, constants.paramIsX))
+                xPixelSized ?
+                    shapeOptions.xanchor :
+                    Lib.midRange(
+                        isNotPath ?
+                            [shapeOptions.x0, shapeOptions.x1] :
+                            helpers.extractPathCoords(shapeOptions.path, constants.paramIsX))
             );
             var posY = y2p(
-              yPixelSized ?
-                shapeOptions.yanchor :
-                Lib.midRange(
-                  isNotPath ?
-                    [shapeOptions.y0, shapeOptions.y1] :
-                    helpers.extractPathCoords(shapeOptions.path, constants.paramIsY))
+                yPixelSized ?
+                    shapeOptions.yanchor :
+                    Lib.midRange(
+                        isNotPath ?
+                            [shapeOptions.y0, shapeOptions.y1] :
+                            helpers.extractPathCoords(shapeOptions.path, constants.paramIsY))
             );
 
             posX = helpers.roundPositionForSharpStrokeRendering(posX, strokeWidth);
             posY = helpers.roundPositionForSharpStrokeRendering(posY, strokeWidth);
 
-            if(xPixelSized && yPixelSized) {
+            if (xPixelSized && yPixelSized) {
                 var crossPath = 'M' + (posX - 1 - strokeWidth) + ',' + (posY - 1 - strokeWidth) +
-                  'h-8v2h8 v8h2v-8 h8v-2h-8 v-8h-2 Z';
+                    'h-8v2h8 v8h2v-8 h8v-2h-8 v-8h-2 Z';
                 visualCues.attr('d', crossPath);
-            } else if(xPixelSized) {
+            } else if (xPixelSized) {
                 var vBarPath = 'M' + (posX - 1 - strokeWidth) + ',' + (posY - 9 - strokeWidth) +
-                  'v18 h2 v-18 Z';
+                    'v18 h2 v-18 Z';
                 visualCues.attr('d', vBarPath);
             } else {
                 var hBarPath = 'M' + (posX - 9 - strokeWidth) + ',' + (posY - 1 - strokeWidth) +
-                  'h18 v2 h-18 Z';
+                    'h18 v2 h-18 Z';
                 visualCues.attr('d', hBarPath);
             }
         }
@@ -640,8 +641,8 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
         var ya = Axes.getFromId(gd, yref);
 
         var clipAxes = '';
-        if(xref !== 'paper' && !xa.autorange) clipAxes += xref;
-        if(yref !== 'paper' && !ya.autorange) clipAxes += yref;
+        if (xref !== 'paper' && !xa.autorange) clipAxes += xref;
+        if (yref !== 'paper' && !ya.autorange) clipAxes += yref;
 
         Drawing.setClipUrl(
             shapePath,
@@ -652,18 +653,18 @@ function setupDragElement(gd, shapePath, shapeOptions, index, shapeLayer, editHe
 }
 
 function movePath(pathIn, moveX, moveY) {
-    return pathIn.replace(constants.segmentRE, function(segment) {
+    return pathIn.replace(constants.segmentRE, function (segment) {
         var paramNumber = 0;
         var segmentType = segment.charAt(0);
         var xParams = constants.paramIsX[segmentType];
         var yParams = constants.paramIsY[segmentType];
         var nParams = constants.numParams[segmentType];
 
-        var paramString = segment.slice(1).replace(constants.paramRE, function(param) {
-            if(paramNumber >= nParams) return param;
+        var paramString = segment.slice(1).replace(constants.paramRE, function (param) {
+            if (paramNumber >= nParams) return param;
 
-            if(xParams[paramNumber]) param = moveX(param);
-            else if(yParams[paramNumber]) param = moveY(param);
+            if (xParams[paramNumber]) param = moveX(param);
+            else if (yParams[paramNumber]) param = moveY(param);
 
             paramNumber++;
 
@@ -675,13 +676,13 @@ function movePath(pathIn, moveX, moveY) {
 }
 
 function activateShape(gd, path) {
-    if(!couldHaveActiveShape(gd)) return;
+    if (!couldHaveActiveShape(gd)) return;
 
     var element = path.node();
     var id = +element.getAttribute('data-index');
-    if(id >= 0) {
+    if (id >= 0) {
         // deactivate if already active
-        if(id === gd._fullLayout._activeShapeIndex) {
+        if (id === gd._fullLayout._activeShapeIndex) {
             deactivateShape(gd);
             return;
         }
@@ -693,10 +694,10 @@ function activateShape(gd, path) {
 }
 
 function deactivateShape(gd) {
-    if(!couldHaveActiveShape(gd)) return;
+    if (!couldHaveActiveShape(gd)) return;
 
     var id = gd._fullLayout._activeShapeIndex;
-    if(id >= 0) {
+    if (id >= 0) {
         clearOutlineControllers(gd);
         delete gd._fullLayout._activeShapeIndex;
         draw(gd);
@@ -704,16 +705,16 @@ function deactivateShape(gd) {
 }
 
 function eraseActiveShape(gd) {
-    if(!couldHaveActiveShape(gd)) return;
+    if (!couldHaveActiveShape(gd)) return;
 
     clearOutlineControllers(gd);
 
     var id = gd._fullLayout._activeShapeIndex;
     var shapes = (gd.layout || {}).shapes || [];
-    if(id < shapes.length) {
+    if (id < shapes.length) {
         var list = [];
-        for(var q = 0; q < shapes.length; q++) {
-            if(q !== id) {
+        for (var q = 0; q < shapes.length; q++) {
+            if (q !== id) {
                 list.push(shapes[q]);
             }
         }

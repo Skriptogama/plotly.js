@@ -34,17 +34,185 @@
             min-height: 100vh;
         }
 
+        .chart-frame {
+            position: relative;
+            height: 760px;
+            margin: 0 24px 24px;
+            border: 1px solid #bfd0d9;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 249, 252, 0.96));
+            overflow: hidden;
+        }
+
+        .chart-legend {
+            position: absolute;
+            z-index: 5;
+            display: block;
+        }
+
+        .chart-legend.is-hidden {
+            display: none;
+        }
+
+        .chart-legend.pos-top,
+        .chart-legend.pos-bottom {
+            left: 24px;
+            right: 24px;
+            height: 42px;
+        }
+
+        .chart-legend.pos-top {
+            top: 44px;
+        }
+
+        .chart-legend.pos-bottom {
+            bottom: 14px;
+        }
+
+        .chart-legend.pos-left,
+        .chart-legend.pos-right {
+            top: 58px;
+            bottom: 20px;
+            width: 118px;
+        }
+
+        .chart-legend.pos-left {
+            left: 18px;
+        }
+
+        .chart-legend.pos-right {
+            right: 18px;
+        }
+
+        .chart-legend-viewport {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .chart-legend-viewport::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chart-legend-content {
+            display: flex;
+            gap: 6px;
+            min-width: max-content;
+            min-height: max-content;
+        }
+
+        .chart-legend.pos-top .chart-legend-content,
+        .chart-legend.pos-bottom .chart-legend-content {
+            flex-direction: row;
+            align-items: center;
+            padding: 6px 8px 10px 6px;
+        }
+
+        .chart-legend.pos-left .chart-legend-content,
+        .chart-legend.pos-right .chart-legend-content {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 2px 10px 2px 2px;
+        }
+
+        .chart-legend-item {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            padding: 4px 8px 4px 4px;
+            border-radius: 10px;
+            color: #244151;
+            cursor: pointer;
+            transition: background 120ms ease, opacity 120ms ease;
+            white-space: nowrap;
+        }
+
+        .chart-legend-item:hover {
+            background: rgba(0, 109, 119, 0.08);
+        }
+
+        .chart-legend-item.is-muted {
+            opacity: 0.45;
+        }
+
+        .chart-legend.pos-left .chart-legend-item,
+        .chart-legend.pos-right .chart-legend-item {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .chart-legend-symbol {
+            flex: 0 0 auto;
+            width: 44px;
+            height: 18px;
+            overflow: visible;
+        }
+
+        .chart-legend-label {
+            font-size: 11px;
+            line-height: 1;
+            color: #31424d;
+        }
+
+        .chart-legend-scrollbar {
+            position: absolute;
+            z-index: 6;
+            opacity: 0;
+            transition: opacity 140ms ease;
+            pointer-events: none;
+        }
+
+        .chart-legend:hover .chart-legend-scrollbar,
+        .chart-legend.is-hovered .chart-legend-scrollbar,
+        .chart-legend.is-scrolling .chart-legend-scrollbar {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .chart-legend.pos-top .chart-legend-scrollbar,
+        .chart-legend.pos-bottom .chart-legend-scrollbar {
+            left: 8px;
+            right: 8px;
+            bottom: 3px;
+            height: 6px;
+        }
+
+        .chart-legend.pos-left .chart-legend-scrollbar,
+        .chart-legend.pos-right .chart-legend-scrollbar {
+            top: 8px;
+            bottom: 8px;
+            right: 2px;
+            width: 6px;
+        }
+
+        .chart-legend-scrollbar-thumb {
+            position: absolute;
+            border-radius: 999px;
+            background: rgba(22, 49, 63, 0.22);
+            cursor: grab;
+        }
+
+        .chart-legend-scrollbar-thumb:active {
+            cursor: grabbing;
+        }
+
         .page {
-            width: min(1400px, calc(100vw - 32px));
+            width: min(1720px, calc(100vw - 20px));
             margin: 24px auto;
             display: grid;
-            grid-template-columns: minmax(250px, 290px) minmax(0, 1.45fr) minmax(280px, 0.72fr);
-            gap: 20px;
+            grid-template-columns: minmax(220px, 260px) minmax(0, 1.8fr) minmax(240px, 300px);
+            gap: 14px;
         }
 
         .control-sidebar {
             display: grid;
-            gap: 20px;
+            gap: 14px;
             align-content: start;
         }
 
@@ -77,15 +245,13 @@
         .controls {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 10px;
-            padding: 18px;
+            gap: 6px;
+            padding: 10px 12px 12px;
         }
 
         .control {
-            background: var(--panel-alt);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 10px;
+            padding: 0;
+            min-width: 0;
         }
 
         .control label,
@@ -102,31 +268,24 @@
         .control select {
             width: 100%;
             border: 1px solid #bfd0d9;
-            border-radius: 9px;
-            padding: 8px 10px;
-            font-size: 0.9rem;
+            border-radius: 7px;
+            padding: 6px 8px;
+            font-size: 0.85rem;
             font-family: inherit;
             color: var(--text);
             background: #fff;
         }
 
-        .control-help {
-            margin-top: 6px;
-            color: var(--muted);
-            font-size: 0.74rem;
-            line-height: 1.4;
-        }
-
         .toggle-list {
             display: grid;
-            gap: 10px;
+            gap: 6px;
         }
 
         .toggle-option {
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 0.88rem;
+            gap: 8px;
+            font-size: 0.84rem;
             color: var(--text);
             text-transform: none;
             letter-spacing: 0;
@@ -140,10 +299,10 @@
         }
 
         .actions {
-            padding: 18px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 6px;
             align-items: stretch;
         }
 
@@ -151,9 +310,9 @@
             appearance: none;
             border: 0;
             border-radius: 999px;
-            padding: 10px 14px;
+            padding: 8px 12px;
             font-family: inherit;
-            font-size: 0.9rem;
+            font-size: 0.84rem;
             font-weight: 600;
             cursor: pointer;
             transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
@@ -192,7 +351,7 @@
 
         #chart {
             width: 100%;
-            height: 720px;
+            height: 760px;
         }
 
         .sidebar {
@@ -258,10 +417,6 @@
                 grid-template-columns: 1fr;
             }
 
-            #chart {
-                height: 580px;
-            }
-
             #log {
                 height: 340px;
             }
@@ -284,14 +439,20 @@
     <div class="page">
         <aside class="control-sidebar">
             <section class="panel">
+                <div class="actions">
+                    <button id="startBtn" class="primary">Start Progressive Add</button>
+                    <button id="labelDemoBtn" class="secondary">Load Label Demo Preset</button>
+                    <button id="resetBtn" class="secondary">Reset Chart</button>
+                    <button id="stopBtn" class="danger">Stop</button>
+                    <span id="status" class="status">Idle</span>
+                </div>
+
                 <div class="controls">
                     <div class="control">
                         <label for="modeSelect">Mode</label>
                         <select id="modeSelect">
                             <option value="scatter">Scatter</option>
-                            <option value="scatter-range">Scatter with RangeSlider</option>
                             <option value="scattergl">ScatterGL</option>
-                            <option value="scattergl-range">ScatterGL with RangeSlider</option>
                         </select>
                     </div>
                     <div class="control">
@@ -319,8 +480,6 @@
                             <option value="index">index</option>
                             <option value="continuous">continuous</option>
                         </select>
-                        <div class="control-help">Continuous uses uneven numeric step sizes, and some series
-                            intentionally skip samples to expose irregular x coverage.</div>
                     </div>
                     <div class="control">
                         <label for="missingValueModeSelect">Missing Value Handling</label>
@@ -329,14 +488,10 @@
                             <option value="zeros">zeros</option>
                             <option value="connect">connect</option>
                         </select>
-                        <div class="control-help">Controls how intentionally skipped samples are rendered. Connect
-                            interpolates missing values before drawing.</div>
                     </div>
                     <div class="control">
                         <label for="missingValuePercentInput">Missing Value Percent</label>
                         <input id="missingValuePercentInput" type="number" min="0" max="100" step="1" value="15">
-                        <div class="control-help">Applies deterministic skipped samples to both index and continuous
-                            scales.</div>
                     </div>
                     <div class="control">
                         <label for="chartOrientationSelect">Chart Orientation</label>
@@ -344,8 +499,6 @@
                             <option value="vertical">vertical</option>
                             <option value="horizontal">horizontal</option>
                         </select>
-                        <div class="control-help">Horizontal swaps the generated index or continuous axis onto the
-                            y-axis.</div>
                     </div>
                     <div class="control">
                         <label for="pauseMs">Pause Between Adds (ms)</label>
@@ -356,6 +509,39 @@
                         <input id="lineWidth" type="number" min="1" max="8" value="1">
                     </div>
                     <div class="control">
+                        <label for="pointSizeInput">Point Size</label>
+                        <input id="pointSizeInput" type="number" min="2" max="24" value="5">
+                    </div>
+                    <div class="control">
+                        <label for="pointShapeSelect">Point Shape</label>
+                        <select id="pointShapeSelect">
+                            <option value="circle">circle</option>
+                            <option value="square">square</option>
+                            <option value="diamond">diamond</option>
+                            <option value="cross">cross</option>
+                            <option value="x">x</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label for="lineDash">Line Dash</label>
+                        <input id="lineDash" type="text" value="solid" placeholder="solid, dot, dash, or 8,4,2,4">
+                    </div>
+                    <div class="control">
+                        <label for="renderStyleSelect">Series Style</label>
+                        <select id="renderStyleSelect">
+                            <option value="line">line</option>
+                            <option value="line+area">line + area</option>
+                            <option value="area">area</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label for="lineCapSelect">Line Cap</label>
+                        <select id="lineCapSelect">
+                            <option value="square">square</option>
+                            <option value="round">round</option>
+                        </select>
+                    </div>
+                    <div class="control">
                         <label for="labelPositionSelect">Label Position</label>
                         <select id="labelPositionSelect">
                             <option value="auto">auto</option>
@@ -364,7 +550,6 @@
                             <option value="middle right">middle right</option>
                             <option value="bottom center">bottom center</option>
                         </select>
-                        <div class="control-help">Best seen with markers and labels enabled.</div>
                     </div>
                     <div class="control">
                         <label for="modebarVisibilitySelect">Modebar Visibility</label>
@@ -374,8 +559,6 @@
                             <option value="true">always visible</option>
                             <option value="false">hidden</option>
                         </select>
-                        <div class="control-help">hover-position only reveals the modebar when you hover over its own
-                            corner area.</div>
                     </div>
                     <div class="control">
                         <label for="modebarPositionSelect">Modebar Position</label>
@@ -394,6 +577,17 @@
                         </select>
                     </div>
                     <div class="control">
+                        <label for="legendSelect">Legend Position</label>
+                        <select id="legendSelect">
+                            <option value="auto">auto (right)</option>
+                            <option value="top">top</option>
+                            <option value="bottom">bottom</option>
+                            <option value="left">left</option>
+                            <option value="right">right</option>
+                            <option value="off">off</option>
+                        </select>
+                    </div>
+                    <div class="control">
                         <label>Render Options</label>
                         <div class="toggle-list">
                             <label class="toggle-option" for="showMarkers">
@@ -408,17 +602,14 @@
                                 <input id="showErrorBars" type="checkbox">
                                 <span>Error bars</span>
                             </label>
+                            <label class="toggle-option" for="showRangeSlider">
+                                <input id="showRangeSlider" type="checkbox">
+                                <span>Range Slider</span>
+                            </label>
                         </div>
                     </div>
                 </div>
 
-                <div class="actions">
-                    <button id="startBtn" class="primary">Start Progressive Add</button>
-                    <button id="labelDemoBtn" class="secondary">Load Label Demo Preset</button>
-                    <button id="resetBtn" class="secondary">Reset Chart</button>
-                    <button id="stopBtn" class="danger">Stop</button>
-                    <span id="status" class="status">Idle</span>
-                </div>
             </section>
         </aside>
 
@@ -442,7 +633,17 @@
                 Modebar controls now let you compare position, orientation, and hover-position visibility behavior.
             </div>
 
-            <div id="chart"></div>
+            <div id="chartFrame" class="chart-frame">
+                <div id="legendHost" class="chart-legend is-hidden">
+                    <div id="legendViewport" class="chart-legend-viewport">
+                        <div id="legendContent" class="chart-legend-content"></div>
+                    </div>
+                    <div id="legendScrollbar" class="chart-legend-scrollbar">
+                        <div id="legendScrollbarThumb" class="chart-legend-scrollbar-thumb"></div>
+                    </div>
+                </div>
+                <div id="chart"></div>
+            </div>
         </section>
 
         <aside class="sidebar">
@@ -491,7 +692,13 @@
     <script src="../../dist/plotly-gl2d.js"></script>
     <script>
         (function () {
+            var chartFrame = document.getElementById('chartFrame');
             var chart = document.getElementById('chart');
+            var legendHost = document.getElementById('legendHost');
+            var legendViewport = document.getElementById('legendViewport');
+            var legendContent = document.getElementById('legendContent');
+            var legendScrollbar = document.getElementById('legendScrollbar');
+            var legendScrollbarThumb = document.getElementById('legendScrollbarThumb');
             var logEl = document.getElementById('log');
             var statusEl = document.getElementById('status');
             var startBtn = document.getElementById('startBtn');
@@ -518,17 +725,52 @@
             var chartOrientationSelect = document.getElementById('chartOrientationSelect');
             var pauseMsInput = document.getElementById('pauseMs');
             var lineWidthInput = document.getElementById('lineWidth');
+            var pointSizeInput = document.getElementById('pointSizeInput');
+            var pointShapeSelect = document.getElementById('pointShapeSelect');
+            var lineDashInput = document.getElementById('lineDash');
+            var renderStyleSelect = document.getElementById('renderStyleSelect');
+            var lineCapSelect = document.getElementById('lineCapSelect');
             var labelPositionSelect = document.getElementById('labelPositionSelect');
             var modebarVisibilitySelect = document.getElementById('modebarVisibilitySelect');
             var modebarPositionSelect = document.getElementById('modebarPositionSelect');
             var modebarOrientationSelect = document.getElementById('modebarOrientationSelect');
+            var legendSelect = document.getElementById('legendSelect');
             var showMarkersInput = document.getElementById('showMarkers');
             var showLabelsInput = document.getElementById('showLabels');
             var showErrorBarsInput = document.getElementById('showErrorBars');
+            var showRangeSliderInput = document.getElementById('showRangeSlider');
+            var demoStateStorageKey = 'plotly-bigdata-demo-state-v1';
+            var persistableControls = [
+                modeSelect,
+                curveModeSelect,
+                seriesCountInput,
+                pointCountInput,
+                xScaleSelect,
+                missingValueModeSelect,
+                missingValuePercentInput,
+                chartOrientationSelect,
+                pauseMsInput,
+                lineWidthInput,
+                pointSizeInput,
+                pointShapeSelect,
+                lineDashInput,
+                renderStyleSelect,
+                lineCapSelect,
+                labelPositionSelect,
+                modebarVisibilitySelect,
+                modebarPositionSelect,
+                modebarOrientationSelect,
+                legendSelect,
+                showMarkersInput,
+                showLabelsInput,
+                showErrorBarsInput,
+                showRangeSliderInput
+            ];
 
             var stopRequested = false;
             var addDurations = [];
             var webglSupported = detectWebGlSupport();
+            var legendScrollDrag = null;
 
             function log(message) {
                 var time = new Date().toLocaleTimeString();
@@ -568,31 +810,119 @@
             function normalizeModeForEnvironment(mode) {
                 if (webglSupported) return mode;
                 if (mode === 'scattergl') return 'scatter';
-                if (mode === 'scattergl-range') return 'scatter-range';
                 return mode;
             }
 
             function syncCurveModeControl() {
-                var options = curveModeSelect.querySelectorAll('option');
-
-                for (var i = 0; i < options.length; i++) {
-                    options[i].disabled = false;
-                }
-
                 var scatterGlOption = modeSelect.querySelector('option[value="scattergl"]');
-                var scatterGlRangeOption = modeSelect.querySelector('option[value="scattergl-range"]');
 
                 if (scatterGlOption) {
                     scatterGlOption.disabled = !webglSupported;
                 }
 
-                if (scatterGlRangeOption) {
-                    scatterGlRangeOption.disabled = !webglSupported;
-                }
-
                 var normalizedMode = normalizeModeForEnvironment(modeSelect.value);
                 if (normalizedMode !== modeSelect.value) {
                     modeSelect.value = normalizedMode;
+                }
+            }
+
+            function hasLocalStorage() {
+                try {
+                    return typeof window.localStorage !== 'undefined';
+                } catch (error) {
+                    return false;
+                }
+            }
+
+            function collectDemoState() {
+                return {
+                    mode: modeSelect.value,
+                    curveMode: curveModeSelect.value,
+                    seriesCount: seriesCountInput.value,
+                    pointCount: pointCountInput.value,
+                    xScale: xScaleSelect.value,
+                    missingValueMode: missingValueModeSelect.value,
+                    missingValuePercent: missingValuePercentInput.value,
+                    chartOrientation: chartOrientationSelect.value,
+                    pauseMs: pauseMsInput.value,
+                    lineWidth: lineWidthInput.value,
+                    pointSize: pointSizeInput.value,
+                    pointShape: pointShapeSelect.value,
+                    lineDash: lineDashInput.value,
+                    renderStyle: renderStyleSelect.value,
+                    lineCap: lineCapSelect.value,
+                    labelPosition: labelPositionSelect.value,
+                    modebarVisibility: modebarVisibilitySelect.value,
+                    modebarPosition: modebarPositionSelect.value,
+                    modebarOrientation: modebarOrientationSelect.value,
+                    legendPosition: legendSelect.value,
+                    showMarkers: showMarkersInput.checked,
+                    showLabels: showLabelsInput.checked,
+                    showErrorBars: showErrorBarsInput.checked,
+                    showRangeSlider: showRangeSliderInput.checked
+                };
+            }
+
+            function persistDemoState() {
+                if (!hasLocalStorage()) return;
+
+                try {
+                    window.localStorage.setItem(demoStateStorageKey, JSON.stringify(collectDemoState()));
+                } catch (error) {
+                    console.warn('Unable to persist bigdata demo state:', error);
+                }
+            }
+
+            function applyDemoState(state) {
+                if (!state) return;
+
+                if (typeof state.mode === 'string') modeSelect.value = state.mode;
+                if (typeof state.curveMode === 'string') curveModeSelect.value = state.curveMode;
+                if (state.seriesCount != null) seriesCountInput.value = state.seriesCount;
+                if (state.pointCount != null) pointCountInput.value = state.pointCount;
+                if (typeof state.xScale === 'string') xScaleSelect.value = state.xScale;
+                if (typeof state.missingValueMode === 'string') missingValueModeSelect.value = state.missingValueMode;
+                if (state.missingValuePercent != null) missingValuePercentInput.value = state.missingValuePercent;
+                if (typeof state.chartOrientation === 'string') chartOrientationSelect.value = state.chartOrientation;
+                if (state.pauseMs != null) pauseMsInput.value = state.pauseMs;
+                if (state.lineWidth != null) lineWidthInput.value = state.lineWidth;
+                if (state.pointSize != null) pointSizeInput.value = state.pointSize;
+                if (typeof state.pointShape === 'string') pointShapeSelect.value = state.pointShape;
+                if (state.lineDash != null) lineDashInput.value = state.lineDash;
+                if (typeof state.renderStyle === 'string') renderStyleSelect.value = state.renderStyle;
+                if (typeof state.lineCap === 'string') lineCapSelect.value = state.lineCap === 'butt' ? 'square' : state.lineCap;
+                if (typeof state.labelPosition === 'string') labelPositionSelect.value = state.labelPosition;
+                if (typeof state.modebarVisibility === 'string') modebarVisibilitySelect.value = state.modebarVisibility;
+                if (typeof state.modebarPosition === 'string') modebarPositionSelect.value = state.modebarPosition;
+                if (typeof state.modebarOrientation === 'string') modebarOrientationSelect.value = state.modebarOrientation;
+                if (typeof state.legendPosition === 'string') legendSelect.value = state.legendPosition;
+                if (typeof state.showMarkers === 'boolean') showMarkersInput.checked = state.showMarkers;
+                if (typeof state.showLabels === 'boolean') showLabelsInput.checked = state.showLabels;
+                if (typeof state.showErrorBars === 'boolean') showErrorBarsInput.checked = state.showErrorBars;
+                if (typeof state.showRangeSlider === 'boolean') showRangeSliderInput.checked = state.showRangeSlider;
+
+                syncCurveModeControl();
+            }
+
+            function restoreDemoState() {
+                if (!hasLocalStorage()) return false;
+
+                try {
+                    var rawState = window.localStorage.getItem(demoStateStorageKey);
+                    if (!rawState) return false;
+
+                    applyDemoState(JSON.parse(rawState));
+                    return true;
+                } catch (error) {
+                    console.warn('Unable to restore bigdata demo state:', error);
+                    return false;
+                }
+            }
+
+            function registerPersistenceHandlers() {
+                for (var i = 0; i < persistableControls.length; i++) {
+                    persistableControls[i].addEventListener('change', persistDemoState);
+                    persistableControls[i].addEventListener('input', persistDemoState);
                 }
             }
 
@@ -620,61 +950,34 @@
 
             function getModeConfig() {
                 var mode = normalizeModeForEnvironment(modeSelect.value);
-                var isScatterGlMode = mode === 'scattergl' || mode === 'scattergl-range';
+                var isScatterGlMode = mode === 'scattergl';
                 var curve = resolveCurveShape({ traceType: isScatterGlMode ? 'scattergl' : 'scatter' });
+                var showRangeSlider = showRangeSliderInput.checked;
 
-                if (mode === 'scattergl-range') {
+                if (isScatterGlMode) {
                     return {
                         mode: mode,
                         traceType: 'scattergl',
-                        title: 'Progressively Added ScatterGL Series with Range Slider',
-                        showRangeSlider: true,
-                        expectsNavigatorTraces: true,
-                        navigatorCountLabel: null,
+                        title: 'Progressively Added ScatterGL Series' + (showRangeSlider ? ' with Range Slider' : ''),
+                        showRangeSlider: showRangeSlider,
+                        expectsNavigatorTraces: showRangeSlider,
+                        navigatorCountLabel: showRangeSlider ? null : '0',
                         curve: curve,
                         plotTraceNote: 'Rendered traces in the WebGL scene',
-                        navTraceNote: 'Rendered traces in the rangeslider WebGL scene'
-                    };
-                }
-
-                if (mode === 'scattergl') {
-                    return {
-                        mode: mode,
-                        traceType: 'scattergl',
-                        title: 'Progressively Added ScatterGL Series',
-                        showRangeSlider: false,
-                        expectsNavigatorTraces: false,
-                        navigatorCountLabel: '0',
-                        curve: curve,
-                        plotTraceNote: 'Rendered traces in the WebGL scene',
-                        navTraceNote: 'Range slider disabled in this mode'
-                    };
-                }
-
-                if (mode === 'scatter') {
-                    return {
-                        mode: mode,
-                        traceType: 'scatter',
-                        title: 'Progressively Added SVG Scatter Series',
-                        showRangeSlider: false,
-                        expectsNavigatorTraces: false,
-                        navigatorCountLabel: '0',
-                        curve: curve,
-                        plotTraceNote: 'DOM traces in plot area',
-                        navTraceNote: 'Range slider disabled in this mode'
+                        navTraceNote: showRangeSlider ? 'Rendered traces in the rangeslider WebGL scene' : 'Range slider disabled'
                     };
                 }
 
                 return {
-                    mode: 'scatter-range',
+                    mode: 'scatter',
                     traceType: 'scatter',
-                    title: 'Progressively Added Series with Range Slider',
-                    showRangeSlider: true,
-                    expectsNavigatorTraces: true,
-                    navigatorCountLabel: null,
+                    title: 'Progressively Added SVG Scatter Series' + (showRangeSlider ? ' with Range Slider' : ''),
+                    showRangeSlider: showRangeSlider,
+                    expectsNavigatorTraces: showRangeSlider,
+                    navigatorCountLabel: showRangeSlider ? null : '0',
                     curve: curve,
                     plotTraceNote: 'DOM traces in plot area',
-                    navTraceNote: 'DOM traces in range slider'
+                    navTraceNote: showRangeSlider ? 'DOM traces in range slider' : 'Range slider disabled'
                 };
             }
 
@@ -683,11 +986,18 @@
                     showMarkers: showMarkersInput.checked,
                     showLabels: showLabelsInput.checked,
                     showErrorBars: showErrorBarsInput.checked,
+                    showRangeSlider: showRangeSliderInput.checked,
                     xScale: xScaleSelect.value,
                     missingValueMode: missingValueModeSelect.value,
                     missingValuePercent: Math.max(0, Math.min(100, Number(missingValuePercentInput.value) || 0)),
                     chartOrientation: chartOrientationSelect.value,
-                    labelPosition: labelPositionSelect.value
+                    pointSize: Math.max(2, Math.min(24, Number(pointSizeInput.value) || 5)),
+                    pointShape: pointShapeSelect.value,
+                    labelPosition: labelPositionSelect.value,
+                    renderStyle: renderStyleSelect.value,
+                    lineDash: lineDashInput.value.trim() || 'solid',
+                    lineCap: lineCapSelect.value,
+                    legendPosition: legendSelect.value
                 };
             }
 
@@ -707,24 +1017,32 @@
             }
 
             function applyLabelDemoPreset() {
-                modeSelect.value = webglSupported ? 'scatter' : 'scatter';
+                modeSelect.value = 'scatter';
                 curveModeSelect.value = 'linear';
                 seriesCountInput.value = '8';
                 pointCountInput.value = '80';
                 xScaleSelect.value = 'continuous';
                 missingValueModeSelect.value = 'gaps';
                 missingValuePercentInput.value = '15';
-                chartOrientationSelect.value = 'vertical';
+                chartOrientationSelect.value = 'horizontal';
                 pauseMsInput.value = '25';
                 lineWidthInput.value = '2';
+                pointSizeInput.value = '6';
+                pointShapeSelect.value = 'circle';
+                lineDashInput.value = 'solid';
+                renderStyleSelect.value = 'line';
+                lineCapSelect.value = 'square';
                 labelPositionSelect.value = 'auto';
+                legendSelect.value = 'auto';
                 modebarVisibilitySelect.value = 'hover-position';
                 modebarPositionSelect.value = 'top-right';
                 modebarOrientationSelect.value = 'h';
                 showMarkersInput.checked = true;
                 showLabelsInput.checked = true;
                 showErrorBarsInput.checked = false;
+                showRangeSliderInput.checked = false;
                 syncCurveModeControl();
+                persistDemoState();
             }
 
             function getSeriesColor(index) {
@@ -732,6 +1050,7 @@
                 return {
                     line: 'hsla(' + hue + ', 68%, 38%, 0.88)',
                     marker: 'hsla(' + hue + ', 76%, 40%, 0.82)',
+                    area: 'hsla(' + hue + ', 72%, 42%, 0.18)',
                     error: 'hsla(' + hue + ', 78%, 34%, 0.92)'
                 };
             }
@@ -771,6 +1090,65 @@
 
                     previousIndex = nextIndex;
                 }
+            }
+
+            function isXAxisVertical(renderOptions) {
+                return renderOptions.chartOrientation === 'vertical';
+            }
+
+            function getAxisPresentation(renderOptions) {
+                var sourceAxisTitle = renderOptions.xScale === 'continuous' ? 'Continuous X Value' : 'Point Index';
+                var xAxisVertical = isXAxisVertical(renderOptions);
+
+                return {
+                    xAxisVertical: xAxisVertical,
+                    semanticXAxisTitle: sourceAxisTitle,
+                    semanticYAxisTitle: 'Value',
+                    actualXAxisTitle: xAxisVertical ? 'Value' : sourceAxisTitle,
+                    actualYAxisTitle: xAxisVertical ? sourceAxisTitle : 'Value'
+                };
+            }
+
+            function getXAxisTitleAnnotations(renderOptions, axisPresentation, xDomain, yDomain) {
+                if (!renderOptions.showRangeSlider) {
+                    return [];
+                }
+
+                var xMid = (xDomain[0] + xDomain[1]) / 2;
+                var yMid = (yDomain[0] + yDomain[1]) / 2;
+                var titleFont = {
+                    size: 12,
+                    color: '#31424d'
+                };
+
+                if (axisPresentation.xAxisVertical) {
+                    return [{
+                        xref: 'paper',
+                        yref: 'paper',
+                        x: xDomain[0],
+                        y: yMid,
+                        text: axisPresentation.semanticXAxisTitle,
+                        textangle: -90,
+                        showarrow: false,
+                        xanchor: 'right',
+                        yanchor: 'middle',
+                        xshift: -26,
+                        font: titleFont
+                    }];
+                }
+
+                return [{
+                    xref: 'paper',
+                    yref: 'paper',
+                    x: xMid,
+                    y: yDomain[0],
+                    text: axisPresentation.semanticXAxisTitle,
+                    showarrow: false,
+                    xanchor: 'center',
+                    yanchor: 'top',
+                    yshift: -6,
+                    font: titleFont
+                }];
             }
 
             function makeTrace(index, pointCount, lineWidth, modeConfig, renderOptions) {
@@ -845,28 +1223,43 @@
                 }
 
                 var traceMode = traceModeParts.join('+');
-                var chartOrientation = renderOptions.chartOrientation;
-                var traceX = chartOrientation === 'horizontal' ? y : x;
-                var traceY = chartOrientation === 'horizontal' ? x : y;
+                var xAxisVertical = isXAxisVertical(renderOptions);
+                var renderStyle = renderOptions.renderStyle;
+                var isAreaOnly = renderStyle === 'area';
+                var traceX = xAxisVertical ? y : x;
+                var traceY = xAxisVertical ? x : y;
                 var trace = {
                     type: modeConfig.traceType,
                     mode: traceMode,
                     name: 'sample' + (index + 1),
+                    legendgroup: 'sample' + (index + 1),
+                    showlegend: true,
                     x: traceX,
                     y: traceY,
                     connectgaps: renderOptions.missingValueMode === 'connect',
                     line: {
-                        width: lineWidth,
+                        width: isAreaOnly ? 0 : lineWidth,
                         shape: modeConfig.curve.shape,
-                        color: seriesColor.line
+                        color: seriesColor.line,
+                        dash: renderOptions.lineDash,
+                        cap: renderOptions.lineCap
                     },
-                    hovertemplate: 'sample' + (index + 1) + '<br>x=%{x}<br>y=%{y:.3f}<extra></extra>'
+                    hovertemplate: xAxisVertical ?
+                        ('sample' + (index + 1) + '<br>x=%{y}<br>value=%{x:.3f}<extra></extra>') :
+                        ('sample' + (index + 1) + '<br>x=%{x}<br>value=%{y:.3f}<extra></extra>')
                 };
+
+                if (renderStyle !== 'line') {
+                    trace.fill = xAxisVertical ? 'tozerox' : 'tozeroy';
+                    trace.fillcolor = seriesColor.area;
+                }
 
                 if (renderOptions.showMarkers) {
                     trace.marker = {
-                        size: modeConfig.traceType === 'scattergl' ? 4 : 5,
-                        color: seriesColor.marker
+                        size: renderOptions.pointSize,
+                        symbol: renderOptions.pointShape,
+                        color: seriesColor.marker,
+                        line: { width: 0 }
                     };
                 }
 
@@ -880,7 +1273,7 @@
                 }
 
                 if (renderOptions.showErrorBars) {
-                    trace[chartOrientation === 'horizontal' ? 'error_x' : 'error_y'] = {
+                    trace[xAxisVertical ? 'error_x' : 'error_y'] = {
                         type: 'data',
                         array: errorY,
                         visible: true,
@@ -949,9 +1342,12 @@
                 pointCountInput.disabled = isRunning;
                 pauseMsInput.disabled = isRunning;
                 lineWidthInput.disabled = isRunning;
+                pointSizeInput.disabled = isRunning;
+                pointShapeSelect.disabled = isRunning;
                 missingValueModeSelect.disabled = isRunning;
                 missingValuePercentInput.disabled = isRunning;
                 chartOrientationSelect.disabled = isRunning;
+                renderStyleSelect.disabled = isRunning;
                 labelPositionSelect.disabled = isRunning;
                 modebarVisibilitySelect.disabled = isRunning;
                 modebarPositionSelect.disabled = isRunning;
@@ -960,6 +1356,10 @@
                 showLabelsInput.disabled = isRunning;
                 showErrorBarsInput.disabled = isRunning;
                 xScaleSelect.disabled = isRunning;
+                lineDashInput.disabled = isRunning;
+                lineCapSelect.disabled = isRunning;
+                legendSelect.disabled = isRunning;
+                showRangeSliderInput.disabled = isRunning;
             }
 
             function resetLogAndStats(modeConfig) {
@@ -968,45 +1368,453 @@
                 updateSummary(modeConfig);
             }
 
+            function resolveLegendPosition(renderOptions) {
+                return renderOptions.legendPosition === 'auto' ? 'right' : renderOptions.legendPosition;
+            }
+
+            function isHorizontalLegendPosition(position) {
+                return position === 'top' || position === 'bottom';
+            }
+
+            function syncCustomLegendLayout(renderOptions) {
+                var position = resolveLegendPosition(renderOptions);
+
+                legendHost.className = 'chart-legend';
+                if (position === 'off') {
+                    legendHost.classList.add('is-hidden');
+                    return;
+                }
+
+                legendHost.classList.add('pos-' + position);
+                updateLegendScrollbar();
+            }
+
+            function clearCustomLegend() {
+                legendContent.innerHTML = '';
+                legendViewport.scrollLeft = 0;
+                legendViewport.scrollTop = 0;
+                updateLegendScrollbar();
+            }
+
+            function getLegendMarkerPath(symbol, radius) {
+                var r = Math.max(3, radius || 4);
+
+                if (symbol === 'square') {
+                    return '<rect x="' + (22 - r) + '" y="' + (9 - r) + '" width="' + (r * 2) + '" height="' + (r * 2) + '" rx="1"></rect>';
+                }
+
+                if (symbol === 'diamond') {
+                    return '<path d="M22,' + (9 - r) + 'L' + (22 + r) + ',9L22,' + (9 + r) + 'L' + (22 - r) + ',9Z"></path>';
+                }
+
+                if (symbol === 'cross') {
+                    return '<path d="M22,' + (9 - r) + 'V' + (9 + r) + 'M' + (22 - r) + ',9H' + (22 + r) + '" stroke-width="1.8" fill="none" stroke-linecap="round"></path>';
+                }
+
+                if (symbol === 'x') {
+                    return '<path d="M' + (22 - r) + ',' + (9 - r) + 'L' + (22 + r) + ',' + (9 + r) + 'M' + (22 + r) + ',' + (9 - r) + 'L' + (22 - r) + ',' + (9 + r) + '" stroke-width="1.8" fill="none" stroke-linecap="round"></path>';
+                }
+
+                return '<circle cx="22" cy="9" r="' + r + '"></circle>';
+            }
+
+            function createLegendSymbolMarkup(trace) {
+                var itemWidth = 36;
+                var line = trace.line || {};
+                var marker = trace.marker || {};
+                var shape = line.shape;
+                var lineWidth = Math.max(0, Number(line.width) || 0);
+                var markerSize = Math.max(3, Math.min(7, (Number(marker.size) || 8) / 2));
+                var markerSymbol = marker.symbol || 'circle';
+                var lineColor = line.color || '#355060';
+                var markerColor = marker.color || lineColor;
+                var fillColor = trace.fillcolor || 'transparent';
+                var cap = line.cap === 'round' ? 'round' : 'square';
+                var areaMarkup = trace.fill && trace.fill !== 'none' ?
+                    '<path d="' + getLegendAreaPath(shape, itemWidth) + '" fill="' + fillColor + '" stroke="none"></path>' : '';
+                var lineMarkup = lineWidth > 0 ?
+                    '<path d="' + getLegendCurvePath(shape, itemWidth) + '" fill="none" stroke="' + lineColor + '" stroke-width="' + Math.min(8, lineWidth) + '" stroke-linecap="' + cap + '"></path>' : '';
+                var markerMarkup = marker && marker.color ?
+                    '<g fill="' + markerColor + '" stroke="' + markerColor + '">' + getLegendMarkerPath(markerSymbol, markerSize) + '</g>' : '';
+
+                return '<svg class="chart-legend-symbol" viewBox="0 0 48 18" aria-hidden="true">' +
+                    '<g transform="translate(2,9)">' + areaMarkup + lineMarkup + '</g>' + markerMarkup +
+                    '</svg>';
+            }
+
+            function setLegendItemMuted(item, isMuted) {
+                item.classList.toggle('is-muted', isMuted);
+            }
+
+            function appendCustomLegendItem(trace, traceIndex) {
+                var renderOptions = getRenderOptions();
+                if (resolveLegendPosition(renderOptions) === 'off') {
+                    return;
+                }
+
+                var item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'chart-legend-item';
+                item.dataset.traceIndex = String(traceIndex);
+                item.innerHTML = createLegendSymbolMarkup(trace) + '<span class="chart-legend-label"></span>';
+                item.querySelector('.chart-legend-label').textContent = trace.name || ('trace ' + (traceIndex + 1));
+                item.addEventListener('click', function () {
+                    var index = Number(item.dataset.traceIndex);
+                    var fullTrace = chart.data && chart.data[index];
+                    var nextVisible = !fullTrace || fullTrace.visible === 'legendonly' ? true : 'legendonly';
+                    Plotly.restyle(chart, { visible: nextVisible }, [index]).then(function () {
+                        setLegendItemMuted(item, nextVisible === 'legendonly');
+                    });
+                });
+                legendContent.appendChild(item);
+                updateLegendScrollbar();
+            }
+
+            function updateLegendScrollbar() {
+                if (legendHost.classList.contains('is-hidden')) {
+                    legendScrollbar.style.display = 'none';
+                    return;
+                }
+
+                var position = resolveLegendPosition(getRenderOptions());
+                var horizontal = isHorizontalLegendPosition(position);
+                var viewportSize = horizontal ? legendViewport.clientWidth : legendViewport.clientHeight;
+                var contentSize = horizontal ? legendViewport.scrollWidth : legendViewport.scrollHeight;
+                var scrollOffset = horizontal ? legendViewport.scrollLeft : legendViewport.scrollTop;
+                legendScrollbar.style.display = 'block';
+                var trackSize = horizontal ? legendScrollbar.clientWidth : legendScrollbar.clientHeight;
+                if (!trackSize) {
+                    trackSize = horizontal ? Math.max(0, legendHost.clientWidth - 16) : Math.max(0, legendHost.clientHeight - 16);
+                }
+
+                if (!viewportSize || !contentSize || contentSize <= viewportSize || !trackSize) {
+                    legendScrollbar.style.display = 'none';
+                    legendHost.classList.remove('is-scrollable');
+                    return;
+                }
+
+                legendScrollbar.style.display = 'block';
+                legendHost.classList.add('is-scrollable');
+
+                var thumbSize = Math.max(28, Math.round(trackSize * (viewportSize / contentSize)));
+                var maxThumbOffset = Math.max(0, trackSize - thumbSize);
+                var maxScrollOffset = Math.max(1, contentSize - viewportSize);
+                var thumbOffset = Math.round((scrollOffset / maxScrollOffset) * maxThumbOffset);
+
+                if (horizontal) {
+                    legendScrollbarThumb.style.width = thumbSize + 'px';
+                    legendScrollbarThumb.style.height = '100%';
+                    legendScrollbarThumb.style.left = thumbOffset + 'px';
+                    legendScrollbarThumb.style.top = '0';
+                } else {
+                    legendScrollbarThumb.style.height = thumbSize + 'px';
+                    legendScrollbarThumb.style.width = '100%';
+                    legendScrollbarThumb.style.top = thumbOffset + 'px';
+                    legendScrollbarThumb.style.left = '0';
+                }
+            }
+
+            function attachLegendScrollHandlers() {
+                legendViewport.addEventListener('scroll', updateLegendScrollbar);
+                legendHost.addEventListener('mouseenter', function () {
+                    legendHost.classList.add('is-hovered');
+                });
+
+                legendHost.addEventListener('mouseleave', function () {
+                    if (!legendScrollDrag) {
+                        legendHost.classList.remove('is-hovered');
+                    }
+                });
+
+                legendHost.addEventListener('wheel', function (event) {
+                    var position = resolveLegendPosition(getRenderOptions());
+                    var horizontal = isHorizontalLegendPosition(position);
+                    var canScroll = horizontal ?
+                        legendViewport.scrollWidth > legendViewport.clientWidth :
+                        legendViewport.scrollHeight > legendViewport.clientHeight;
+                    if (!canScroll) {
+                        return;
+                    }
+
+                    var delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+                    if (!delta) return;
+
+                    event.preventDefault();
+                    if (horizontal) {
+                        legendViewport.scrollLeft += delta;
+                    } else {
+                        legendViewport.scrollTop += delta;
+                    }
+                    updateLegendScrollbar();
+                }, { passive: false });
+
+                legendScrollbarThumb.addEventListener('mousedown', function (event) {
+                    var position = resolveLegendPosition(getRenderOptions());
+                    var horizontal = isHorizontalLegendPosition(position);
+                    legendScrollDrag = {
+                        horizontal: horizontal,
+                        pointerStart: horizontal ? event.clientX : event.clientY,
+                        scrollStart: horizontal ? legendViewport.scrollLeft : legendViewport.scrollTop
+                    };
+                    legendHost.classList.add('is-scrolling');
+                    event.preventDefault();
+                });
+
+                window.addEventListener('mousemove', function (event) {
+                    if (!legendScrollDrag) return;
+
+                    var horizontal = legendScrollDrag.horizontal;
+                    var pointerNow = horizontal ? event.clientX : event.clientY;
+                    var pointerDelta = pointerNow - legendScrollDrag.pointerStart;
+                    var trackSize = horizontal ? legendScrollbar.clientWidth : legendScrollbar.clientHeight;
+                    var viewportSize = horizontal ? legendViewport.clientWidth : legendViewport.clientHeight;
+                    var contentSize = horizontal ? legendViewport.scrollWidth : legendViewport.scrollHeight;
+                    var thumbSize = horizontal ? legendScrollbarThumb.offsetWidth : legendScrollbarThumb.offsetHeight;
+                    var maxThumbOffset = Math.max(1, trackSize - thumbSize);
+                    var maxScrollOffset = Math.max(0, contentSize - viewportSize);
+                    var scrollDelta = (pointerDelta / maxThumbOffset) * maxScrollOffset;
+
+                    if (horizontal) {
+                        legendViewport.scrollLeft = legendScrollDrag.scrollStart + scrollDelta;
+                    } else {
+                        legendViewport.scrollTop = legendScrollDrag.scrollStart + scrollDelta;
+                    }
+                    updateLegendScrollbar();
+                });
+
+                window.addEventListener('mouseup', function () {
+                    if (!legendScrollDrag) return;
+                    legendScrollDrag = null;
+                    legendHost.classList.remove('is-scrolling');
+                });
+
+                window.addEventListener('resize', updateLegendScrollbar);
+            }
+
+            function getLegendPanelLayout(renderOptions) {
+                var legendPos = resolveLegendPosition(renderOptions);
+                var layoutSpec = {
+                    showlegend: false,
+                    margin: { t: 76, r: 38, b: 48, l: 82 }
+                };
+
+                if (legendPos === 'off') {
+                    return layoutSpec;
+                }
+
+                if (legendPos === 'top') {
+                    layoutSpec.margin.t = 136;
+                    return layoutSpec;
+                }
+
+                if (legendPos === 'bottom') {
+                    layoutSpec.margin.b = renderOptions.showRangeSlider ? 152 : 102;
+                    return layoutSpec;
+                }
+
+                if (legendPos === 'left') {
+                    layoutSpec.margin.l = 206;
+                } else {
+                    layoutSpec.margin.r = 136;
+                }
+
+                return layoutSpec;
+            }
+
             function createLayout(modeConfig) {
                 var renderOptions = getRenderOptions();
                 var modebarOptions = getModebarOptions();
-                var sourceAxisTitle = renderOptions.xScale === 'continuous' ? 'Continuous X Value' : 'Point Index';
-                var xAxisTitle = renderOptions.chartOrientation === 'horizontal' ? 'Value' : sourceAxisTitle;
-                var yAxisTitle = renderOptions.chartOrientation === 'horizontal' ? sourceAxisTitle : 'Value';
+                var axisPresentation = getAxisPresentation(renderOptions);
+                var legendLayout = getLegendPanelLayout(renderOptions);
+                var axisTone = '#dbe6ed';
+                var axisTitleGap = 10;
+                var tickLabelGap = -4;
+                var xAxisConfig = {
+                    title: { text: axisPresentation.actualXAxisTitle, standoff: axisTitleGap },
+                    showline: true,
+                    linewidth: 1.2,
+                    linecolor: axisTone,
+                    ticks: 'outside',
+                    ticklen: 6,
+                    tickwidth: 1,
+                    tickcolor: axisTone,
+                    ticklabelstandoff: tickLabelGap,
+                    showgrid: true,
+                    gridcolor: axisTone,
+                    zeroline: false,
+                    automargin: true
+                };
+                var yAxisConfig = {
+                    title: { text: axisPresentation.actualYAxisTitle, standoff: axisTitleGap },
+                    showline: true,
+                    linewidth: 1.2,
+                    linecolor: axisTone,
+                    ticks: 'outside',
+                    ticklen: 6,
+                    tickwidth: 1,
+                    tickcolor: axisTone,
+                    ticklabelstandoff: tickLabelGap,
+                    showgrid: true,
+                    gridcolor: axisTone,
+                    zeroline: false,
+                    automargin: true
+                };
+
+                if (renderOptions.showRangeSlider) {
+                    if (axisPresentation.xAxisVertical) {
+                        xAxisConfig.title.text = axisPresentation.semanticYAxisTitle;
+                        xAxisConfig.fixedrange = true;
+                        xAxisConfig.rangeslider = { visible: false };
+
+                        yAxisConfig.title.text = '';
+                        yAxisConfig.side = 'left';
+                        yAxisConfig.rangeslider = {
+                            visible: true,
+                            side: 'same',
+                            thickness: 0.18,
+                            minthickness: 56,
+                            maxthickness: 88,
+                            borderwidth: 1,
+                            bordercolor: '#b9cad5',
+                            bgcolor: '#f5f9fc',
+                            xaxis: {
+                                rangemode: 'match'
+                            }
+                        };
+
+                        legendLayout.margin.l = Math.max(legendLayout.margin.l, 116);
+                    } else {
+                        xAxisConfig.title.text = '';
+                        xAxisConfig.rangeslider = {
+                            visible: true,
+                            side: 'same',
+                            thickness: 0.16,
+                            minthickness: 54,
+                            maxthickness: 86,
+                            borderwidth: 1,
+                            bordercolor: '#b9cad5',
+                            bgcolor: '#f5f9fc',
+                            yaxis: {
+                                rangemode: 'match'
+                            }
+                        };
+
+                        yAxisConfig.title.text = axisPresentation.semanticYAxisTitle;
+                        yAxisConfig.rangeslider = { visible: false };
+                        legendLayout.margin.b = Math.max(legendLayout.margin.b, 134);
+                    }
+                } else {
+                    xAxisConfig.title.text = axisPresentation.actualXAxisTitle;
+                    yAxisConfig.title.text = axisPresentation.actualYAxisTitle;
+                }
 
                 return {
                     title: {
-                        text: modeConfig.title
+                        text: modeConfig.title,
+                        x: 0.5,
+                        xanchor: 'center',
+                        y: 0.99,
+                        yanchor: 'top',
+                        font: { size: 15, color: '#213947' },
+                        pad: { b: 8 }
                     },
                     paper_bgcolor: '#ffffff',
                     plot_bgcolor: '#ffffff',
-                    margin: { t: 72, r: 180, b: 56, l: 64 },
-                    showlegend: true,
-                    legend: {
-                        x: 1.02,
-                        xanchor: 'left',
-                        y: 1,
-                        yanchor: 'top',
-                        bgcolor: 'rgba(255, 255, 255, 0.92)',
-                        bordercolor: '#d4e2ea',
-                        borderwidth: 1,
-                        font: { size: 11 }
-                    },
-                    xaxis: {
-                        title: { text: xAxisTitle },
-                        rangeslider: { visible: modeConfig.showRangeSlider },
-                        zeroline: false
-                    },
-                    yaxis: {
-                        title: { text: yAxisTitle },
-                        zeroline: false
-                    },
+                    margin: legendLayout.margin,
+                    showlegend: false,
+                    annotations: getXAxisTitleAnnotations(renderOptions, axisPresentation, [0, 1], [0, 1]),
+                    xaxis: xAxisConfig,
+                    yaxis: yAxisConfig,
                     modebar: {
                         orientation: modebarOptions.orientation,
                         position: modebarOptions.position
                     }
                 };
+            }
+
+            function getLegendCurvePath(shape, itemWidth) {
+                var startX = 5;
+                var endX = startX + itemWidth;
+
+                if (shape === 'hv') {
+                    return 'M' + startX + ',3H' + (startX + itemWidth * 0.42) + 'V-3H' + endX;
+                }
+
+                if (shape && shape !== 'linear') {
+                    return 'M' + startX + ',3C' +
+                        (startX + itemWidth * 0.2) + ',-4 ' +
+                        (startX + itemWidth * 0.45) + ',-3 ' +
+                        (startX + itemWidth * 0.58) + ',0S' +
+                        (startX + itemWidth * 0.84) + ',5 ' +
+                        endX + ',-1';
+                }
+
+                return 'M' + startX + ',2L' + endX + ',-1';
+            }
+
+            function getLegendAreaPath(shape, itemWidth) {
+                var startX = 5;
+                var endX = startX + itemWidth;
+                var baselineY = 8;
+
+                if (shape === 'hv') {
+                    return 'M' + startX + ',4H' + (startX + itemWidth * 0.42) + 'V-2H' + endX +
+                        'V' + baselineY + 'H' + startX + 'Z';
+                }
+
+                if (shape && shape !== 'linear') {
+                    return 'M' + startX + ',4C' +
+                        (startX + itemWidth * 0.2) + ',-1 ' +
+                        (startX + itemWidth * 0.45) + ',-1 ' +
+                        (startX + itemWidth * 0.58) + ',1S' +
+                        (startX + itemWidth * 0.84) + ',5 ' +
+                        endX + ',1V' + baselineY + 'H' + startX + 'Z';
+                }
+
+                return 'M' + startX + ',4L' + endX + ',1V' + baselineY + 'H' + startX + 'Z';
+            }
+
+            function applyLegendVisualTweaks() {
+                updateLegendScrollbar();
+            }
+
+            async function refreshLegendLayout(modeConfig) {
+                var layout = createLayout(modeConfig);
+                syncCustomLegendLayout(getRenderOptions());
+                await Plotly.relayout(chart, {
+                    title: layout.title,
+                    margin: layout.margin,
+                    annotations: layout.annotations
+                });
+                applyLegendVisualTweaks();
+            }
+
+            function shouldRefreshLegend(renderOptions, modeConfig, index, seriesCount, pauseMs, lastLegendRefreshAt, now) {
+                if (renderOptions.legendPosition === 'off') {
+                    return false;
+                }
+
+                if (modeConfig.traceType === 'scattergl') {
+                    if (index === seriesCount - 1) {
+                        return true;
+                    }
+
+                    if (pauseMs >= 150) {
+                        return (now - lastLegendRefreshAt) >= 1000;
+                    }
+
+                    return false;
+                }
+
+                if (pauseMs > 0) {
+                    return true;
+                }
+
+                if (index === 0 || index === seriesCount - 1) {
+                    return true;
+                }
+
+                return (now - lastLegendRefreshAt) >= 120;
             }
 
             function makeScatterGlWarmupTrace(modeConfig, pointCount) {
@@ -1030,6 +1838,8 @@
 
             async function initializeChart(modeConfig, pointCount) {
                 var modebarOptions = getModebarOptions();
+                syncCustomLegendLayout(getRenderOptions());
+                clearCustomLegend();
 
                 await Plotly.newPlot(chart, [], createLayout(modeConfig), {
                     responsive: true,
@@ -1087,10 +1897,14 @@
                     ' markers=' + renderOptions.showMarkers +
                     ' labels=' + renderOptions.showLabels +
                     ' labelPosition=' + renderOptions.labelPosition +
+                    ' lineDash=' + renderOptions.lineDash +
+                    ' lineCap=' + renderOptions.lineCap +
+                    ' legend=' + renderOptions.legendPosition +
                     ' errorBars=' + renderOptions.showErrorBars +
                     ' ' + seriesCount + ' series x ' + pointCount + ' points');
 
                 var totalStart = performance.now();
+                var lastLegendRefreshAt = 0;
 
                 for (var i = 0; i < seriesCount; i++) {
                     if (stopRequested) {
@@ -1104,6 +1918,7 @@
 
                     var t0 = performance.now();
                     await Plotly.addTraces(chart, trace);
+                    appendCustomLegendItem(trace, chart.data.length - 1);
                     await nextFrame();
                     var dt = performance.now() - t0;
 
@@ -1138,6 +1953,12 @@
                     log('[summary] total=' + totalMs.toFixed(2) + 'ms' +
                         ' first10avg=' + average(addDurations.slice(0, 10)).toFixed(2) + 'ms' +
                         ' last10avg=' + average(addDurations.slice(-10)).toFixed(2) + 'ms');
+
+                    // Reset axis autorange so the range slider covers the full data extent
+                    // (avoids the initial-position drift that occurs when data is added progressively).
+                    if (modeConfig.showRangeSlider) {
+                        await Plotly.relayout(chart, { 'xaxis.autorange': true });
+                    }
                 }
 
                 setRunningState(false);
@@ -1178,14 +1999,22 @@
                 syncCurveModeControl();
             });
 
+            attachLegendScrollHandlers();
+
             window.addEventListener('load', function () {
+                registerPersistenceHandlers();
                 syncCurveModeControl();
 
                 if (!webglSupported) {
                     log('WebGL is unavailable in this browser. ScatterGL modes are disabled and the demo will use SVG scatter modes instead.');
                 }
 
-                applyLabelDemoPreset();
+                if (!restoreDemoState()) {
+                    applyLabelDemoPreset();
+                } else {
+                    persistDemoState();
+                }
+
                 resetChart().catch(function (error) {
                     console.error(error);
                     log('[error] ' + (error && error.stack ? error.stack : error));

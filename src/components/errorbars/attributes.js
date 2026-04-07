@@ -1,5 +1,7 @@
 'use strict';
 
+var extendFlat = require('../../lib/extend').extendFlat;
+var drawAttrs = require('../drawing/attributes');
 var blendMode = require('../../lib/blend_mode');
 
 
@@ -106,6 +108,14 @@ module.exports = {
         editType: 'style',
         description: 'Sets the stroke color of the error bars.'
     },
+    colorminus: {
+        valType: 'color',
+        editType: 'style',
+        description: [
+            'Sets the stroke color of the negative-direction error bars.',
+            'Falls back to `color` when not set.'
+        ].join(' ')
+    },
     blendmode: blendMode.attr({
         description: 'Sets how these error bars blend with content drawn underneath them.'
     }),
@@ -125,5 +135,7 @@ module.exports = {
             'of the error bars.'
         ].join(' ')
     },
+    dash: extendFlat({}, drawAttrs.dash, { editType: 'style' }),
+    cap: extendFlat({}, drawAttrs.linecap, { editType: 'style' }),
     editType: 'calc',
 };

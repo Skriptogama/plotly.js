@@ -21,10 +21,10 @@ function dfltLabelYanchor(isLine, labelTextPosition) {
     return isLine
         ? 'bottom'
         : labelTextPosition.indexOf('top') !== -1
-          ? 'top'
-          : labelTextPosition.indexOf('bottom') !== -1
-            ? 'bottom'
-            : 'middle';
+            ? 'top'
+            : labelTextPosition.indexOf('bottom') !== -1
+                ? 'bottom'
+                : 'middle';
 }
 
 function handleShapeDefaults(shapeIn, shapeOut, fullLayout) {
@@ -62,6 +62,7 @@ function handleShapeDefaults(shapeIn, shapeOut, fullLayout) {
     if (lineWidth) {
         coerce('line.color');
         coerce('line.dash');
+        coerce('line.cap');
     }
 
     var xSizeMode = coerce('xsizemode');
@@ -84,7 +85,7 @@ function handleShapeDefaults(shapeIn, shapeOut, fullLayout) {
         const refAttr = axLetter + 'ref';
         const inputRef = shapeIn[refAttr];
 
-        if(Array.isArray(inputRef) && inputRef.length > 0) {
+        if (Array.isArray(inputRef) && inputRef.length > 0) {
             // Array case: use coerceRefArray for validation
             const expectedLen = helpers.countDefiningCoords(shapeType, path, axLetter);
             axRef = Axes.coerceRefArray(shapeIn, shapeOut, gdMock, axLetter, undefined, 'paper', expectedLen);
@@ -94,26 +95,26 @@ function handleShapeDefaults(shapeIn, shapeOut, fullLayout) {
             axRef = Axes.coerceRef(shapeIn, shapeOut, gdMock, axLetter, undefined, 'paper');
         }
 
-        if(Array.isArray(axRef)) {
+        if (Array.isArray(axRef)) {
             // Register the shape with all referenced axes for redrawing purposes
-            axRef.forEach(function(ref) {
-                if(Axes.getRefType(ref) === 'range') {
+            axRef.forEach(function (ref) {
+                if (Axes.getRefType(ref) === 'range') {
                     ax = Axes.getFromId(gdMock, ref);
-                    if(ax && ax._shapeIndices.indexOf(shapeOut._index) === -1) {
+                    if (ax && ax._shapeIndices.indexOf(shapeOut._index) === -1) {
                         ax._shapeIndices.push(shapeOut._index);
                     }
                 }
             });
 
-            if(noPath) {
-                [0, 1].forEach(function(i) {
+            if (noPath) {
+                [0, 1].forEach(function (i) {
                     const ref = axRef[i];
                     const refType = Axes.getRefType(ref);
-                    if(refType === 'range') {
+                    if (refType === 'range') {
                         ax = Axes.getFromId(gdMock, ref);
                         pos2r = helpers.shapePositionToRange(ax);
                         r2pos = helpers.rangeToShapePosition(ax);
-                        if(ax.type === 'category' || ax.type === 'multicategory') {
+                        if (ax.type === 'category' || ax.type === 'multicategory') {
                             coerce(axLetter + i + 'shift');
                         }
                     } else {
@@ -124,7 +125,7 @@ function handleShapeDefaults(shapeIn, shapeOut, fullLayout) {
                     const inValue = shapeIn[attr];
                     shapeIn[attr] = pos2r(shapeIn[attr], true);
 
-                    if(sizeMode === 'pixel') {
+                    if (sizeMode === 'pixel') {
                         coerce(attr, pixelDflts[i]);
                     } else {
                         Axes.coercePosition(shapeOut, gdMock, coerce, ref, attr, dflts[i]);
@@ -133,7 +134,7 @@ function handleShapeDefaults(shapeIn, shapeOut, fullLayout) {
                     shapeOut[attr] = r2pos(shapeOut[attr]);
                     shapeIn[attr] = inValue;
 
-                    if(i === 0 && sizeMode === 'pixel') {
+                    if (i === 0 && sizeMode === 'pixel') {
                         const inAnchor = shapeIn[attrAnchor];
                         shapeIn[attrAnchor] = pos2r(shapeIn[attrAnchor], true);
                         Axes.coercePosition(shapeOut, gdMock, coerce, ref, attrAnchor, 0.25);
@@ -145,12 +146,12 @@ function handleShapeDefaults(shapeIn, shapeOut, fullLayout) {
         } else {
             const axRefType = Axes.getRefType(axRef);
 
-            if(axRefType === 'range') {
+            if (axRefType === 'range') {
                 ax = Axes.getFromId(gdMock, axRef);
                 ax._shapeIndices.push(shapeOut._index);
                 r2pos = helpers.rangeToShapePosition(ax);
                 pos2r = helpers.shapePositionToRange(ax);
-                if(noPath && (ax.type === 'category' || ax.type === 'multicategory')) {
+                if (noPath && (ax.type === 'category' || ax.type === 'multicategory')) {
                     coerce(axLetter + '0shift');
                     coerce(axLetter + '1shift');
                 }
@@ -159,7 +160,7 @@ function handleShapeDefaults(shapeIn, shapeOut, fullLayout) {
             }
 
             // Coerce x0, x1, y0, y1
-            if(noPath) {
+            if (noPath) {
                 // hack until V3.0 when log has regular range behavior - make it look like other
                 // ranges to send to coerce, then put it back after
                 // this is all to give reasonable default position behavior on log axes, which is
@@ -171,7 +172,7 @@ function handleShapeDefaults(shapeIn, shapeOut, fullLayout) {
                 shapeIn[attr0] = pos2r(shapeIn[attr0], true);
                 shapeIn[attr1] = pos2r(shapeIn[attr1], true);
 
-                if(sizeMode === 'pixel') {
+                if (sizeMode === 'pixel') {
                     coerce(attr0, pixelDflts[0]);
                     coerce(attr1, pixelDflts[1]);
                 } else {
@@ -187,7 +188,7 @@ function handleShapeDefaults(shapeIn, shapeOut, fullLayout) {
             }
 
             // Coerce xanchor and yanchor
-            if(sizeMode === 'pixel') {
+            if (sizeMode === 'pixel') {
                 // Hack for log axis described above
                 const inAnchor = shapeIn[attrAnchor];
                 shapeIn[attrAnchor] = pos2r(shapeIn[attrAnchor], true);

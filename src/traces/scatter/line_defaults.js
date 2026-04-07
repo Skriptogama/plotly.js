@@ -20,6 +20,7 @@ module.exports = function lineDefaults(traceIn, traceOut, defaultColor, layout, 
     }
 
     coerce('line.width');
+    coerce('line.cap');
     coerce('line.blendmode');
 
     if (!opts.noDash) coerce('line.dash');

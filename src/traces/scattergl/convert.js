@@ -37,6 +37,31 @@ var appendArrayPointValue = require('../../components/fx/helpers').appendArrayPo
 var SMOOTH_LINE_TOLERANCE_PX = 0.5;
 var MAX_BEZIER_SUBDIVISION_DEPTH = 10;
 
+function getLineDashes(trace, plotGlPixelRatio) {
+    var line = trace.line || {};
+    var lineWidth = (line.width || 1) * plotGlPixelRatio;
+    var dashInput = line.dash || 'solid';
+    var dashes;
+    var i;
+
+    if (constants.DASHES[dashInput]) {
+        dashes = constants.DASHES[dashInput].slice();
+        for (i = 0; i < dashes.length; ++i) {
+            dashes[i] *= lineWidth;
+        }
+    } else {
+        var parts = dashInput.split(',');
+        dashes = [];
+        for (i = 0; i < parts.length; i++) {
+            var val = parseFloat(parts[i]);
+            if (isNumeric(val)) dashes.push(val * lineWidth);
+        }
+        if (!dashes.length) dashes = [lineWidth];
+    }
+
+    return Drawing.compensateDashArray(dashes, lineWidth, line.cap);
+}
+
 function convertStyle(gd, trace) {
     var i;
 
@@ -86,11 +111,9 @@ function convertStyle(gd, trace) {
             blend: BlendMode.getGLBlend(BlendMode.getContainerBlendMode(trace, trace.line, 'line'))
         };
 
-        var dashes = (constants.DASHES[trace.line.dash] || [1]).slice();
-        for (i = 0; i < dashes.length; ++i) {
-            dashes[i] *= trace.line.width * plotGlPixelRatio;
-        }
-        opts.line.dashes = dashes;
+        opts.line.dashes = getLineDashes(trace, plotGlPixelRatio);
+
+        if (trace.line.cap) opts.line.cap = Drawing.lineCapStyle(trace.line.cap);
     }
 
     if (trace.error_x && trace.error_x.visible) {
@@ -462,6 +485,11 @@ function convertErrorBarStyle(trace, target, plotGlPixelRatio) {
         color: target.color,
         blend: BlendMode.getGLBlend(target.blendmode, 0, BlendMode.getTraceBlendMode(trace))
     };
+
+    // colorminus: regl-error2d draws one group per error set so per-side color
+    // requires two separate draw passes — deferred to Tasks 2.8/2.9.
+    // Forward the value so future scattergl error bar work can pick it up.
+    if (target.colorminus !== undefined) optsOut.colorminus = target.colorminus;
 
     if (target.copy_ystyle) {
         optsOut = trace.error_y;

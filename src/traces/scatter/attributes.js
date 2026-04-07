@@ -5,6 +5,7 @@ const { hovertemplateAttrs, texttemplateAttrs, templatefallbackAttrs } = require
 var colorScaleAttrs = require('../../components/colorscale/attributes');
 var fontAttrs = require('../../plots/font_attributes');
 var dash = require('../../components/drawing/attributes').dash;
+var linecap = require('../../components/drawing/attributes').linecap;
 var pattern = require('../../components/drawing/attributes').pattern;
 var baseAttrs = require('../../plots/attributes');
 var blendMode = require('../../lib/blend_mode');
@@ -338,6 +339,7 @@ module.exports = {
             ].join(' ')
         },
         dash: extendFlat({}, dash, { editType: 'style' }),
+        cap: extendFlat({}, linecap, { editType: 'style' }),
         blendmode: blendMode.attr({
             description: 'Sets how this trace line blends with content drawn underneath it.'
         }),

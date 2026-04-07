@@ -61,6 +61,8 @@ module.exports = function (traceIn, traceOut, defaultColor, opts) {
         coerce('color', defaultColor);
         coerce('blendmode');
         coerce('thickness');
-        coerce('width', Registry.traceIs(traceOut, 'gl3d') ? 0 : 4);
+        coerce('width', Registry.traceIs(traceOut, 'gl3d') ? 0 : 4); coerce('dash');
+        coerce('cap');
+        coerce('colorminus');
     }
 };

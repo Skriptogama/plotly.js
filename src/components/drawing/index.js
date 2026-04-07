@@ -175,10 +175,11 @@ drawing.singleLineStyle = function (d, s, lw, lc, ld) {
     var trace = (((d || [])[0] || {}).trace || {});
     var lw1 = lw || line.width || 0;
     var dash = ld || line.dash || '';
+    var cap = line.cap || '';
 
     BlendMode.applySingleStyle(s, BlendMode.getContainerBlendMode(trace, line, 'line'));
     Color.stroke(s, lc || line.color);
-    drawing.dashLine(s, dash, lw1);
+    drawing.dashLine(s, dash, lw1, cap);
 };
 
 drawing.lineGroupStyle = function (s, lw, lc, ld) {
@@ -187,41 +188,79 @@ drawing.lineGroupStyle = function (s, lw, lc, ld) {
         var trace = (((d || [])[0] || {}).trace || {});
         var lw1 = lw || line.width || 0;
         var dash = ld || line.dash || '';
+        var cap = line.cap || '';
 
         d3.select(this)
             .call(BlendMode.applySingleStyle, BlendMode.getContainerBlendMode(trace, line, 'line'))
             .call(Color.stroke, lc || line.color)
-            .call(drawing.dashLine, dash, lw1);
+            .call(drawing.dashLine, dash, lw1, cap);
     });
 };
 
-drawing.dashLine = function (s, dash, lineWidth) {
+drawing.dashLine = function (s, dash, lineWidth, cap) {
     lineWidth = +lineWidth || 0;
+    cap = drawing.lineCapStyle(cap);
 
-    dash = drawing.dashStyle(dash, lineWidth);
+    dash = drawing.dashStyle(dash, lineWidth, cap);
 
-    s.style({
+    var styles = {
         'stroke-dasharray': dash,
         'stroke-width': lineWidth + 'px'
-    });
+    };
+    if (cap) styles['stroke-linecap'] = cap;
+    s.style(styles);
 };
 
-drawing.dashStyle = function (dash, lineWidth) {
+drawing.lineCapStyle = function (cap) {
+    return cap === 'round' ? 'round' : 'butt';
+};
+
+drawing.compensateDashArray = function (dashArray, lineWidth, cap) {
+    var internalCap = drawing.lineCapStyle(cap);
+    var compensated = [];
+    var width = +lineWidth || 0;
+
+    if (internalCap !== 'round' || !dashArray || !dashArray.length) {
+        return dashArray;
+    }
+
+    for (var i = 0; i < dashArray.length; i++) {
+        var value = +dashArray[i] || 0;
+        compensated.push(i % 2 === 0 ? Math.max(value - width, 0) : value + width);
+    }
+
+    return compensated;
+};
+
+drawing.dashStyle = function (dash, lineWidth, cap) {
     lineWidth = +lineWidth || 1;
     var dlw = Math.max(lineWidth, 3);
+    var dashArray;
 
-    if (dash === 'solid') dash = '';
-    else if (dash === 'dot') dash = dlw + 'px,' + dlw + 'px';
-    else if (dash === 'dash') dash = 3 * dlw + 'px,' + 3 * dlw + 'px';
-    else if (dash === 'longdash') dash = 5 * dlw + 'px,' + 5 * dlw + 'px';
+    if (dash === 'solid') return '';
+    else if (dash === 'dot') dashArray = [dlw, dlw];
+    else if (dash === 'dash') dashArray = [3 * dlw, 3 * dlw];
+    else if (dash === 'longdash') dashArray = [5 * dlw, 5 * dlw];
     else if (dash === 'dashdot') {
-        dash = 3 * dlw + 'px,' + dlw + 'px,' + dlw + 'px,' + dlw + 'px';
+        dashArray = [3 * dlw, dlw, dlw, dlw];
     } else if (dash === 'longdashdot') {
-        dash = 5 * dlw + 'px,' + 2 * dlw + 'px,' + dlw + 'px,' + 2 * dlw + 'px';
+        dashArray = [5 * dlw, 2 * dlw, dlw, 2 * dlw];
+    } else {
+        // custom dash string (e.g. "4,2,6,3" or "4px,2px"): scale each segment by lineWidth
+        var parts = String(dash).split(',');
+        dashArray = [];
+        for (var pi = 0; pi < parts.length; pi++) {
+            var pv = parseFloat(parts[pi]);
+            if (isFinite(pv)) dashArray.push(pv * lineWidth);
+        }
+        if (!dashArray.length) return dash;
     }
-    // otherwise user wrote the dasharray themselves - leave it be
 
-    return dash;
+    dashArray = drawing.compensateDashArray(dashArray, lineWidth, cap);
+
+    return dashArray.map(function (value) {
+        return value + 'px';
+    }).join(',');
 };
 
 function setFillStyle(sel, trace, gd, forLegend) {

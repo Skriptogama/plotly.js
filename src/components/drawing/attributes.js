@@ -16,6 +16,18 @@ exports.dash = {
     ].join(' ')
 };
 
+exports.linecap = {
+    valType: 'enumerated',
+    values: ['square', 'round'],
+    dflt: 'square',
+    editType: 'style',
+    description: [
+        'Sets the style of the line end caps.',
+        '*square* uses a square edge at the endpoint.',
+        '*round* draws a semicircle at the endpoint.'
+    ].join(' ')
+};
+
 exports.pattern = {
     shape: {
         valType: 'enumerated',

@@ -11,8 +11,10 @@ This roadmap intentionally focuses on Plotly-core work, not on changing the curr
 - follow the normal Plotly attribute pipeline: `attributes.js` -> `defaults.js` -> `calc/style/convert`
 - prefer shared components when the behavior spans SVG and WebGL traces
 - avoid adding Qlik-shaped config names directly to Plotly unless the concept is broadly reusable
-- land new features first on cartesian scatter-family traces, then expand to related owners like shapes and error bars
-- keep SVG and `scattergl` behavior aligned whenever the feature is styling, not renderer-specific analytics
+- primary delivery targets are `scatter` and `scattergl` traces, delivered together; `scattergl` is the higher-priority renderer
+- a `scatter`-only staged delivery is acceptable only when a specific, documented `scattergl` technical blocker exists — it is not a default approach
+- shapes and error bars follow after the scatter-family work is stable
+- every new attribute must behave identically on `scatter` and `scattergl` regardless of which renderer handles the drawing
 
 ## Current Reality
 
@@ -40,17 +42,16 @@ This phase closes the most immediate styling gaps and unlocks later work on tren
 
 #### Proposed Plotly API shape
 
-Keep the existing `line.dash` field for backwards compatibility, but expand the shared drawing model with reusable stroke attributes:
+Keep the existing `line.dash` field for backwards compatibility and add only what is genuinely missing:
 
-- `line.dash`: keep existing named values and raw dash strings working
-- `line.dashmode`: `named` or `custom`
-- `line.dasharray`: custom numeric pattern array or px list string
-- `line.dashgap`: optional multiplier or explicit gap control for named patterns
-- `line.cap`: `butt`, `square`, or `round`
+- `line.dash`: keep existing named values and raw px-string dashes working (already pass-through in SVG)
+- `line.dasharray`: new numeric array form for explicit segment lengths (more ergonomic than a px string, needed to unlock scattergl custom dashes without string parsing)
+- `line.cap`: `butt`, `square`, or `round` — the only truly missing stroke attribute in SVG
 
-For error bars, mirror the same pattern on `error_x` and `error_y` instead of inventing a separate styling vocabulary:
+Do NOT add a `line.dashmode` discriminator field. The existing `line.dash` string already auto-detects named vs raw via `drawing.dashStyle()`, and `line.dasharray` can coexist with it as a parallel numeric form.
 
-- `error_y.dash`
+For error bars, mirror the same additions on `error_x` and `error_y`:
+
 - `error_y.dasharray`
 - `error_y.cap`
 
@@ -68,13 +69,13 @@ For error bars, mirror the same pattern on `error_x` and `error_y` instead of in
 
 #### Implementation notes
 
-- SVG can support this first through `stroke-dasharray` and `stroke-linecap` with very little architectural risk.
-- `scattergl` needs matching support in its conversion layer and likely in `node_modules/regl-line2d` for cap handling and for non-enumerated dash sequences.
-- Error bars need both SVG styling changes and a `regl-error2d` extension if the same feature is expected in GL.
+- SVG scatter already passes raw px dash strings straight through `drawing.dashStyle()`. The only missing SVG primitive is `stroke-linecap`, which maps directly to the new `line.cap` attribute.
+- `scattergl` currently restricts `line.dash` to named `DASHES` constants in both attributes and convert layers. However, `regl-line2d` already supports arbitrary numeric dash arrays natively (via a 1D GPU texture) and already has a `cap` property (defaulting to `'square'`). The scattergl work is therefore only in `scattergl/attributes.js` (loosen the enumerated restriction and add `line.cap`) and `scattergl/convert.js` (pass numeric arrays straight through instead of always looking up the DASHES map, and pass `cap` to the line options). No changes to `regl-line2d` itself are needed.
+- Error bars need SVG styling changes; GL parity requires passing additional style options through `scattergl/convert.js` to `regl-error2d`.
 
 #### Risk
 
-Low to medium for SVG. Medium for WebGL because dash and cap behavior touches external regl packages.
+Low to medium overall. For `scatter`, the only new rendering work is setting `stroke-linecap` on lines; `dasharray` already passes through. For `scattergl`, the entire change is in the conversion layer — `regl-line2d` already supports both custom dash arrays and `cap` control natively, so no changes to external regl packages are required.
 
 ### Phase 2: Error-bar style expansion
 
@@ -153,9 +154,10 @@ This keeps the feature clearly tied to marker geometry rather than turning it in
 
 #### Implementation notes
 
-- SVG implementation should use per-trace mask or clip-path defs generated from marker footprints, then apply them to line and fill layers.
-- `scattergl` likely needs either stencil-style masking, alpha-mask passes, or CPU-side geometry splitting. This is the hardest part of the whole plan.
-- SVG-only first is acceptable as an incremental step, but the API should be designed with GL parity in mind.
+- The API must be designed for `scatter` and `scattergl` from the start.
+- `scatter` implementation uses per-trace SVG mask or clip-path defs generated from marker footprints, applied to line and fill layers.
+- `scattergl` needs one of: stencil-style masking, alpha-mask passes, or CPU-side geometry splitting. The approach must be chosen before implementation begins because it influences the `scatter` API design.
+- A `scatter`-only first implementation is acceptable only if the `scattergl` design and timeline are explicitly documented alongside it.
 
 #### Risk
 
@@ -183,7 +185,7 @@ Add a trace-level array container rather than a separate trace type:
 - `trendlines[i].label.text`
 - `trendlines[i].label.position`
 
-This follows existing Plotly patterns like `transforms[]` and `shapes[]` more naturally than inventing a brand-new top-level trace.
+This follows the existing `shapes[]` layout-level pattern more naturally than inventing a brand-new top-level trace. Note: do NOT use `transforms[]` as a reference here — that array in `src/transforms/` is a data-preprocessing pipeline (filter, sort, aggregate, groupby), not an overlay-rendering system. The `trendlines[]` array is purely a rendering/styling configuration, closer in spirit to `shapes[]`.
 
 #### Primary owners
 
@@ -285,17 +287,16 @@ If this phase is taken on later, it should live in shared error-bar helpers unde
 
 ### Track A: Fastest high-value wins
 
-1. Shared stroke model in SVG.
-2. Shared stroke model in `scattergl`.
-3. Error-bar style expansion in SVG and GL.
+1. Shared stroke model in `scatter` and `scattergl` together (`scattergl` is the primary deliverable).
+2. Error-bar style expansion in `scatter` and `scattergl` together.
 
 These changes improve immediate compatibility while staying close to existing Plotly conventions.
 
 ### Track B: Hard renderer gap
 
-1. SVG point masking.
-2. API review after SVG feedback.
-3. `scattergl` masking design and prototype.
+1. `scatter` + `scattergl` masking design — choose the scattergl approach first since it constrains the SVG API.
+2. `scatter` masking implementation as reference.
+3. `scattergl` masking implementation in the same milestone, not as a follow-up.
 
 Point masking should not be mixed into the same PR series as stroke-model work.
 
@@ -309,16 +310,17 @@ Point masking should not be mixed into the same PR series as stroke-model work.
 
 ### Milestone 1
 
-- custom dash arrays in `scattergl`
-- shared `line.cap` in SVG scatter and shapes
-- shared error-bar dash and cap support
+- custom `line.dasharray` in `scatter` and `scattergl` (primary)
+- `line.cap` in `scatter`, `scattergl`, and shapes
+- richer error-bar dash and cap support in `scatter` and `scattergl`
 
 This is the most practical first milestone for easier Error Chart config translation.
 
 ### Milestone 2
 
-- SVG marker masking for scatter lines and fills
+- Marker masking for `scatter` and `scattergl` lines and fills
 - API stabilization for `marker.mask.*`
+- A `scatter`-only staged delivery is acceptable only if the `scattergl` design and timeline are explicitly recorded alongside it
 
 ### Milestone 3
 

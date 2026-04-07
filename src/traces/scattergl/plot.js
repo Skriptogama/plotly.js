@@ -172,6 +172,7 @@ function sceneOptions(gd, trace, stash) {
 
     if (opts.line && positions && positions.length > 1) {
         Lib.extendFlat(opts.line, convert.linePositions(gd, trace, positions));
+        trimLinePositions(opts.line);
     }
 
     if (opts.errorX || opts.errorY) {
@@ -484,15 +485,7 @@ var exports = module.exports = function plot(gd, subplot, cdata) {
             if (canIncrementallyUpload) {
                 var lineUpdateBatch = makeIncrementalUpdateBatch(scene.lineOptions, incrementalStart, count);
                 scene.line2d.update(lineUpdateBatch);
-
-                for (i = incrementalStart; i < count; i++) {
-                    lineUpdateBatch[i] = trimLinePositions(scene.lineOptions[i]);
-                }
-
-                scene.line2d.update(lineUpdateBatch);
             } else {
-                scene.line2d.update(scene.lineOptions);
-                scene.lineOptions = scene.lineOptions.map(trimLinePositions);
                 scene.line2d.update(scene.lineOptions);
             }
         }

@@ -961,3 +961,66 @@ describe('Test texttemplate for scattergl', function () {
         ['%{x} is %{y}', ['*0* is $1000.00 !', '*1* is $1200.00 !']]
     ]);
 });
+
+describe('scattergl line dash and cap convert', function () {
+    // Unit tests for the convert layer — no browser/WebGL required.
+    // plotGlPixelRatio=1 so dash values pass through unscaled for easy assertions.
+    var gd = { _context: { plotGlPixelRatio: 1 } };
+
+    function makeTrace(lineOpts) {
+        return {
+            visible: true,
+            mode: 'lines',
+            opacity: 1,
+            line: Lib.extendFlat({ color: '#000', width: 2 }, lineOpts)
+        };
+    }
+
+    it('should produce correct dashes for named preset "solid"', function () {
+        var opts = convert.style(gd, makeTrace({ dash: 'solid' }));
+        expect(opts.line.dashes).toEqual([2]); // DASHES.solid=[1], scaled by width*pixelRatio=2*1
+    });
+
+    it('should produce correct dashes for named preset "dot"', function () {
+        var opts = convert.style(gd, makeTrace({ dash: 'dot' }));
+        // DASHES.dot=[1,1] each scaled by 2
+        expect(opts.line.dashes).toEqual([2, 2]);
+    });
+
+    it('should parse a custom comma-separated dash string', function () {
+        var opts = convert.style(gd, makeTrace({ dash: '8,4,2,4' }));
+        // each value scaled by width(2)*pixelRatio(1)=2
+        expect(opts.line.dashes).toEqual([16, 8, 4, 8]);
+    });
+
+    it('should parse a px-suffixed dash string', function () {
+        var opts = convert.style(gd, makeTrace({ dash: '8px,4px' }));
+        expect(opts.line.dashes).toEqual([16, 8]);
+    });
+
+    it('should fall back to [scaled_width] for an invalid dash string', function () {
+        var opts = convert.style(gd, makeTrace({ dash: 'notvalid' }));
+        // expected fallback: [width * pixelRatio] = [2]
+        expect(opts.line.dashes).toEqual([2]);
+    });
+
+    it('should not set cap on opts.line when line.cap is absent', function () {
+        var opts = convert.style(gd, makeTrace({ dash: 'solid' }));
+        expect(opts.line.cap).toBeUndefined();
+    });
+
+    it('should map public line.cap values to internal GL line opts', function () {
+        [
+            { cap: 'square', expected: 'butt' },
+            { cap: 'round', expected: 'round' }
+        ].forEach(function (testCase) {
+            var opts = convert.style(gd, makeTrace({ dash: 'solid', cap: testCase.cap }));
+            expect(opts.line.cap).toBe(testCase.expected, 'cap=' + testCase.cap);
+        });
+    });
+
+    it('should compensate dash lengths for round caps in GL opts', function () {
+        var opts = convert.style(gd, makeTrace({ dash: '8,4,2,4', cap: 'round' }));
+        expect(opts.line.dashes).toEqual([14, 10, 2, 10]);
+    });
+});

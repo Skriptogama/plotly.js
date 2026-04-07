@@ -13390,6 +13390,12 @@ var Plotly = (() => {
         dflt: "solid",
         editType: "style"
       };
+      exports.linecap = {
+        valType: "enumerated",
+        values: ["square", "round"],
+        dflt: "square",
+        editType: "style"
+      };
       exports.pattern = {
         shape: {
           valType: "enumerated",
@@ -24221,9 +24227,10 @@ var Plotly = (() => {
         var trace = ((d || [])[0] || {}).trace || {};
         var lw1 = lw || line.width || 0;
         var dash = ld || line.dash || "";
+        var cap = line.cap || "";
         BlendMode.applySingleStyle(s, BlendMode.getContainerBlendMode(trace, line, "line"));
         Color.stroke(s, lc || line.color);
-        drawing.dashLine(s, dash, lw1);
+        drawing.dashLine(s, dash, lw1, cap);
       };
       drawing.lineGroupStyle = function(s, lw, lc, ld) {
         s.style("fill", "none").each(function(d) {
@@ -24231,30 +24238,62 @@ var Plotly = (() => {
           var trace = ((d || [])[0] || {}).trace || {};
           var lw1 = lw || line.width || 0;
           var dash = ld || line.dash || "";
-          d3.select(this).call(BlendMode.applySingleStyle, BlendMode.getContainerBlendMode(trace, line, "line")).call(Color.stroke, lc || line.color).call(drawing.dashLine, dash, lw1);
+          var cap = line.cap || "";
+          d3.select(this).call(BlendMode.applySingleStyle, BlendMode.getContainerBlendMode(trace, line, "line")).call(Color.stroke, lc || line.color).call(drawing.dashLine, dash, lw1, cap);
         });
       };
-      drawing.dashLine = function(s, dash, lineWidth) {
+      drawing.dashLine = function(s, dash, lineWidth, cap) {
         lineWidth = +lineWidth || 0;
-        dash = drawing.dashStyle(dash, lineWidth);
-        s.style({
+        cap = drawing.lineCapStyle(cap);
+        dash = drawing.dashStyle(dash, lineWidth, cap);
+        var styles = {
           "stroke-dasharray": dash,
           "stroke-width": lineWidth + "px"
-        });
+        };
+        if (cap) styles["stroke-linecap"] = cap;
+        s.style(styles);
       };
-      drawing.dashStyle = function(dash, lineWidth) {
+      drawing.lineCapStyle = function(cap) {
+        return cap === "round" ? "round" : "butt";
+      };
+      drawing.compensateDashArray = function(dashArray, lineWidth, cap) {
+        var internalCap = drawing.lineCapStyle(cap);
+        var compensated = [];
+        var width = +lineWidth || 0;
+        if (internalCap !== "round" || !dashArray || !dashArray.length) {
+          return dashArray;
+        }
+        for (var i = 0; i < dashArray.length; i++) {
+          var value = +dashArray[i] || 0;
+          compensated.push(i % 2 === 0 ? Math.max(value - width, 0) : value + width);
+        }
+        return compensated;
+      };
+      drawing.dashStyle = function(dash, lineWidth, cap) {
         lineWidth = +lineWidth || 1;
         var dlw = Math.max(lineWidth, 3);
-        if (dash === "solid") dash = "";
-        else if (dash === "dot") dash = dlw + "px," + dlw + "px";
-        else if (dash === "dash") dash = 3 * dlw + "px," + 3 * dlw + "px";
-        else if (dash === "longdash") dash = 5 * dlw + "px," + 5 * dlw + "px";
+        var dashArray;
+        if (dash === "solid") return "";
+        else if (dash === "dot") dashArray = [dlw, dlw];
+        else if (dash === "dash") dashArray = [3 * dlw, 3 * dlw];
+        else if (dash === "longdash") dashArray = [5 * dlw, 5 * dlw];
         else if (dash === "dashdot") {
-          dash = 3 * dlw + "px," + dlw + "px," + dlw + "px," + dlw + "px";
+          dashArray = [3 * dlw, dlw, dlw, dlw];
         } else if (dash === "longdashdot") {
-          dash = 5 * dlw + "px," + 2 * dlw + "px," + dlw + "px," + 2 * dlw + "px";
+          dashArray = [5 * dlw, 2 * dlw, dlw, 2 * dlw];
+        } else {
+          var parts = String(dash).split(",");
+          dashArray = [];
+          for (var pi = 0; pi < parts.length; pi++) {
+            var pv = parseFloat(parts[pi]);
+            if (isFinite(pv)) dashArray.push(pv * lineWidth);
+          }
+          if (!dashArray.length) return dash;
         }
-        return dash;
+        dashArray = drawing.compensateDashArray(dashArray, lineWidth, cap);
+        return dashArray.map(function(value) {
+          return value + "px";
+        }).join(",");
       };
       function setFillStyle(sel, trace, gd, forLegend) {
         var markerPattern = trace.fillpattern;
@@ -36963,6 +37002,7 @@ var Plotly = (() => {
           var lineColor = options.line.width ? options.line.color : "rgba(0,0,0,0)";
           var lineWidth = options.line.width;
           var lineDash = options.line.dash;
+          var lineCap = options.line.cap;
           if (!lineWidth && options.editable === true) {
             lineWidth = 5;
             lineDash = "solid";
@@ -36974,7 +37014,7 @@ var Plotly = (() => {
             opacity = gd._fullLayout.activeshape.opacity;
           }
           var shapeGroup = shapeLayer.append("g").classed("shape-group", true).attr({ "data-index": index });
-          var path = shapeGroup.append("path").attr(attrs).style("opacity", opacity).call(Color.stroke, lineColor).call(Color.fill, fillColor).call(Drawing.dashLine, lineDash, lineWidth);
+          var path = shapeGroup.append("path").attr(attrs).style("opacity", opacity).call(Color.stroke, lineColor).call(Color.fill, fillColor).call(Drawing.dashLine, lineDash, lineWidth, lineCap);
           setClipPath(shapeGroup, gd, options);
           drawLabel(gd, index, options, shapeGroup);
           var editHelpers;
@@ -42976,6 +43016,7 @@ var Plotly = (() => {
       var colorScaleAttrs = require_attributes8();
       var fontAttrs = require_font_attributes();
       var dash = require_attributes4().dash;
+      var linecap = require_attributes4().linecap;
       var pattern = require_attributes4().pattern;
       var baseAttrs = require_attributes2();
       var blendMode = require_blend_mode();
@@ -43148,6 +43189,7 @@ var Plotly = (() => {
             editType: "plot"
           },
           dash: extendFlat({}, dash, { editType: "style" }),
+          cap: extendFlat({}, linecap, { editType: "style" }),
           blendmode: blendMode.attr({}),
           backoff: {
             // we want to have a similar option for the start of the line
@@ -49158,6 +49200,7 @@ var Plotly = (() => {
           coerce("line.color", lineColorDflt);
         }
         coerce("line.width");
+        coerce("line.cap");
         coerce("line.blendmode");
         if (!opts.noDash) coerce("line.dash");
         if (opts.backoff) coerce("line.backoff");
@@ -54838,7 +54881,9 @@ var Plotly = (() => {
       var cartesianConstants = require_constants2();
       var fontAttrs = require_font_attributes();
       var scatterLineAttrs = require_attributes12().line;
-      var dash = require_attributes4().dash;
+      var drawAttrs = require_attributes4();
+      var dash = drawAttrs.dash;
+      var linecap = drawAttrs.linecap;
       var extendFlat = require_extend().extendFlat;
       var templatedArray = require_plot_template().templatedArray;
       var axisPlaceableObjs = require_axis_placeable_objects();
@@ -54972,6 +55017,7 @@ var Plotly = (() => {
           color: extendFlat({}, scatterLineAttrs.color, { editType: "arraydraw" }),
           width: extendFlat({}, scatterLineAttrs.width, { editType: "calc+arraydraw" }),
           dash: extendFlat({}, dash, { editType: "arraydraw" }),
+          cap: extendFlat({}, linecap, { editType: "arraydraw" }),
           editType: "calc+arraydraw"
         },
         fillcolor: {
@@ -55097,6 +55143,7 @@ var Plotly = (() => {
         if (lineWidth) {
           coerce("line.color");
           coerce("line.dash");
+          coerce("line.cap");
         }
         var xSizeMode = coerce("xsizemode");
         var ySizeMode = coerce("ysizemode");
@@ -59491,6 +59538,8 @@ var Plotly = (() => {
   var require_attributes22 = __commonJS({
     "src/components/errorbars/attributes.js"(exports, module) {
       "use strict";
+      var extendFlat = require_extend().extendFlat;
+      var drawAttrs = require_attributes4();
       var blendMode = require_blend_mode();
       module.exports = {
         visible: {
@@ -59550,6 +59599,10 @@ var Plotly = (() => {
           valType: "color",
           editType: "style"
         },
+        colorminus: {
+          valType: "color",
+          editType: "style"
+        },
         blendmode: blendMode.attr({}),
         thickness: {
           valType: "number",
@@ -59562,6 +59615,8 @@ var Plotly = (() => {
           min: 0,
           editType: "plot"
         },
+        dash: extendFlat({}, drawAttrs.dash, { editType: "style" }),
+        cap: extendFlat({}, drawAttrs.linecap, { editType: "style" }),
         editType: "calc"
       };
     }
@@ -59617,6 +59672,9 @@ var Plotly = (() => {
           coerce("blendmode");
           coerce("thickness");
           coerce("width", Registry.traceIs(traceOut, "gl3d") ? 0 : 4);
+          coerce("dash");
+          coerce("cap");
+          coerce("colorminus");
         }
       };
     }
@@ -59769,8 +59827,8 @@ var Plotly = (() => {
           var errorbars = d3.select(this).selectAll("g.errorbar").data(d, keyFunc);
           errorbars.exit().remove();
           if (!d.length) return;
-          if (!xObj.visible) errorbars.selectAll("path.xerror").remove();
-          if (!yObj.visible) errorbars.selectAll("path.yerror").remove();
+          if (!xObj.visible) errorbars.selectAll("path.xerror, path.xerror-plus, path.xerror-minus").remove();
+          if (!yObj.visible) errorbars.selectAll("path.yerror, path.yerror-plus, path.yerror-minus").remove();
           errorbars.style("opacity", 1);
           var enter = errorbars.enter().append("g").classed("errorbar", true);
           if (hasAnimation) {
@@ -59785,31 +59843,71 @@ var Plotly = (() => {
             var yerror = errorbar.select("path.yerror");
             if (yObj.visible && isNumeric(coords.x) && isNumeric(coords.yh) && isNumeric(coords.ys)) {
               var yw = yObj.width;
-              path = "M" + (coords.x - yw) + "," + coords.yh + "h" + 2 * yw + // hat
-              "m-" + yw + ",0V" + coords.ys;
-              if (!coords.noYS) path += "m-" + yw + ",0h" + 2 * yw;
-              isNew = !yerror.size();
-              if (isNew) {
-                yerror = errorbar.append("path").style("vector-effect", isStatic ? "none" : "non-scaling-stroke").classed("yerror", true);
-              } else if (hasAnimation) {
-                yerror = yerror.transition().duration(transitionOpts.duration).ease(transitionOpts.easing);
+              if (yObj.colorminus !== void 0) {
+                yerror.remove();
+                var plusPathY = "M" + (coords.x - yw) + "," + coords.yh + "h" + 2 * yw + // hat
+                "m-" + yw + ",0V" + coords.y;
+                var minusPathY = "M" + coords.x + "," + coords.y + "V" + coords.ys;
+                if (!coords.noYS) minusPathY += "m-" + yw + ",0h" + 2 * yw;
+                var yerrorPlus = errorbar.select("path.yerror-plus");
+                var yerrorMinus = errorbar.select("path.yerror-minus");
+                if (!yerrorPlus.size()) {
+                  yerrorPlus = errorbar.append("path").style("vector-effect", isStatic ? "none" : "non-scaling-stroke").classed("yerror-plus", true);
+                  yerrorMinus = errorbar.append("path").style("vector-effect", isStatic ? "none" : "non-scaling-stroke").classed("yerror-minus", true);
+                }
+                yerrorPlus.attr("d", plusPathY);
+                yerrorMinus.attr("d", minusPathY);
+              } else {
+                errorbar.selectAll("path.yerror-plus, path.yerror-minus").remove();
+                path = "M" + (coords.x - yw) + "," + coords.yh + "h" + 2 * yw + // hat
+                "m-" + yw + ",0V" + coords.ys;
+                if (!coords.noYS) path += "m-" + yw + ",0h" + 2 * yw;
+                isNew = !yerror.size();
+                if (isNew) {
+                  yerror = errorbar.append("path").style("vector-effect", isStatic ? "none" : "non-scaling-stroke").classed("yerror", true);
+                } else if (hasAnimation) {
+                  yerror = yerror.transition().duration(transitionOpts.duration).ease(transitionOpts.easing);
+                }
+                yerror.attr("d", path);
               }
-              yerror.attr("d", path);
-            } else yerror.remove();
+            } else {
+              yerror.remove();
+              errorbar.selectAll("path.yerror-plus, path.yerror-minus").remove();
+            }
             var xerror = errorbar.select("path.xerror");
             if (xObj.visible && isNumeric(coords.y) && isNumeric(coords.xh) && isNumeric(coords.xs)) {
               var xw = (xObj.copy_ystyle ? yObj : xObj).width;
-              path = "M" + coords.xh + "," + (coords.y - xw) + "v" + 2 * xw + // hat
-              "m0,-" + xw + "H" + coords.xs;
-              if (!coords.noXS) path += "m0,-" + xw + "v" + 2 * xw;
-              isNew = !xerror.size();
-              if (isNew) {
-                xerror = errorbar.append("path").style("vector-effect", isStatic ? "none" : "non-scaling-stroke").classed("xerror", true);
-              } else if (hasAnimation) {
-                xerror = xerror.transition().duration(transitionOpts.duration).ease(transitionOpts.easing);
+              if (xObj.colorminus !== void 0) {
+                xerror.remove();
+                var plusPathX = "M" + coords.xh + "," + (coords.y - xw) + "v" + 2 * xw + // hat
+                "m0,-" + xw + "H" + coords.x;
+                var minusPathX = "M" + coords.x + "," + coords.y + "H" + coords.xs;
+                if (!coords.noXS) minusPathX += "m0,-" + xw + "v" + 2 * xw;
+                var xerrorPlus = errorbar.select("path.xerror-plus");
+                var xerrorMinus = errorbar.select("path.xerror-minus");
+                if (!xerrorPlus.size()) {
+                  xerrorPlus = errorbar.append("path").style("vector-effect", isStatic ? "none" : "non-scaling-stroke").classed("xerror-plus", true);
+                  xerrorMinus = errorbar.append("path").style("vector-effect", isStatic ? "none" : "non-scaling-stroke").classed("xerror-minus", true);
+                }
+                xerrorPlus.attr("d", plusPathX);
+                xerrorMinus.attr("d", minusPathX);
+              } else {
+                errorbar.selectAll("path.xerror-plus, path.xerror-minus").remove();
+                path = "M" + coords.xh + "," + (coords.y - xw) + "v" + 2 * xw + // hat
+                "m0,-" + xw + "H" + coords.xs;
+                if (!coords.noXS) path += "m0,-" + xw + "v" + 2 * xw;
+                isNew = !xerror.size();
+                if (isNew) {
+                  xerror = errorbar.append("path").style("vector-effect", isStatic ? "none" : "non-scaling-stroke").classed("xerror", true);
+                } else if (hasAnimation) {
+                  xerror = xerror.transition().duration(transitionOpts.duration).ease(transitionOpts.easing);
+                }
+                xerror.attr("d", path);
               }
-              xerror.attr("d", path);
-            } else xerror.remove();
+            } else {
+              xerror.remove();
+              errorbar.selectAll("path.xerror-plus, path.xerror-minus").remove();
+            }
           });
         });
       };
@@ -59846,15 +59944,26 @@ var Plotly = (() => {
       var d3 = require_d3();
       var Color = require_color();
       var BlendMode = require_blend_mode();
+      var Drawing = require_drawing();
       module.exports = function style(traces) {
         traces.each(function(d) {
           var trace = d[0].trace;
           var yObj = trace.error_y || {};
           var xObj = trace.error_x || {};
           var s = d3.select(this);
-          s.selectAll("path.yerror").call(BlendMode.applyStyle, BlendMode.getContainerBlendMode(trace, yObj, "error_y")).style("stroke-width", yObj.thickness + "px").call(Color.stroke, yObj.color);
+          var yBlend = BlendMode.getContainerBlendMode(trace, yObj, "error_y");
+          var yDash = Drawing.dashStyle(yObj.dash, yObj.thickness, yObj.cap) || null;
+          var yCap = Drawing.lineCapStyle(yObj.cap) || null;
+          s.selectAll("path.yerror, path.yerror-plus").call(BlendMode.applyStyle, yBlend).style("stroke-width", yObj.thickness + "px").call(Color.stroke, yObj.color);
+          s.selectAll("path.yerror-minus").call(BlendMode.applyStyle, yBlend).style("stroke-width", yObj.thickness + "px").call(Color.stroke, yObj.colorminus || yObj.color);
+          s.selectAll("path.yerror, path.yerror-plus, path.yerror-minus").style("stroke-dasharray", yDash).style("stroke-linecap", yCap);
           if (xObj.copy_ystyle) xObj = yObj;
-          s.selectAll("path.xerror").call(BlendMode.applyStyle, BlendMode.getContainerBlendMode(trace, xObj, "error_x")).style("stroke-width", xObj.thickness + "px").call(Color.stroke, xObj.color);
+          var xBlend = BlendMode.getContainerBlendMode(trace, xObj, "error_x");
+          var xDash = Drawing.dashStyle(xObj.dash, xObj.thickness, xObj.cap) || null;
+          var xCap = Drawing.lineCapStyle(xObj.cap) || null;
+          s.selectAll("path.xerror, path.xerror-plus").call(BlendMode.applyStyle, xBlend).style("stroke-width", xObj.thickness + "px").call(Color.stroke, xObj.color);
+          s.selectAll("path.xerror-minus").call(BlendMode.applyStyle, xBlend).style("stroke-width", xObj.thickness + "px").call(Color.stroke, xObj.colorminus || xObj.color);
+          s.selectAll("path.xerror, path.xerror-plus, path.xerror-minus").style("stroke-dasharray", xDash).style("stroke-linecap", xCap);
         });
       };
     }
@@ -61243,30 +61352,6 @@ var Plotly = (() => {
     }
   });
 
-  // src/traces/scattergl/constants.js
-  var require_constants15 = __commonJS({
-    "src/traces/scattergl/constants.js"(exports, module) {
-      "use strict";
-      var SYMBOL_SIZE = 20;
-      module.exports = {
-        TOO_MANY_POINTS: 1e5,
-        SYMBOL_SDF_SIZE: 200,
-        SYMBOL_SIZE,
-        SYMBOL_STROKE: SYMBOL_SIZE / 20,
-        DOT_RE: /-dot/,
-        OPEN_RE: /-open/,
-        DASHES: {
-          solid: [1],
-          dot: [1, 1],
-          dash: [4, 1],
-          longdash: [8, 1],
-          dashdot: [4, 1, 1, 1],
-          longdashdot: [8, 1, 1, 1]
-        }
-      };
-    }
-  });
-
   // src/traces/scattergl/attributes.js
   var require_attributes23 = __commonJS({
     "src/traces/scattergl/attributes.js"(exports, module) {
@@ -61277,10 +61362,9 @@ var Plotly = (() => {
       var scatterAttrs = require_attributes12();
       var axisHoverFormat = require_axis_format_attributes().axisHoverFormat;
       var colorScaleAttrs = require_attributes8();
-      var sortObjectKeys = require_sort_object_keys();
+      var drawAttrs = require_attributes4();
       var extendFlat = require_extend().extendFlat;
       var overrideAll = require_edit_types().overrideAll;
-      var DASHES = require_constants15().DASHES;
       var scatterLineAttrs = scatterAttrs.line;
       var scatterMarkerAttrs = scatterAttrs.marker;
       var scatterMarkerLineAttrs = scatterMarkerAttrs.line;
@@ -61326,11 +61410,8 @@ var Plotly = (() => {
             tension: scatterLineAttrs.tension,
             alpha: scatterLineAttrs.alpha,
             blendmode: scatterLineAttrs.blendmode,
-            dash: {
-              valType: "enumerated",
-              values: sortObjectKeys(DASHES),
-              dflt: "solid"
-            }
+            dash: extendFlat({}, drawAttrs.dash, { editType: "style" }),
+            cap: extendFlat({}, drawAttrs.linecap, { editType: "style" })
           },
           marker: extendFlat({}, colorScaleAttrs("marker"), {
             symbol: scatterMarkerAttrs.symbol,
@@ -61370,6 +61451,30 @@ var Plotly = (() => {
       attrs.hovertemplatefallback = scatterAttrs.hovertemplatefallback;
       attrs.texttemplate = scatterAttrs.texttemplate;
       attrs.texttemplatefallback = scatterAttrs.texttemplatefallback;
+    }
+  });
+
+  // src/traces/scattergl/constants.js
+  var require_constants15 = __commonJS({
+    "src/traces/scattergl/constants.js"(exports, module) {
+      "use strict";
+      var SYMBOL_SIZE = 20;
+      module.exports = {
+        TOO_MANY_POINTS: 1e5,
+        SYMBOL_SDF_SIZE: 200,
+        SYMBOL_SIZE,
+        SYMBOL_STROKE: SYMBOL_SIZE / 20,
+        DOT_RE: /-dot/,
+        OPEN_RE: /-open/,
+        DASHES: {
+          solid: [1],
+          dot: [1, 1],
+          dash: [4, 1],
+          longdash: [8, 1],
+          dashdot: [4, 1, 1, 1],
+          longdashdot: [8, 1, 1, 1]
+        }
+      };
     }
   });
 
@@ -67838,6 +67943,28 @@ var Plotly = (() => {
       var appendArrayPointValue = require_helpers2().appendArrayPointValue;
       var SMOOTH_LINE_TOLERANCE_PX = 0.5;
       var MAX_BEZIER_SUBDIVISION_DEPTH = 10;
+      function getLineDashes(trace, plotGlPixelRatio) {
+        var line = trace.line || {};
+        var lineWidth = (line.width || 1) * plotGlPixelRatio;
+        var dashInput = line.dash || "solid";
+        var dashes;
+        var i;
+        if (constants.DASHES[dashInput]) {
+          dashes = constants.DASHES[dashInput].slice();
+          for (i = 0; i < dashes.length; ++i) {
+            dashes[i] *= lineWidth;
+          }
+        } else {
+          var parts = dashInput.split(",");
+          dashes = [];
+          for (i = 0; i < parts.length; i++) {
+            var val = parseFloat(parts[i]);
+            if (isNumeric(val)) dashes.push(val * lineWidth);
+          }
+          if (!dashes.length) dashes = [lineWidth];
+        }
+        return Drawing.compensateDashArray(dashes, lineWidth, line.cap);
+      }
       function convertStyle(gd, trace) {
         var i;
         var opts = {
@@ -67879,11 +68006,8 @@ var Plotly = (() => {
             opacity: trace.opacity,
             blend: BlendMode.getGLBlend(BlendMode.getContainerBlendMode(trace, trace.line, "line"))
           };
-          var dashes = (constants.DASHES[trace.line.dash] || [1]).slice();
-          for (i = 0; i < dashes.length; ++i) {
-            dashes[i] *= trace.line.width * plotGlPixelRatio;
-          }
-          opts.line.dashes = dashes;
+          opts.line.dashes = getLineDashes(trace, plotGlPixelRatio);
+          if (trace.line.cap) opts.line.cap = Drawing.lineCapStyle(trace.line.cap);
         }
         if (trace.error_x && trace.error_x.visible) {
           opts.errorX = convertErrorBarStyle(trace, trace.error_x, plotGlPixelRatio);
@@ -68190,6 +68314,7 @@ var Plotly = (() => {
           color: target.color,
           blend: BlendMode.getGLBlend(target.blendmode, 0, BlendMode.getTraceBlendMode(trace))
         };
+        if (target.colorminus !== void 0) optsOut.colorminus = target.colorminus;
         if (target.copy_ystyle) {
           optsOut = trace.error_y;
         }
@@ -72142,13 +72267,14 @@ precision highp float;
 attribute vec2 aCoord, bCoord, aCoordFract, bCoordFract;
 attribute vec4 color;
 attribute float lineEnd, lineTop;
+attribute float aLength, bLength;
 
 uniform vec2 scale, scaleFract, translate, translateFract;
 uniform float thickness, pixelRatio, id, depth;
 uniform vec4 viewport;
 
 varying vec4 fragColor;
-varying vec2 tangent;
+varying float arcLength;
 
 vec2 project(vec2 position, vec2 positionFract, vec2 scale, vec2 scaleFract, vec2 translate, vec2 translateFract) {
 	// the order is important
@@ -72163,8 +72289,9 @@ void main() {
 	float lineOffset = lineTop * 2. - 1.;
 
 	vec2 diff = (bCoord + bCoordFract - aCoord - aCoordFract);
-	tangent = normalize(diff * scale * viewport.zw);
+	vec2 tangent = normalize(diff * scale * viewport.zw);
 	vec2 normal = vec2(-tangent.y, tangent.x);
+	arcLength = aLength * lineStart + bLength * lineEnd;
 
 	vec2 position = project(aCoord, aCoordFract, scale, scaleFract, translate, translateFract) * lineStart
 		+ project(bCoord, bCoordFract, scale, scaleFract, translate, translateFract) * lineEnd
@@ -72183,12 +72310,12 @@ uniform float dashLength, pixelRatio, thickness, opacity, id;
 uniform sampler2D dashTexture;
 
 varying vec4 fragColor;
-varying vec2 tangent;
+varying float arcLength;
 
 void main() {
 	float alpha = 1.;
 
-	float t = fract(dot(tangent, gl_FragCoord.xy) / dashLength) * .5 + .25;
+	float t = fract(arcLength / dashLength) * .5 + .25;
 	float dash = texture2D(dashTexture, vec2(t, .5)).r;
 
 	gl_FragColor = fragColor;
@@ -72238,6 +72365,7 @@ precision highp float;
 attribute vec2 aCoord, bCoord, nextCoord, prevCoord;
 attribute vec4 aColor, bColor;
 attribute float lineEnd, lineTop;
+attribute float aLength, bLength;
 
 uniform vec2 scale, translate;
 uniform float thickness, pixelRatio, id, depth;
@@ -72246,7 +72374,7 @@ uniform float miterLimit, miterMode;
 
 varying vec4 fragColor;
 varying vec4 startCutoff, endCutoff;
-varying vec2 tangent;
+varying float arcLength;
 varying vec2 startCoord, endCoord;
 varying float enableStartMiter, enableEndMiter;
 
@@ -72319,7 +72447,7 @@ void main() {
 		currTangent = prevTangent;
 	}
 
-	tangent = currTangent;
+	arcLength = aLength * lineStart + bLength * lineEnd;
 
 	//calculate join shifts relative to normals
 	float startJoinShift = dot(currNormal, startJoinDirection);
@@ -72444,7 +72572,7 @@ uniform float dashLength, pixelRatio, thickness, opacity, id, miterMode;
 uniform sampler2D dashTexture;
 
 varying vec4 fragColor;
-varying vec2 tangent;
+varying float arcLength;
 varying vec4 startCutoff, endCutoff;
 varying vec2 startCoord, endCoord;
 varying float enableStartMiter, enableEndMiter;
@@ -72511,7 +72639,7 @@ void main() {
 		}
 	}
 
-	float t = fract(dot(tangent, gl_FragCoord.xy) / dashLength) * .5 + .25;
+	float t = fract(arcLength / dashLength) * .5 + .25;
 	float dash = texture2D(dashTexture, vec2(t, .5)).r;
 
 	gl_FragColor = fragColor;
@@ -72534,6 +72662,15 @@ void main() {
         }
         this.gl = regl._gl;
         this.regl = regl;
+        this._solidDashTexture = regl.texture({
+          channels: 1,
+          data: new Uint8Array([255]),
+          width: 1,
+          height: 1,
+          mag: "linear",
+          min: "linear"
+        });
+        this._dashTextureCache = {};
         this.passes = [];
         this.shaders = Line2D.shaders.has(regl) ? Line2D.shaders.get(regl) : Line2D.shaders.set(regl, Line2D.createShaders(regl)).get(regl);
         this.update(options);
@@ -72641,6 +72778,18 @@ void main() {
               offset: 16,
               divisor: 1
             },
+            aLength: {
+              buffer: regl.prop("lengthBuffer"),
+              stride: 4,
+              offset: 4,
+              divisor: 1
+            },
+            bLength: {
+              buffer: regl.prop("lengthBuffer"),
+              stride: 4,
+              offset: 8,
+              divisor: 1
+            },
             color: {
               buffer: regl.prop("colorBuffer"),
               stride: 4,
@@ -72700,10 +72849,22 @@ void main() {
                 offset: 8,
                 divisor: 1
               },
+              aLength: {
+                buffer: regl.prop("lengthBuffer"),
+                stride: 4,
+                offset: 4,
+                divisor: 1
+              },
               bCoord: {
                 buffer: regl.prop("positionBuffer"),
                 stride: 8,
                 offset: 16,
+                divisor: 1
+              },
+              bLength: {
+                buffer: regl.prop("lengthBuffer"),
+                stride: 4,
+                offset: 8,
                 divisor: 1
               },
               nextCoord: {
@@ -72838,15 +72999,9 @@ void main() {
               count: 0,
               hole: [],
               depth: 0,
+              hasDash: false,
               dashLength: 1,
-              dashTexture: regl.texture({
-                channels: 1,
-                data: new Uint8Array([255]),
-                width: 1,
-                height: 1,
-                mag: "linear",
-                min: "linear"
-              }),
+              dashTexture: this._solidDashTexture,
               colorBuffer: regl.buffer({
                 usage: "dynamic",
                 type: "uint8",
@@ -72858,6 +73013,11 @@ void main() {
                 data: new Uint8Array()
               }),
               positionFractBuffer: regl.buffer({
+                usage: "dynamic",
+                type: "float",
+                data: new Uint8Array()
+              }),
+              lengthBuffer: regl.buffer({
                 usage: "dynamic",
                 type: "float",
                 data: new Uint8Array()
@@ -72885,6 +73045,7 @@ void main() {
             ]);
           }
           if (o.close != null) state.close = o.close;
+          if (o.dashes !== void 0) state.hasDash = !!(o.dashes && o.dashes.length >= 2);
           if (o.positions === null) o.positions = [];
           if (o.positions) {
             let positions, count;
@@ -72973,6 +73134,7 @@ void main() {
               positionData[1] = npos[1];
             }
             positionData.set(npos, 2);
+            state.positionData = positionData;
             if (state.close) {
               if (positions[0] === positions[count * 2 - 2] && positions[1] === positions[count * 2 - 1]) {
                 positionData[count * 2 + 2] = npos[2];
@@ -73015,37 +73177,73 @@ void main() {
             state.scaleFract = fract32(state.scale);
             state.translateFract = fract32(state.translate);
           }
-          if (o.dashes) {
-            let dashLength = 0, dashData;
-            if (!o.dashes || o.dashes.length < 2) {
-              dashLength = 1;
-              dashData = new Uint8Array([255, 255, 255, 255, 255, 255, 255, 255]);
-            } else {
-              dashLength = 0;
-              for (let i2 = 0; i2 < o.dashes.length; ++i2) {
-                dashLength += o.dashes[i2];
+          if (state.hasDash && (o.range || o.positions || o.viewport) && state.count && state.positionData) {
+            let expandedCount = state.positionData.length / 2;
+            let lengthData = new Float32Array(expandedCount);
+            let viewport = state.viewport;
+            let scaleX = state.scale[0] * viewport.width;
+            let scaleY = state.scale[1] * viewport.height;
+            let translateX = state.translate[0] * viewport.width + viewport.x;
+            let translateY = state.translate[1] * viewport.height + viewport.y;
+            let total = 0;
+            for (let i2 = 1; i2 < expandedCount; i2++) {
+              let prevX = state.positionData[(i2 - 1) * 2] * scaleX + translateX;
+              let prevY = state.positionData[(i2 - 1) * 2 + 1] * scaleY + translateY;
+              let currX = state.positionData[i2 * 2] * scaleX + translateX;
+              let currY = state.positionData[i2 * 2 + 1] * scaleY + translateY;
+              if (!(isNaN(prevX) || isNaN(prevY) || isNaN(currX) || isNaN(currY))) {
+                let dx = currX - prevX;
+                let dy = currY - prevY;
+                total += Math.sqrt(dx * dx + dy * dy);
               }
-              dashData = new Uint8Array(dashLength * Line2D.dashMult);
-              let ptr = 0;
-              let fillColor = 255;
-              for (let k = 0; k < 2; k++) {
+              lengthData[i2] = total;
+            }
+            state.lengthBuffer(lengthData);
+          }
+          if (o.dashes !== void 0) {
+            let dashLength = 0, dashData;
+            if (!state.hasDash) {
+              dashLength = 1;
+              state.dashLength = dashLength;
+              state.dashTexture = this._solidDashTexture;
+            } else {
+              let dashKey = o.dashes.join(",");
+              let cachedDash = this._dashTextureCache[dashKey];
+              if (cachedDash) {
+                state.dashLength = cachedDash.dashLength;
+                state.dashTexture = cachedDash.texture;
+              } else {
+                dashLength = 0;
                 for (let i2 = 0; i2 < o.dashes.length; ++i2) {
-                  for (let j = 0, l = o.dashes[i2] * Line2D.dashMult * 0.5; j < l; ++j) {
-                    dashData[ptr++] = fillColor;
-                  }
-                  fillColor ^= 255;
+                  dashLength += o.dashes[i2];
                 }
+                dashData = new Uint8Array(dashLength * Line2D.dashMult);
+                let ptr = 0;
+                let fillColor = 255;
+                for (let k = 0; k < 2; k++) {
+                  for (let i2 = 0; i2 < o.dashes.length; ++i2) {
+                    for (let j = 0, l = o.dashes[i2] * Line2D.dashMult * 0.5; j < l; ++j) {
+                      dashData[ptr++] = fillColor;
+                    }
+                    fillColor ^= 255;
+                  }
+                }
+                let dashTexture = regl.texture({
+                  channels: 1,
+                  data: dashData,
+                  width: dashData.length,
+                  height: 1,
+                  mag: "linear",
+                  min: "linear"
+                });
+                this._dashTextureCache[dashKey] = {
+                  dashLength,
+                  texture: dashTexture
+                };
+                state.dashLength = dashLength;
+                state.dashTexture = dashTexture;
               }
             }
-            state.dashLength = dashLength;
-            state.dashTexture({
-              channels: 1,
-              data: dashData,
-              width: dashData.length,
-              height: 1,
-              mag: "linear",
-              min: "linear"
-            }, 0, 0);
           }
           if (o.color) {
             let count = state.count;
@@ -94246,6 +94444,7 @@ void main() {
         }
         if (opts.line && positions && positions.length > 1) {
           Lib.extendFlat(opts.line, convert.linePositions(gd, trace, positions));
+          trimLinePositions(opts.line);
         }
         if (opts.errorX || opts.errorY) {
           var errors = convert.errorBarPositions(gd, trace, positions, stash.x, stash.y);
@@ -94488,13 +94687,7 @@ void main() {
             if (canIncrementallyUpload) {
               var lineUpdateBatch = makeIncrementalUpdateBatch(scene.lineOptions, incrementalStart, count);
               scene.line2d.update(lineUpdateBatch);
-              for (i = incrementalStart; i < count; i++) {
-                lineUpdateBatch[i] = trimLinePositions(scene.lineOptions[i]);
-              }
-              scene.line2d.update(lineUpdateBatch);
             } else {
-              scene.line2d.update(scene.lineOptions);
-              scene.lineOptions = scene.lineOptions.map(trimLinePositions);
               scene.line2d.update(scene.lineOptions);
             }
           }

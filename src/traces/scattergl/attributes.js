@@ -6,11 +6,10 @@ var makeFillcolorAttr = require('../scatter/fillcolor_attribute');
 var scatterAttrs = require('../scatter/attributes');
 var axisHoverFormat = require('../../plots/cartesian/axis_format_attributes').axisHoverFormat;
 var colorScaleAttrs = require('../../components/colorscale/attributes');
+var drawAttrs = require('../../components/drawing/attributes');
 
-var sortObjectKeys = require('../../lib/sort_object_keys');
 var extendFlat = require('../../lib/extend').extendFlat;
 var overrideAll = require('../../plot_api/edit_types').overrideAll;
-var DASHES = require('./constants').DASHES;
 
 var scatterLineAttrs = scatterAttrs.line;
 var scatterMarkerAttrs = scatterAttrs.marker;
@@ -64,12 +63,8 @@ var attrs = (module.exports = overrideAll(
             tension: scatterLineAttrs.tension,
             alpha: scatterLineAttrs.alpha,
             blendmode: scatterLineAttrs.blendmode,
-            dash: {
-                valType: 'enumerated',
-                values: sortObjectKeys(DASHES),
-                dflt: 'solid',
-                description: 'Sets the style of the lines.'
-            }
+            dash: extendFlat({}, drawAttrs.dash, { editType: 'style' }),
+            cap: extendFlat({}, drawAttrs.linecap, { editType: 'style' })
         },
         marker: extendFlat({}, colorScaleAttrs('marker'), {
             symbol: scatterMarkerAttrs.symbol,

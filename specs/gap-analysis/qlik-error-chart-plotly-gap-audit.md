@@ -111,14 +111,15 @@ Plotly status: partial
 
 - Plotly line dashing exists for cartesian lines and layout grid lines.
 - `src/plots/cartesian/layout_attributes.js` and `src/plots/cartesian/axes.js` support dashed grid styling via `griddash`.
-- Scatter and shape lines support dash styling.
+- SVG scatter `line.dash` already accepts raw px dash strings (e.g. `"5px,10px,2px"`) by passing them straight through `drawing.dashStyle()` unchanged. Named presets (`solid`, `dot`, `dash`, etc.) are also supported. The SVG dash model is therefore already flexible for string-based patterns.
+- `scattergl` restricts `line.dash` to the named `DASHES` enum in both `scattergl/attributes.js` and `convert.js`. However, the underlying `regl-line2d` package already natively supports arbitrary numeric dash arrays via its `dashes` property, implemented as a 1D GPU texture. The restriction is entirely in Plotly's own convert layer, not in the GL renderer.
 - This branch also adds blend-mode styling across more SVG surfaces.
 
 True gaps:
 
-- Plotly does not expose the same first-class stroke-cap controls that the Qlik extension uses.
+- Neither SVG scatter nor `scattergl` expose a `line.cap` / `stroke-linecap` control. SVG renders with the browser default cap; `regl-line2d` defaults to `'square'`. The cap shape is not configurable today.
+- `scattergl` does not allow custom numeric dash arrays through its attribute layer even though `regl-line2d` supports them. A convert-layer change is enough to unlock this.
 - Plotly error bars do not expose dash or cap styling beyond thickness and width. In `src/components/errorbars/attributes.js`, the model is limited to type, symmetry, arrays, color, thickness, width, and blend mode.
-- Qlik's custom dash parsing for error bars and trendlines has no direct Plotly equivalent.
 
 Migration note:
 
